@@ -45,7 +45,17 @@ import {
   THINKING_DOT_FRAME_SEC,
   VOID_TILE_DASH_PATTERN,
   VOID_TILE_OUTLINE_COLOR,
+  ZONE_LABEL_FONT_SIZE_PX,
 } from '../../constants.js';
+import {
+  areParticlesEnabled,
+  areShadowsEnabled,
+  getDayNightMode,
+} from '../effects/effectsSettings.js';
+import { renderLighting } from '../effects/lightingRender.js';
+import { renderParticles } from '../effects/particleRender.js';
+import type { ParticleSystem } from '../effects/particles.js';
+import { renderShadows } from '../effects/shadowRender.js';
 import { getColorizedFloorSprite, hasFloorSprites, WALL_COLOR } from '../floorTiles.js';
 import { mapOffset } from '../projection.js';
 import {
@@ -72,11 +82,13 @@ import type {
   SpriteData,
   TileType as TileTypeVal,
 } from '../types.js';
-import { CharacterState, TILE_SIZE, TileType } from '../types.js';
+import { TILE_SIZE, TileType } from '../types.js';
 import { getWallInstances, hasWallSprites, wallColorToHex } from '../wallTiles.js';
 import { getCharacterSprite } from './characters.js';
+import { renderInternEffect } from './internEffect.js';
 import { renderMatrixEffect } from './matrixEffect.js';
 import { getPetSpriteData } from './petEntity.js';
+import { isSeated } from './posture.js';
 
 // ── Settings ────────────────────────────────────────────────────
 
@@ -274,14 +286,18 @@ export function renderAreaLabels(
 
   if (centroids.size === 0) return;
 
-  const fontSize = Math.max(AREA_LABEL_FONT_SIZE_PX * zoom, AREA_LABEL_MIN_FONT_SIZE_PX);
+  const zoneLabels = new Set(areas.filter((a) => a.zoneKind).map((a) => a.label));
+  const fontFor = (label: string): string => {
+    const base = zoneLabels.has(label) ? ZONE_LABEL_FONT_SIZE_PX : AREA_LABEL_FONT_SIZE_PX;
+    return `bold ${Math.max(base * zoom, AREA_LABEL_MIN_FONT_SIZE_PX)}px 'FS Pixel Sans'`;
+  };
 
   ctx.save();
-  ctx.font = `bold ${fontSize}px 'FS Pixel Sans'`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
   for (const [label, acc] of centroids) {
+    ctx.font = fontFor(label);
     const cx = offsetX + (acc.sumX / acc.count + 0.5) * s;
     const cy = offsetY + (acc.sumY / acc.count + 0.5) * s;
 
@@ -399,7 +415,7 @@ export function renderScene(
     const charZoom = ch.isSubagent ? Math.max(1, Math.round(zoom * SUBAGENT_SCALE)) : zoom;
     const cached = getCachedSprite(spriteData, charZoom);
     // Sitting offset: shift character down when seated so they visually sit in the chair
-    const sittingOffset = ch.state === CharacterState.TYPE ? CHARACTER_SITTING_OFFSET_PX : 0;
+    const sittingOffset = isSeated(ch) ? CHARACTER_SITTING_OFFSET_PX : 0;
     // Anchor at bottom-center of character — round to integer device pixels
     const drawX = Math.round(offsetX + ch.x * zoom - cached.width / 2);
     const drawY = Math.round(offsetY + (ch.y + sittingOffset) * zoom - cached.height);
@@ -424,7 +440,11 @@ export function renderScene(
         draw: (c) => {
           c.save();
           c.globalAlpha = alpha;
-          renderMatrixEffect(c, mCh, mSpriteData, mDrawX, mDrawY, charZoom);
+          if (mCh.isSubagent) {
+            renderInternEffect(c, mCh, mSpriteData, mDrawX, mDrawY, charZoom);
+          } else {
+            renderMatrixEffect(c, mCh, mSpriteData, mDrawX, mDrawY, charZoom);
+          }
           c.restore();
         },
       });
@@ -805,7 +825,7 @@ function renderBubbles(
     // Position: centered above the character's head
     // Character is anchored bottom-center at (ch.x, ch.y), sprite is 16x24
     // Place bubble above head with a small gap; follow sitting offset
-    const sittingOff = ch.state === CharacterState.TYPE ? BUBBLE_SITTING_OFFSET_PX : 0;
+    const sittingOff = isSeated(ch) ? BUBBLE_SITTING_OFFSET_PX : 0;
     const bubbleX = Math.round(offsetX + ch.x * zoom - cached.width / 2);
     const bubbleY = Math.round(
       offsetY + (ch.y + sittingOff - BUBBLE_VERTICAL_OFFSET_PX) * zoom - cached.height - 1 * zoom,
@@ -887,6 +907,13 @@ export interface EditorRenderState {
   ghostBorderHoverRow: number;
 }
 
+/** Fase 2 effects that need per-frame state from the office. */
+export interface EffectsRenderState {
+  particles: ParticleSystem;
+  /** Day/night tint and light pools. Off while editing, so colors read true. */
+  lighting: boolean;
+}
+
 export interface SelectionRenderState {
   selectedAgentId: number | null;
   hoveredAgentId: number | null;
@@ -916,6 +943,7 @@ export function renderFrame(
   showAreas?: boolean,
   activeAreaLabel?: string | null,
   pets?: Pet[],
+  effects?: EffectsRenderState,
 ): { offsetX: number; offsetY: number } {
   // Clear
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
@@ -955,6 +983,13 @@ export function renderFrame(
     );
   }
 
+  // Floor shadows (below everything that stands on the floor)
+  if (areShadowsEnabled()) {
+    renderShadows(ctx, tileMap, furniture, characters, pets ?? [], offsetX, offsetY, zoom, (ch) =>
+      ch.isHeadless && ghostHeadlessAgents ? HEADLESS_CHARACTER_ALPHA : 1,
+    );
+  }
+
   // Build wall instances for z-sorting with furniture and characters
   const wallInstances = hasWallSprites() ? getWallInstances(tileMap, tileColors, layoutCols) : [];
   const allFurniture = wallInstances.length > 0 ? [...wallInstances, ...furniture] : furniture;
@@ -973,6 +1008,25 @@ export function renderFrame(
     hoveredId,
     pets ?? [],
   );
+
+  // Steam and dust live in the scene (the night darkens them); sparks glow over it
+  const showParticles = effects && areParticlesEnabled();
+  if (showParticles) renderParticles(ctx, effects.particles, offsetX, offsetY, zoom, false);
+  if (effects?.lighting) {
+    renderLighting(
+      ctx,
+      getDayNightMode(),
+      characters,
+      furniture,
+      tileMap,
+      cols,
+      rows,
+      offsetX,
+      offsetY,
+      zoom,
+    );
+  }
+  if (showParticles) renderParticles(ctx, effects.particles, offsetX, offsetY, zoom, true);
 
   // Speech bubbles (always on top of characters)
   renderBubbles(ctx, characters, offsetX, offsetY, zoom);

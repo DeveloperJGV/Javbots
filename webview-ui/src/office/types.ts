@@ -25,6 +25,8 @@ export type TileType = (typeof TileType)[keyof typeof TileType];
 /** Re-export ColorValue for consumers that import color types from office/types */
 export type { ColorValue } from '../components/ui/types.js';
 import type { ColorValue } from '../components/ui/types.js';
+import type { ZoneKind } from './zones/taskZones.js';
+import type { ZoneSpot } from './zones/zoneSpots.js';
 
 export const CharacterState = {
   IDLE: 'idle',
@@ -66,6 +68,13 @@ export interface FurnitureInstance {
   zY: number;
   /** Render-time horizontal flip flag (for mirrored side variants) */
   mirrored?: boolean;
+  /** Asset type this instance was built from (after auto-state swaps). Wall
+   *  tiles have none. Lets visual effects (ambient animation, lights,
+   *  particles) recognise what an instance is. */
+  type?: string;
+  /** Floor-standing furniture drops a contact shadow; wall-mounted items and
+   *  surface items (laptops, mugs) don't. */
+  castsShadow?: boolean;
 }
 
 export interface ToolActivity {
@@ -143,6 +152,9 @@ export interface AreaDefinition {
   label: string;
   /** Hex color (e.g. "#ff6b6b"). RGB only — alpha applied at render time. */
   color: string;
+  /** Task zone (fork, Fase 3). Set = agents walk here for that kind of work and
+   *  the area stops being a project area. Unset = a project (folder) area. */
+  zoneKind?: ZoneKind;
 }
 
 export interface OfficeLayout {
@@ -221,6 +233,10 @@ export interface Character {
   matrixEffectTimer: number;
   /** Per-column random seeds (16 values) for staggered rain timing */
   matrixEffectSeeds: number[];
+  /** Breathing clock (counts up; starts at a random phase so nobody breathes in sync) */
+  breathTimer: number;
+  /** Countdown to the next glance around while standing idle */
+  lookTimer: number;
   /** Workspace folder name (only set for multi-root workspaces) */
   folderName?: string;
   /** Headless agent: adopted from outside the office, so there is no terminal to
@@ -245,6 +261,22 @@ export interface Character {
   leadAgentId?: number;
   /** True when lead spawns teammates via tmux (run_in_background Agent calls) */
   teamUsesTmux?: boolean;
+
+  // -- Task zones (fork, Fase 3) --
+  /** Zone of the latest tool this turn (null = belongs at the desk). */
+  activityZone: ZoneKind | null;
+  /** Zone the agent is in or heading to (null = its own desk). */
+  zoneAt: ZoneKind | null;
+  /** Reserved place inside `zoneAt`; null = use the own seat. */
+  zoneSpot: ZoneSpot | null;
+  /** How long the wanted zone has differed from `zoneAt`. */
+  zonePendingSec: number;
+  /** Time since the agent entered `zoneAt`. */
+  zoneStaySec: number;
+  /** Counts down while a failed tool keeps the agent in the error zone. */
+  errorHoldSec: number;
+  /** Counts down until a new failure may send it to the error zone again. */
+  errorCooldownSec: number;
 
   // -- Context gauge --
   /** Tokens in the agent's context as of its newest turn; 0 until reported.

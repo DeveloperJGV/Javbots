@@ -380,11 +380,13 @@ export function processTranscriptLine(
               const useJsonlToolEvents = agent.hookDelivered && hasInlineTeammates(agentId, agents);
               if (!agent.hookDelivered || useJsonlToolEvents || isCompletedAgentTool) {
                 const toolId = completedToolId;
+                const failed = isFailedToolResult(block);
                 setTimeout(() => {
                   agents.broadcast({
                     type: 'agentToolDone',
                     id: agentId,
                     toolId,
+                    ...(failed ? { failed: true } : {}),
                   });
                 }, TOOL_DONE_DELAY_MS);
               }
@@ -716,6 +718,23 @@ function linkTeammates(_agentId: number, agent: AgentState, agents: AgentStateSt
       a.leadAgentId = lead.id;
     }
   }
+}
+
+/** Text Claude Code puts in the tool_result when the user said no to a tool. */
+const USER_REJECTION_MARKER = "doesn't want to proceed";
+
+/** A tool_result that reports the tool failing (fork, Fase 3: error zone). A
+ *  rejected permission is also `is_error`, but that is the user's call, not a failure. */
+export function isFailedToolResult(block: Record<string, unknown>): boolean {
+  if (block.is_error !== true) return false;
+  const content = block.content;
+  const text =
+    typeof content === 'string'
+      ? content
+      : Array.isArray(content)
+        ? content.map((c) => (typeof c?.text === 'string' ? c.text : '')).join(' ')
+        : '';
+  return !text.includes(USER_REJECTION_MARKER);
 }
 
 /** Check if a tool_result block indicates an async/background agent launch */

@@ -26,10 +26,12 @@ import {
   sendWallTilesToWebview,
 } from '../../server/src/assetLoader.js';
 import { loadAllCharacters, loadAllFurniture, loadAllPets } from '../../server/src/assetReload.js';
+import type { DayNightMode } from '../../server/src/configPersistence.js';
 import {
   getHooksConsent,
   getHooksEnabled,
   grantHooksConsent,
+  isDayNightMode,
   readConfig,
   setHooksEnabled as persistHooksEnabled,
   writeConfig,
@@ -64,9 +66,12 @@ import {
   CONFIG_KEY_AUTO_SHOW_PANEL,
   CONFIG_KEY_AUTO_SPAWN_AGENT,
   GLOBAL_KEY_ALWAYS_SHOW_LABELS,
+  GLOBAL_KEY_DAY_NIGHT_MODE,
   GLOBAL_KEY_GHOST_HEADLESS_AGENTS,
   GLOBAL_KEY_HOOKS_INFO_SHOWN,
   GLOBAL_KEY_LAST_SEEN_VERSION,
+  GLOBAL_KEY_PARTICLES_ENABLED,
+  GLOBAL_KEY_SHADOWS_ENABLED,
   GLOBAL_KEY_SHOW_AREAS,
   GLOBAL_KEY_SOUND_ENABLED,
   GLOBAL_KEY_WATCH_ALL_SESSIONS,
@@ -481,6 +486,14 @@ export class PixelAgentsViewProvider implements vscode.WebviewViewProvider {
         this.adapter.setSetting(GLOBAL_KEY_ALWAYS_SHOW_LABELS, message.enabled);
       } else if (message.type === 'setGhostHeadlessAgents') {
         this.adapter.setSetting(GLOBAL_KEY_GHOST_HEADLESS_AGENTS, message.enabled);
+      } else if (message.type === 'setShadowsEnabled') {
+        this.adapter.setSetting(GLOBAL_KEY_SHADOWS_ENABLED, message.enabled);
+      } else if (message.type === 'setParticlesEnabled') {
+        this.adapter.setSetting(GLOBAL_KEY_PARTICLES_ENABLED, message.enabled);
+      } else if (message.type === 'setDayNightMode') {
+        if (isDayNightMode(message.mode)) {
+          this.adapter.setSetting(GLOBAL_KEY_DAY_NIGHT_MODE, message.mode);
+        }
       } else if (message.type === 'setHooksEnabled') {
         // The provider id is echoed by the webview, never originated; an
         // unknown id names nothing to install into, so it is dropped like a
@@ -585,6 +598,15 @@ export class PixelAgentsViewProvider implements vscode.WebviewViewProvider {
         const hooksEnabled = getHooksEnabled(claudeProvider.id);
         const hooksInfoShown = this.adapter.getSetting<boolean>(GLOBAL_KEY_HOOKS_INFO_SHOWN, false);
         const showAreas = this.adapter.getSetting<boolean>(GLOBAL_KEY_SHOW_AREAS, false);
+        const shadowsEnabled = this.adapter.getSetting<boolean>(GLOBAL_KEY_SHADOWS_ENABLED, true);
+        const particlesEnabled = this.adapter.getSetting<boolean>(
+          GLOBAL_KEY_PARTICLES_ENABLED,
+          true,
+        );
+        const dayNightMode = this.adapter.getSetting<DayNightMode>(
+          GLOBAL_KEY_DAY_NIGHT_MODE,
+          'auto',
+        );
         const config = readConfig();
         this.webview?.postMessage({
           type: 'settingsLoaded',
@@ -598,6 +620,9 @@ export class PixelAgentsViewProvider implements vscode.WebviewViewProvider {
           hooksInfoShown,
           externalAssetDirectories: config.externalAssetDirectories,
           showAreas,
+          shadowsEnabled,
+          particlesEnabled,
+          dayNightMode,
         });
 
         // One status + at most one consent ask PER PROVIDER. Install state is distinct from the hooksEnabled

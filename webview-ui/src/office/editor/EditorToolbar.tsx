@@ -32,6 +32,8 @@ import { getCachedSprite } from '../sprites/spriteCache.js';
 import type { AreaDefinition, CarpetTile, SpriteData, TileType as TileTypeVal } from '../types.js';
 import { EditTool } from '../types.js';
 import { getWallSetCount, getWallSetPreviewSprite } from '../wallTiles.js';
+import type { ZoneKind } from '../zones/taskZones.js';
+import { ZONE_KINDS, ZONE_LABELS } from '../zones/taskZones.js';
 
 /** Synthetic category id used to show the carpet sub-panel inside the Furniture tab. */
 const CARPET_CATEGORY_ID = '__carpet__' as const;
@@ -80,6 +82,7 @@ interface EditorToolbarProps {
   onRemoveArea: (label: string) => void;
   onRenameArea: (oldLabel: string, newLabel: string) => void;
   onAreaColorChange: (label: string, color: string) => void;
+  onAreaZoneKindChange: (label: string, zoneKind: ZoneKind | null) => void;
   onAreaMappingChange: (folderName: string, areaLabel: string, action: 'add' | 'remove') => void;
 }
 
@@ -125,6 +128,7 @@ export function EditorToolbar({
   onRemoveArea,
   onRenameArea,
   onAreaColorChange,
+  onAreaZoneKindChange,
   onAreaMappingChange,
 }: EditorToolbarProps) {
   const [activeCategory, setActiveCategory] = useState<FurniturePanelCategory>('desks');
@@ -431,13 +435,15 @@ export function EditorToolbar({
         <div className="flex flex-col-reverse gap-4 pb-2">
           <AreaAddRow areas={areas} onAddArea={onAddArea} />
           <div className="text-xs text-text-muted px-4 leading-none">
-            Pinta áreas en el mapa y luego asígnales carpetas. Cada agente se sentará en el área de
-            su carpeta.
+            Pinta áreas en el mapa. Un área de proyecto recibe carpetas: cada agente se sienta en la
+            de su carpeta. Un área de zona (Código, Biblioteca…) es a donde caminan para esa tarea.
           </div>
           {/* Fixed 4-per-row grid; no overflow clip, or the upward Add-folder dropdown is cut off. */}
           <div className="grid grid-cols-[repeat(4,130px)] gap-4">
             {areas.length === 0 ? (
-              <span className="text-xs text-text-muted italic">No areas yet — add one above</span>
+              <span className="text-xs text-text-muted italic">
+                Aún no hay áreas: agrega una arriba
+              </span>
             ) : (
               areas.map((area) => (
                 <AreaCard
@@ -448,6 +454,7 @@ export function EditorToolbar({
                   onRename={(newLabel) => onRenameArea(area.label, newLabel)}
                   onRemove={() => onRemoveArea(area.label)}
                   onColorChange={(c) => onAreaColorChange(area.label, c)}
+                  onZoneKindChange={(k) => onAreaZoneKindChange(area.label, k)}
                   workspaceFolders={workspaceFolders}
                   areaMappings={areaMappings}
                   onAreaMappingChange={onAreaMappingChange}
@@ -758,6 +765,7 @@ function AreaCard({
   onRename,
   onRemove,
   onColorChange,
+  onZoneKindChange,
   workspaceFolders,
   areaMappings,
   onAreaMappingChange,
@@ -768,6 +776,7 @@ function AreaCard({
   onRename: (newLabel: string) => void;
   onRemove: () => void;
   onColorChange: (color: string) => void;
+  onZoneKindChange: (zoneKind: ZoneKind | null) => void;
   workspaceFolders: { name: string; path: string }[];
   areaMappings: Record<string, string[]>;
   onAreaMappingChange: (folderName: string, areaLabel: string, action: 'add' | 'remove') => void;
@@ -775,6 +784,7 @@ function AreaCard({
   const [renaming, setRenaming] = useState(false);
   const [renameDraft, setRenameDraft] = useState(area.label);
   const [addFolderOpen, setAddFolderOpen] = useState(false);
+  const [zoneOpen, setZoneOpen] = useState(false);
 
   const mappedFolders = useMemo(
     () =>
@@ -857,65 +867,104 @@ function AreaCard({
         </Button>
       </div>
 
-      <div className="flex flex-col gap-2 max-h-80 overflow-y-auto pixel-scrollbar">
-        {mappedFolders.length === 0 ? (
-          <span className="text-xs text-text-muted italic">No folders mapped</span>
-        ) : (
-          mappedFolders.map((folder) => (
-            <div key={folder} className="flex items-center gap-4 py-1 px-2">
-              <span
-                className="flex-1 text-xs text-text overflow-hidden text-ellipsis whitespace-nowrap"
-                title={folder}
-              >
-                {folder}
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e?.stopPropagation();
-                  onAreaMappingChange(folder, area.label, 'remove');
-                }}
-                title="Desasignar carpeta"
-              >
-                x
-              </Button>
-            </div>
-          ))
-        )}
-      </div>
-
       <div className="relative">
         <Button
-          variant="default"
+          variant={area.zoneKind ? 'active' : 'default'}
           size="sm"
           onClick={(e) => {
             e?.stopPropagation();
-            if (availableFolders.length === 0) return;
-            setAddFolderOpen((v) => !v);
+            setZoneOpen((v) => !v);
           }}
-          title={
-            availableFolders.length === 0
-              ? 'Todas las carpetas ya están asignadas'
-              : 'Asignar una carpeta…'
-          }
+          title="Tipo de zona: a qué tarea van los agentes a esta área"
         >
-          Agregar carpeta…
+          {area.zoneKind ? `Zona: ${ZONE_LABELS[area.zoneKind]}` : 'Área de proyecto'}
         </Button>
-        <Dropdown isOpen={addFolderOpen}>
-          {availableFolders.map((f) => (
+        <Dropdown isOpen={zoneOpen}>
+          <DropdownItem
+            onClick={() => {
+              onZoneKindChange(null);
+              setZoneOpen(false);
+            }}
+          >
+            Área de proyecto
+          </DropdownItem>
+          {ZONE_KINDS.map((kind) => (
             <DropdownItem
-              key={f.path}
+              key={kind}
               onClick={() => {
-                onAreaMappingChange(f.name, area.label, 'add');
-                setAddFolderOpen(false);
+                onZoneKindChange(kind);
+                setZoneOpen(false);
               }}
             >
-              {f.name}
+              Zona: {ZONE_LABELS[kind]}
             </DropdownItem>
           ))}
         </Dropdown>
       </div>
+
+      {!area.zoneKind && (
+        <>
+          <div className="flex flex-col gap-2 max-h-80 overflow-y-auto pixel-scrollbar">
+            {mappedFolders.length === 0 ? (
+              <span className="text-xs text-text-muted italic">Sin carpetas asignadas</span>
+            ) : (
+              mappedFolders.map((folder) => (
+                <div key={folder} className="flex items-center gap-4 py-1 px-2">
+                  <span
+                    className="flex-1 text-xs text-text overflow-hidden text-ellipsis whitespace-nowrap"
+                    title={folder}
+                  >
+                    {folder}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e?.stopPropagation();
+                      onAreaMappingChange(folder, area.label, 'remove');
+                    }}
+                    title="Desasignar carpeta"
+                  >
+                    x
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="relative">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={(e) => {
+                e?.stopPropagation();
+                if (availableFolders.length === 0) return;
+                setAddFolderOpen((v) => !v);
+              }}
+              title={
+                availableFolders.length === 0
+                  ? 'Todas las carpetas ya están asignadas'
+                  : 'Asignar una carpeta…'
+              }
+            >
+              Agregar carpeta…
+            </Button>
+            <Dropdown isOpen={addFolderOpen}>
+              {availableFolders.map((f) => (
+                <DropdownItem
+                  key={f.path}
+                  onClick={() => {
+                    onAreaMappingChange(f.name, area.label, 'add');
+                    setAddFolderOpen(false);
+                  }}
+                >
+                  {f.name}
+                </DropdownItem>
+              ))}
+            </Dropdown>
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -94,7 +94,16 @@ export function layoutToFurnitureInstances(furniture: PlacedFurniture[]): Furnit
       }
     }
 
-    instances.push({ sprite, x, y, zY, ...(mirrored ? { mirrored: true } : {}) });
+    const castsShadow = !entry.canPlaceOnWalls && !entry.canPlaceOnSurfaces;
+    instances.push({
+      sprite,
+      x,
+      y,
+      zY,
+      type: item.type,
+      ...(castsShadow ? { castsShadow: true } : {}),
+      ...(mirrored ? { mirrored: true } : {}),
+    });
   }
   return instances;
 }

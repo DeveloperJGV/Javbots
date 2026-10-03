@@ -26,6 +26,7 @@ import {
   removeFurniture,
   renameArea,
   rotateFurniture,
+  setAreaZoneKind,
   toggleFurnitureState,
   updateAreaColor,
 } from '../office/editor/editorActions.js';
@@ -45,6 +46,7 @@ import type {
 } from '../office/types.js';
 import { EditTool } from '../office/types.js';
 import { TileType } from '../office/types.js';
+import type { ZoneKind } from '../office/zones/taskZones.js';
 import { transport } from '../transport/index.js';
 
 interface EditorActions {
@@ -96,6 +98,7 @@ interface EditorActions {
   handleRemoveArea: (label: string) => void;
   handleRenameArea: (oldLabel: string, newLabel: string) => void;
   handleAreaColorChange: (label: string, color: string) => void;
+  handleAreaZoneKindChange: (label: string, zoneKind: ZoneKind | null) => void;
 }
 
 /** Default integer zoom (device pixels per sprite pixel) for a fresh session.
@@ -316,6 +319,18 @@ export function useEditorActions(
       const os = getOfficeState();
       const layout = os.getLayout();
       const next = updateAreaColor(layout, label, color);
+      if (next !== layout) {
+        applyEdit(next);
+      }
+    },
+    [getOfficeState, applyEdit],
+  );
+
+  const handleAreaZoneKindChange = useCallback(
+    (label: string, zoneKind: ZoneKind | null) => {
+      const os = getOfficeState();
+      const layout = os.getLayout();
+      const next = setAreaZoneKind(layout, label, zoneKind);
       if (next !== layout) {
         applyEdit(next);
       }
@@ -964,5 +979,6 @@ export function useEditorActions(
     handleRemoveArea,
     handleRenameArea,
     handleAreaColorChange,
+    handleAreaZoneKindChange,
   };
 }

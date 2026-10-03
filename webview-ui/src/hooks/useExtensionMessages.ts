@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import type { HooksConsentRequest } from '../../../core/src/messages.js';
+import type { DayNightMode, HooksConsentRequest } from '../../../core/src/messages.js';
 import { playDoneSound, playPermissionSound, setSoundEnabled } from '../notificationSound.js';
+import {
+  setDayNightMode as setRendererDayNightMode,
+  setParticlesEnabled as setRendererParticlesEnabled,
+  setShadowsEnabled as setRendererShadowsEnabled,
+} from '../office/effects/effectsSettings.js';
 import type { ExistingAgentMeta, PendingAgent } from '../office/engine/existingAgents.js';
 import { reconcileExistingAgents } from '../office/engine/existingAgents.js';
 import type { OfficeState } from '../office/engine/officeState.js';
@@ -110,6 +115,13 @@ interface ExtensionMessageState {
   setAreaMappings: (m: Record<string, string[]>) => void;
   showAreas: boolean;
   setShowAreas: (v: boolean) => void;
+  // Visual effects (Fase 2)
+  shadowsEnabled: boolean;
+  setShadowsEnabled: (v: boolean) => void;
+  particlesEnabled: boolean;
+  setParticlesEnabled: (v: boolean) => void;
+  dayNightMode: DayNightMode;
+  setDayNightMode: (m: DayNightMode) => void;
 }
 
 function saveAgentSeats(os: OfficeState): void {
@@ -153,6 +165,23 @@ export function useExtensionMessages(
   const consentRequest = consentQueue[0] ?? null;
   const [areaMappings, setAreaMappings] = useState<Record<string, string[]>>({});
   const [showAreas, setShowAreas] = useState(false);
+  const [shadowsEnabled, setShadowsEnabledState] = useState(true);
+  const [particlesEnabled, setParticlesEnabledState] = useState(true);
+  const [dayNightMode, setDayNightModeState] = useState<DayNightMode>('auto');
+
+  // Effect toggles: React state for the Settings UI, module state for the rAF loop
+  const applyShadowsEnabled = useCallback((enabled: boolean) => {
+    setShadowsEnabledState(enabled);
+    setRendererShadowsEnabled(enabled);
+  }, []);
+  const applyParticlesEnabled = useCallback((enabled: boolean) => {
+    setParticlesEnabledState(enabled);
+    setRendererParticlesEnabled(enabled);
+  }, []);
+  const applyDayNightMode = useCallback((mode: DayNightMode) => {
+    setDayNightModeState(mode);
+    setRendererDayNightMode(mode);
+  }, []);
 
   // The renderer keeps its own module-level copy (read every rAF frame), so both
   // sources of truth move together — the persisted value on settingsLoaded and
@@ -372,6 +401,7 @@ export function useExtensionMessages(
         });
         const toolName = (msg.toolName as string | undefined) ?? extractToolName(status);
         os.setAgentTool(id, toolName);
+        os.setAgentActivity(id, status);
         os.setAgentActive(id, true);
         // Don't clear the permission bubble if the hook already confirmed permission is needed
         if (!permissionActive) {
@@ -410,6 +440,8 @@ export function useExtensionMessages(
       } else if (msg.type === 'agentToolDone') {
         const id = msg.id as number;
         const toolId = msg.toolId as string;
+        os.onToolDone(id);
+        if (msg.failed === true) os.onToolFailed(id);
         setAgentTools((prev) => {
           const list = prev[id];
           if (!list) return prev;
@@ -467,6 +499,7 @@ export function useExtensionMessages(
           );
         }
         os.setAgentTool(id, null);
+        os.setAgentActivity(id, null);
         os.clearPermissionBubble(id);
       } else if (msg.type === 'agentSelected') {
         const id = msg.id as number;
@@ -671,6 +704,19 @@ export function useExtensionMessages(
         if (typeof msg.showAreas === 'boolean') {
           setShowAreas(msg.showAreas as boolean);
         }
+        if (typeof msg.shadowsEnabled === 'boolean') {
+          applyShadowsEnabled(msg.shadowsEnabled);
+        }
+        if (typeof msg.particlesEnabled === 'boolean') {
+          applyParticlesEnabled(msg.particlesEnabled);
+        }
+        if (
+          msg.dayNightMode === 'auto' ||
+          msg.dayNightMode === 'day' ||
+          msg.dayNightMode === 'night'
+        ) {
+          applyDayNightMode(msg.dayNightMode);
+        }
         if (Array.isArray(msg.externalAssetDirectories)) {
           setExternalAssetDirectories(msg.externalAssetDirectories as string[]);
         }
@@ -805,5 +851,11 @@ export function useExtensionMessages(
     setAreaMappings,
     showAreas,
     setShowAreas,
+    shadowsEnabled,
+    setShadowsEnabled: applyShadowsEnabled,
+    particlesEnabled,
+    setParticlesEnabled: applyParticlesEnabled,
+    dayNightMode,
+    setDayNightMode: applyDayNightMode,
   };
 }

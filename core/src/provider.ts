@@ -22,7 +22,12 @@ export type AgentEvent =
        *  sub-agent characters for teammate spawns. */
       runInBackground?: boolean;
     }
-  | { kind: 'toolEnd'; toolId: string }
+  | {
+      kind: 'toolEnd';
+      toolId: string;
+      /** The tool ran and failed (an error, not a user rejection or interrupt). */
+      failed?: boolean;
+    }
   /** The user sent a prompt: the agent is thinking until its first tool or turn end.
    *  Carries no prompt text. */
   | { kind: 'promptSubmit' }

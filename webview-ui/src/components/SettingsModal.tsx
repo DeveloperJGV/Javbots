@@ -32,6 +32,12 @@ interface SettingsModalProps {
   onToggleShowAreas: () => void;
   /** Hide the Show Areas checkbox entirely when areas are unavailable. */
   showAreasAvailable: boolean;
+  /** Drop shadows under characters, pets and furniture. */
+  shadowsEnabled: boolean;
+  onToggleShadows: () => void;
+  /** Coffee steam, sparks at turn end, dust. */
+  particlesEnabled: boolean;
+  onToggleParticles: () => void;
   /** Browser-native layout export (standalone only; VS Code uses the host save dialog). */
   onExportLayout: () => void;
   /** Browser-native layout import from a chosen file (standalone only). */
@@ -55,6 +61,10 @@ export function SettingsModal({
   showAreas,
   onToggleShowAreas,
   showAreasAvailable,
+  shadowsEnabled,
+  onToggleShadows,
+  particlesEnabled,
+  onToggleParticles,
   onExportLayout,
   onImportLayout,
 }: SettingsModalProps) {
@@ -206,6 +216,12 @@ export function SettingsModal({
       {showAreasAvailable && (
         <Checkbox label="Mostrar áreas" checked={showAreas} onChange={onToggleShowAreas} />
       )}
+      <Checkbox label="Sombras" checked={shadowsEnabled} onChange={onToggleShadows} />
+      <Checkbox
+        label="Partículas (vapor, chispas, polvo)"
+        checked={particlesEnabled}
+        onChange={onToggleParticles}
+      />
       <Checkbox label="Vista de depuración" checked={isDebugMode} onChange={onToggleDebugMode} />
     </Modal>
   );

@@ -316,3 +316,146 @@ export const PET_THUMB_SCALE_MARGIN = 0.85;
 export const EMPTY_SPRITE_THUMBNAIL_BG = '#333';
 /** Maximum string length for a PlacedPet.id (defends against pathologically-long layout entries). */
 export const MAX_PET_ID_LENGTH = 128;
+
+// ── Visual Effects (fork, Fase 2) ───────────────────────────
+// Shadows — pixel sprites in '#RRGGBBAA' (light comes from the top-left).
+export const SHADOW_CORE_COLOR = '#0000004a';
+export const SHADOW_EDGE_COLOR = '#00000026';
+/** Character shadow: 10×3 sprite px ellipse at the feet. */
+export const CHARACTER_SHADOW_WIDTH = 10;
+export const PET_SHADOW_WIDTH = 8;
+/** Rows of a furniture sprite's base scanned to size its contact shadow. */
+export const FURNITURE_SHADOW_BASE_ROWS = 4;
+/** Floor rows darkened right under a wall (ambient occlusion at its base). */
+export const WALL_SHADOW_COLOR = '#00000033';
+export const WALL_SHADOW_SOFT_COLOR = '#0000001a';
+
+// Idle motion
+/** Full breathing cycle; the torso is raised for BREATH_INHALE_FRACTION of it. */
+export const BREATH_PERIOD_SEC = 3.2;
+export const BREATH_INHALE_FRACTION = 0.45;
+/** Part of the character's height (from the feet) that stays put while breathing. */
+export const BREATH_LEGS_FRACTION = 0.3;
+export const LOOK_AROUND_MIN_SEC = 1.5;
+export const LOOK_AROUND_MAX_SEC = 4.5;
+
+// Always-on furniture animation (code-driven until our own art lands)
+export const PLANT_SWAY_STEP_SEC = 0.8;
+/** Top fraction of a plant's opaque height that sways (bottom fraction for hanging plants). */
+export const PLANT_SWAY_FOLIAGE_FRACTION = 0.45;
+export const STANDBY_LED_PERIOD_SEC = 2.0;
+export const STANDBY_LED_ON_FRACTION = 0.5;
+export const STANDBY_LED_COLOR = '#5ee08a';
+/** Window glass, as painted in WINDOW.png (day), and what it turns into. */
+export const WINDOW_SKY_UPPER = '#7cc4ef';
+export const WINDOW_SKY_LOWER = '#a9dcf7';
+export const WINDOW_CLOUD = '#f4fbff';
+export const WINDOW_DUSK_UPPER = '#e98a5c';
+export const WINDOW_DUSK_LOWER = '#f6b97a';
+export const WINDOW_DUSK_CLOUD = '#ffe0b8';
+export const WINDOW_NIGHT_UPPER = '#0d1636';
+export const WINDOW_NIGHT_LOWER = '#18264f';
+export const WINDOW_MOON = '#f3efc8';
+export const WINDOW_STAR = '#dfe7ff';
+
+// Day / night
+/** Lighting recompute cadence for the auto clock (the light set triggers its own recomputes). */
+export const DAY_NIGHT_REFRESH_SEC = 30;
+export const NIGHT_TINT_COLOR = '#0e1438';
+export const DUSK_TINT_COLOR = '#ff7a2e';
+export const DAWN_TINT_COLOR = '#ff9f8a';
+export const DAY_TINT_COLOR = '#ffffff';
+export const NIGHT_TINT_ALPHA = 0.62;
+export const DUSK_TINT_ALPHA = 0.24;
+export const DAWN_TINT_ALPHA = 0.2;
+/** Discrete light levels (pixel-art banding); dithering blends neighbouring bands. */
+export const LIGHT_LEVELS = 5;
+export const SCREEN_LIGHT_COLOR = '#9fd8ff';
+export const SCREEN_LIGHT_RADIUS_PX = 34;
+export const SCREEN_LIGHT_INTENSITY = 0.85;
+export const LAMP_LIGHT_COLOR = '#ffd28a';
+export const LAMP_LIGHT_RADIUS_PX = 56;
+export const LAMP_LIGHT_INTENSITY = 1;
+/** Every screen glows a little at night, in use or not (the one being worked at adds the full glow). */
+export const IDLE_SCREEN_LIGHT_RADIUS_PX = 20;
+export const IDLE_SCREEN_LIGHT_INTENSITY = 0.45;
+/** Moonlight: a slanted beam from each window down onto the floor. */
+export const MOON_LIGHT_COLOR = '#b9c9ff';
+export const MOON_BEAM_LENGTH_PX = 44;
+export const MOON_BEAM_HALF_WIDTH_TOP_PX = 6;
+export const MOON_BEAM_HALF_WIDTH_BOTTOM_PX = 11;
+/** Sideways drift of the beam per pixel it travels down (the moon sits off to one side). */
+export const MOON_BEAM_SKEW = 0.35;
+export const MOON_BEAM_INTENSITY = 0.75;
+/** How strongly a light tints the pixels it reaches (0 = only removes darkness). */
+export const LIGHT_TINT_ALPHA = 0.16;
+
+// Particles
+export const MAX_PARTICLES = 220;
+export const STEAM_COLOR = '#e8ecf2';
+export const STEAM_SPAWN_SEC = 0.55;
+export const STEAM_LIFE_SEC = 1.8;
+export const STEAM_RISE_PX_PER_SEC = 6;
+export const SPARK_COLORS = ['#fff3a3', '#ffd34d', '#ffffff', '#9ff0ff'] as const;
+export const SPARK_COUNT = 14;
+export const SPARK_LIFE_SEC = 0.9;
+export const SPARK_SPEED_PX_PER_SEC = 34;
+export const SPARK_GRAVITY_PX_PER_SEC2 = 60;
+/** Sparks start this far above the character's feet (top of the head). */
+export const SPARK_HEAD_HEIGHT_PX = 24;
+export const DUST_COLORS = ['#f4ead2', '#d9cfb8'] as const;
+export const PAPER_COLORS = ['#ffffff', '#f2f0e6'] as const;
+export const DUST_SPAWN_SEC = 2.2;
+export const DUST_LIFE_SEC = 6;
+export const PAPER_CHANCE = 0.15;
+
+// ── Task Zones (fork, Fase 3) ───────────────────────────────
+/** How long a new activity must last before the agent walks to its zone. */
+export const ZONE_SWITCH_DELAY_SEC = 2;
+/** Minimum time in a zone before moving on to the next one (no ping-pong). */
+export const ZONE_MIN_STAY_SEC = 8;
+
+// Interns (sub-agents) appear like shadow clones (Naruto: a puff of smoke)
+// and leave turning to stone (Dr. Stone: petrified, then crumbling).
+export const CLONE_SPAWN_SEC = 0.8;
+/** Share of the spawn after which the clone is visible inside the smoke. */
+export const CLONE_REVEAL_AT = 0.3;
+export const CLONE_SMOKE_PUFFS = 9;
+export const CLONE_SMOKE_RADIUS_PX = 11;
+export const CLONE_SMOKE_COLORS = ['#ffffff', '#e6e9ef', '#c9ced8'] as const;
+export const PETRIFY_SEC = 1.8;
+/** Share of the despawn spent turning to stone (feet first); the rest crumbles. */
+export const PETRIFY_STONE_SHARE = 0.55;
+/** Stone shades, dark to light, picked by each pixel's brightness. */
+export const STONE_COLORS = ['#4d4f52', '#76797d', '#a2a5a8', '#c8cacb'] as const;
+export const STONE_CRACK_COLOR = '#2b2c2e';
+/** How far crumbling pixels fall (sprite pixels) before vanishing. */
+export const STONE_FALL_PX = 6;
+
+// 88 mph: a command finished in the DeLorean workshop -> flux sparks + two fire trails
+export const FLUX_SPARK_COLORS = ['#ffffff', '#9ff0ff', '#5fb7ff'] as const;
+export const FLUX_SPARK_COUNT = 16;
+export const FLUX_SPARK_SPEED_PX_PER_SEC = 40;
+export const FLUX_SPARK_LIFE_SEC = 0.5;
+export const FIRE_TRAIL_COLORS = ['#ff4b1f', '#ff7a1a', '#ffc23d'] as const;
+export const FIRE_TRAIL_LENGTH_PX = 20;
+/** Gap between the two trails (sprite px), like the DeLorean's tyres. */
+export const FIRE_TRAIL_GAP_PX = 6;
+export const FIRE_TRAIL_LIFE_SEC = 0.9;
+/** Moonstones (Skies of Arcadia homage) glow faintly at night. */
+export const MOONSTONE_LIGHT_COLOR = '#d6c8ff';
+export const MOONSTONE_LIGHT_RADIUS_PX = 18;
+export const MOONSTONE_LIGHT_INTENSITY = 0.55;
+/** Task-zone names are drawn smaller than project areas: there are many, and close together. */
+export const ZONE_LABEL_FONT_SIZE_PX = 6;
+
+// Error zone (The Binding of Isaac): a failed tool sends the agent to the basement
+/** How long a failure keeps the agent wanting the error zone. */
+export const ZONE_ERROR_HOLD_SEC = 5;
+/** After a trip to the error zone, further failures only make it cry. */
+export const ZONE_ERROR_COOLDOWN_SEC = 30;
+export const TEAR_COLORS = ['#8fd3ff', '#5fb7ff', '#d8f1ff'] as const;
+export const TEAR_COUNT = 6;
+export const TEAR_LIFE_SEC = 0.8;
+/** Eyes sit this far above the character's feet. */
+export const TEAR_EYE_HEIGHT_PX = 18;

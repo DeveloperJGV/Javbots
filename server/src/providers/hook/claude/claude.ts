@@ -153,8 +153,14 @@ function normalizeHookEvent(
     }
 
     case 'PostToolUse':
-    case 'PostToolUseFailure':
       return { sessionId, event: { kind: 'toolEnd', toolId: 'current' } };
+
+    case 'PostToolUseFailure':
+      // An interrupt (Esc) is the user stopping the tool, not the tool failing.
+      return {
+        sessionId,
+        event: { kind: 'toolEnd', toolId: 'current', failed: raw.is_interrupt !== true },
+      };
 
     case 'Stop':
       return { sessionId, event: { kind: 'turnEnd' } };

@@ -21,6 +21,7 @@ import { OfficeCanvas } from './office/components/OfficeCanvas.js';
 import { ToolOverlay } from './office/components/ToolOverlay.js';
 import { EditorState } from './office/editor/editorState.js';
 import { EditorToolbar } from './office/editor/EditorToolbar.js';
+import { nextDayNightMode } from './office/effects/effectsSettings.js';
 import { OfficeState } from './office/engine/officeState.js';
 import { exportLayoutToFile } from './office/layout/exportLayout.js';
 import { isRotatable } from './office/layout/furnitureCatalog.js';
@@ -96,6 +97,12 @@ function App() {
     setAreaMappings,
     showAreas,
     setShowAreas,
+    shadowsEnabled,
+    setShadowsEnabled,
+    particlesEnabled,
+    setParticlesEnabled,
+    dayNightMode,
+    setDayNightMode,
   } = useExtensionMessages(getOfficeState, editor.setLastSavedLayout, isEditDirty);
 
   // Show migration notice once layout reset is detected
@@ -141,6 +148,25 @@ function App() {
     setGhostHeadlessAgents(next);
     transport.send({ type: 'setGhostHeadlessAgents', enabled: next });
   }, [ghostHeadlessAgents, setGhostHeadlessAgents]);
+
+  // Visual effects (Fase 2): local + renderer first, then persist on the server.
+  const handleToggleShadows = useCallback(() => {
+    const next = !shadowsEnabled;
+    setShadowsEnabled(next);
+    transport.send({ type: 'setShadowsEnabled', enabled: next });
+  }, [shadowsEnabled, setShadowsEnabled]);
+
+  const handleToggleParticles = useCallback(() => {
+    const next = !particlesEnabled;
+    setParticlesEnabled(next);
+    transport.send({ type: 'setParticlesEnabled', enabled: next });
+  }, [particlesEnabled, setParticlesEnabled]);
+
+  const handleCycleDayNight = useCallback(() => {
+    const next = nextDayNightMode(dayNightMode);
+    setDayNightMode(next);
+    transport.send({ type: 'setDayNightMode', mode: next });
+  }, [dayNightMode, setDayNightMode]);
 
   const handleSelectAgent = useCallback((id: number) => {
     transport.send({ type: 'focusAgent', id });
@@ -254,11 +280,9 @@ function App() {
     return [...byName.values()];
   }, [workspaceFolders, agentFolderNames]);
 
-  // Areas authoring is available when the layout already defines areas, or when
-  // there is at least one mappable folder. Decouples the Areas UI from VS Code
-  // multi-root workspaces (fixes single-root VS Code AND standalone, where
-  // workspaceFolders is always empty).
-  const areasAvailable = (officeState.getLayout().areas?.length ?? 0) > 0 || areaFolders.length > 0;
+  // Areas are always available: besides project areas they hold the task zones
+  // (fork, Fase 3), which need no folder at all.
+  const areasAvailable = true;
 
   const handleExportLayout = useCallback(() => {
     exportLayoutToFile(getOfficeState().getLayout());
@@ -420,6 +444,7 @@ function App() {
                   onRemoveArea={editor.handleRemoveArea}
                   onRenameArea={editor.handleRenameArea}
                   onAreaColorChange={editor.handleAreaColorChange}
+                  onAreaZoneKindChange={editor.handleAreaZoneKindChange}
                   onAreaMappingChange={handleAreaMappingChange}
                 />
               );
@@ -518,6 +543,8 @@ function App() {
         isSettingsOpen={isSettingsOpen}
         onToggleSettings={() => setIsSettingsOpen((v) => !v)}
         workspaceFolders={workspaceFolders}
+        dayNightMode={dayNightMode}
+        onCycleDayNight={handleCycleDayNight}
       />
 
       <VersionIndicator
@@ -571,6 +598,10 @@ function App() {
         showAreas={showAreas}
         onToggleShowAreas={onToggleShowAreas}
         showAreasAvailable={areasAvailable}
+        shadowsEnabled={shadowsEnabled}
+        onToggleShadows={handleToggleShadows}
+        particlesEnabled={particlesEnabled}
+        onToggleParticles={handleToggleParticles}
         onExportLayout={handleExportLayout}
         onImportLayout={handleImportLayout}
       />

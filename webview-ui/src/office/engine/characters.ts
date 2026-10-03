@@ -1,4 +1,5 @@
 import {
+  BREATH_PERIOD_SEC,
   DEFAULT_MAX_CONTEXT_TOKENS,
   SEAT_REST_MAX_SEC,
   SEAT_REST_MIN_SEC,
@@ -9,7 +10,15 @@ import {
   WANDER_MOVES_BEFORE_REST_MIN,
   WANDER_PAUSE_MAX_SEC,
   WANDER_PAUSE_MIN_SEC,
+  ZONE_MIN_STAY_SEC,
 } from '../../constants.js';
+import {
+  inhaleSprite,
+  isBreathingPose,
+  isInhaling,
+  randomLookDelay,
+  updateIdleMotion,
+} from '../effects/idleMotion.js';
 import { findPath } from '../layout/tileMap.js';
 import type { CharacterSprites } from '../sprites/spriteData.js';
 import { isReadingToolName } from '../toolUtils.js';
@@ -44,6 +53,17 @@ function directionBetween(
   if (dc < 0) return Direction.LEFT;
   if (dr > 0) return Direction.DOWN;
   return Direction.UP;
+}
+
+/** Where an active agent works: its reserved zone spot, else its own seat. */
+function workSpot(
+  ch: Character,
+  seats: Map<string, Seat>,
+): { col: number; row: number; dir: Direction } | null {
+  if (ch.zoneSpot) return ch.zoneSpot;
+  if (!ch.seatId) return null;
+  const seat = seats.get(ch.seatId);
+  return seat ? { col: seat.seatCol, row: seat.seatRow, dir: seat.facingDir } : null;
 }
 
 export function createCharacter(
@@ -84,6 +104,15 @@ export function createCharacter(
     matrixEffect: null,
     matrixEffectTimer: 0,
     matrixEffectSeeds: [],
+    breathTimer: Math.random() * BREATH_PERIOD_SEC,
+    lookTimer: randomLookDelay(),
+    activityZone: null,
+    zoneAt: null,
+    zoneSpot: null,
+    zonePendingSec: 0,
+    zoneStaySec: ZONE_MIN_STAY_SEC,
+    errorHoldSec: 0,
+    errorCooldownSec: 0,
     contextTokens: 0,
     maxContextTokens: DEFAULT_MAX_CONTEXT_TOKENS,
   };
@@ -98,6 +127,7 @@ export function updateCharacter(
   blockedTiles: Set<string>,
 ): void {
   ch.frameTimer += dt;
+  updateIdleMotion(ch, dt);
 
   switch (ch.state) {
     case CharacterState.TYPE: {
@@ -123,41 +153,32 @@ export function updateCharacter(
     }
 
     case CharacterState.IDLE: {
-      // No idle animation — static pose
+      // Static frame; breathing and glancing around come from updateIdleMotion
       ch.frame = 0;
       if (ch.seatTimer < 0) ch.seatTimer = 0; // clear turn-end sentinel
-      // If became active, pathfind to seat
+      // If became active, pathfind to the work spot (zone spot or own seat)
       if (ch.isActive) {
-        if (!ch.seatId) {
+        const spot = workSpot(ch, seats);
+        if (!spot) {
           // No seat assigned — type in place
           ch.state = CharacterState.TYPE;
           ch.frame = 0;
           ch.frameTimer = 0;
           break;
         }
-        const seat = seats.get(ch.seatId);
-        if (seat) {
-          const path = findPath(
-            ch.tileCol,
-            ch.tileRow,
-            seat.seatCol,
-            seat.seatRow,
-            tileMap,
-            blockedTiles,
-          );
-          if (path.length > 0) {
-            ch.path = path;
-            ch.moveProgress = 0;
-            ch.state = CharacterState.WALK;
-            ch.frame = 0;
-            ch.frameTimer = 0;
-          } else {
-            // Already at seat or no path — sit down
-            ch.state = CharacterState.TYPE;
-            ch.dir = seat.facingDir;
-            ch.frame = 0;
-            ch.frameTimer = 0;
-          }
+        const path = findPath(ch.tileCol, ch.tileRow, spot.col, spot.row, tileMap, blockedTiles);
+        if (path.length > 0) {
+          ch.path = path;
+          ch.moveProgress = 0;
+          ch.state = CharacterState.WALK;
+          ch.frame = 0;
+          ch.frameTimer = 0;
+        } else {
+          // Already there or no path — get to work
+          ch.state = CharacterState.TYPE;
+          ch.dir = spot.dir;
+          ch.frame = 0;
+          ch.frameTimer = 0;
         }
         break;
       }
@@ -224,17 +245,15 @@ export function updateCharacter(
         ch.y = center.y;
 
         if (ch.isActive) {
-          if (!ch.seatId) {
+          const spot = workSpot(ch, seats);
+          if (!spot) {
             // No seat — type in place
             ch.state = CharacterState.TYPE;
+          } else if (ch.tileCol === spot.col && ch.tileRow === spot.row) {
+            ch.state = CharacterState.TYPE;
+            ch.dir = spot.dir;
           } else {
-            const seat = seats.get(ch.seatId);
-            if (seat && ch.tileCol === seat.seatCol && ch.tileRow === seat.seatRow) {
-              ch.state = CharacterState.TYPE;
-              ch.dir = seat.facingDir;
-            } else {
-              ch.state = CharacterState.IDLE;
-            }
+            ch.state = CharacterState.IDLE;
           }
         } else {
           // Check if arrived at assigned seat — sit down for a rest before wandering again
@@ -290,17 +309,17 @@ export function updateCharacter(
         ch.moveProgress = 0;
       }
 
-      // If became active while wandering, repath to seat
-      if (ch.isActive && ch.seatId) {
-        const seat = seats.get(ch.seatId);
-        if (seat) {
+      // If became active while wandering (or the zone changed), repath to the work spot
+      if (ch.isActive) {
+        const spot = workSpot(ch, seats);
+        if (spot) {
           const lastStep = ch.path[ch.path.length - 1];
-          if (!lastStep || lastStep.col !== seat.seatCol || lastStep.row !== seat.seatRow) {
+          if (!lastStep || lastStep.col !== spot.col || lastStep.row !== spot.row) {
             const newPath = findPath(
               ch.tileCol,
               ch.tileRow,
-              seat.seatCol,
-              seat.seatRow,
+              spot.col,
+              spot.row,
               tileMap,
               blockedTiles,
             );
@@ -316,8 +335,14 @@ export function updateCharacter(
   }
 }
 
-/** Get the correct sprite frame for a character's current state and direction */
+/** Get the correct sprite frame for a character's current state and direction,
+ *  with the breathing lift applied on the inhale. */
 export function getCharacterSprite(ch: Character, sprites: CharacterSprites): SpriteData {
+  const frame = getBaseCharacterSprite(ch, sprites);
+  return isBreathingPose(ch) && isInhaling(ch.breathTimer) ? inhaleSprite(frame) : frame;
+}
+
+function getBaseCharacterSprite(ch: Character, sprites: CharacterSprites): SpriteData {
   switch (ch.state) {
     case CharacterState.TYPE:
       // Thinking: seated, hands resting on the keyboard, not typing yet.

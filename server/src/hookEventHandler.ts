@@ -332,10 +332,9 @@ export class HookEventHandler {
       case 'toolStart':
         return this.handlePreToolUse(normEvent, agent, agentId);
       case 'toolEnd':
-        // Both PostToolUse and PostToolUseFailure normalize to toolEnd. Distinguishing
-        // them inside handlers would require extra info; the existing behavior was
-        // identical for both (agentToolDone + clear currentHookToolId), so one branch suffices.
-        return this.handlePostToolUse(agent, agentId);
+        // Both PostToolUse and PostToolUseFailure normalize to toolEnd; a failure
+        // only adds `failed` to the agentToolDone it sends (fork, Fase 3: error zone).
+        return this.handlePostToolUse(agent, agentId, normEvent.failed === true);
       case 'subagentStart':
         return this.provider.team ? this.handleSubagentStart(event, agent, agentId) : undefined;
       case 'subagentEnd':
@@ -476,7 +475,7 @@ export class HookEventHandler {
    * Stop hook handles the idle transition. This is here for completeness and
    * to serve as a confirmation event for pending external sessions.
    */
-  private handlePostToolUse(agent: AgentState, agentId: number): void {
+  private handlePostToolUse(agent: AgentState, agentId: number, failed: boolean): void {
     if (agent.currentHookToolId) {
       // Suppress tool display when lead has inline teammates (see handlePreToolUse)
       if (!hasInlineTeammates(agentId, this.agents)) {
@@ -484,6 +483,7 @@ export class HookEventHandler {
           type: 'agentToolDone',
           id: agentId,
           toolId: agent.currentHookToolId,
+          ...(failed ? { failed: true } : {}),
         });
       }
       agent.currentHookToolId = undefined;

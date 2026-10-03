@@ -4,9 +4,11 @@ import { buildAgentDiagnostics } from './agentDiagnostics.js';
 import type { AgentRuntime } from './agentRuntime.js';
 import type { AgentStateStore } from './agentStateStore.js';
 import type { LoadedAssets, LoadedCharacterSprites, LoadedPetSprites } from './assetLoader.js';
+import type { DayNightMode } from './configPersistence.js';
 import {
   getHooksConsent,
   getHooksEnabled,
+  isDayNightMode,
   readConfig,
   setHooksEnabled,
   writeConfig,
@@ -70,6 +72,9 @@ const KEY_GHOST_HEADLESS_AGENTS = 'pixel-agents.ghostHeadlessAgents';
 const KEY_WATCH_ALL_SESSIONS = 'pixel-agents.watchAllSessions';
 const KEY_HOOKS_INFO_SHOWN = 'pixel-agents.hooksInfoShown';
 const KEY_SHOW_AREAS = 'pixel-agents.showAreas';
+const KEY_SHADOWS_ENABLED = 'pixel-agents.shadowsEnabled';
+const KEY_PARTICLES_ENABLED = 'pixel-agents.particlesEnabled';
+const KEY_DAY_NIGHT_MODE = 'pixel-agents.dayNightMode';
 
 /**
  * Handle incoming ClientMessage from a WebSocket client.
@@ -170,6 +175,19 @@ export function handleClientMessage(
 
     case 'setGhostHeadlessAgents':
       adapter?.setSetting(KEY_GHOST_HEADLESS_AGENTS, msg.enabled);
+      break;
+
+    case 'setShadowsEnabled':
+      adapter?.setSetting(KEY_SHADOWS_ENABLED, msg.enabled);
+      break;
+
+    case 'setParticlesEnabled':
+      adapter?.setSetting(KEY_PARTICLES_ENABLED, msg.enabled);
+      break;
+
+    case 'setDayNightMode':
+      // Echoed by the client: anything outside the enum is dropped, not stored.
+      if (isDayNightMode(msg.mode)) adapter?.setSetting(KEY_DAY_NIGHT_MODE, msg.mode);
       break;
 
     case 'setWatchAllSessions': {
@@ -422,6 +440,9 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
     hooksInfoShown: adapter?.getSetting(KEY_HOOKS_INFO_SHOWN, false) ?? false,
     externalAssetDirectories: cfg.externalAssetDirectories,
     showAreas,
+    shadowsEnabled: adapter?.getSetting(KEY_SHADOWS_ENABLED, true) ?? true,
+    particlesEnabled: adapter?.getSetting(KEY_PARTICLES_ENABLED, true) ?? true,
+    dayNightMode: adapter?.getSetting<DayNightMode>(KEY_DAY_NIGHT_MODE, 'auto') ?? 'auto',
   });
 
   // 4a. Actual install state, distinct from the hooksEnabled preference —

@@ -14,8 +14,16 @@ import {
   MAX_PET_ID_LENGTH,
   PET_HIT_HALF_WIDTH,
   PET_HIT_HEIGHT,
+  SPARK_HEAD_HEIGHT_PX,
+  TEAR_EYE_HEIGHT_PX,
   WAITING_BUBBLE_DURATION_SEC,
+  ZONE_ERROR_COOLDOWN_SEC,
+  ZONE_ERROR_HOLD_SEC,
 } from '../../constants.js';
+import { applyAmbientAnimation } from '../effects/ambientFurniture.js';
+import { areParticlesEnabled, getDayNightMode } from '../effects/effectsSettings.js';
+import { currentAmbient } from '../effects/lighting.js';
+import { ParticleSystem } from '../effects/particles.js';
 import { getAnimationFrames, getCatalogEntry, getOnStateType } from '../layout/furnitureCatalog.js';
 import {
   createDefaultLayout,
@@ -38,9 +46,19 @@ import type {
   TileType as TileTypeVal,
 } from '../types.js';
 import { CharacterState, Direction, PetState, TILE_SIZE } from '../types.js';
+import type { ZoneKind } from '../zones/taskZones.js';
+import { zoneForStatus, ZoneKind as Zone } from '../zones/taskZones.js';
+import {
+  findZoneSpots,
+  pickZoneSpot,
+  shouldSwitchZone,
+  tileZoneKind,
+  wantedZone,
+} from '../zones/zoneSpots.js';
 import { createCharacter, updateCharacter } from './characters.js';
 import { advanceMatrixEffect, startMatrixEffect } from './matrixEffectState.js';
 import { createPet, updatePet } from './petEntity.js';
+import { isSeated } from './posture.js';
 import { anchorTile, closestFreeSeat } from './seatPlacement.js';
 
 /** Internal helper: facing-tile coords for a seat. Returns null for invalid direction. */
@@ -62,6 +80,8 @@ export class OfficeState {
   pets: Pet[] = [];
   /** Accumulated time for furniture animation frame cycling */
   furnitureAnimTimer = 0;
+  /** Steam, sparks and dust (fork, Fase 2). */
+  particles = new ParticleSystem();
   selectedAgentId: number | null = null;
   cameraFollowId: number | null = null;
   hoveredAgentId: number | null = null;
@@ -150,6 +170,9 @@ export class OfficeState {
         pet.moveProgress = 0;
       }
     }
+
+    // Zone areas may have moved: let everyone re-pick a zone spot
+    for (const ch of this.characters.values()) this.leaveZone(ch);
 
     // Reassign characters to new seats, preserving existing assignments when possible
     for (const seat of this.seats.values()) {
@@ -258,12 +281,16 @@ export class OfficeState {
     return `${seat.seatCol},${seat.seatRow}`;
   }
 
-  /** Temporarily unblock a character's own seat, run fn, then re-block */
+  /** Temporarily unblock a character's own seat (and the zone chair it
+   *  borrowed, if any), run fn, then re-block */
   private withOwnSeatUnblocked<T>(ch: Character, fn: () => T): T {
-    const key = this.ownSeatKey(ch);
-    if (key) this.blockedTiles.delete(key);
+    const keys: string[] = [];
+    const own = this.ownSeatKey(ch);
+    if (own) keys.push(own);
+    if (ch.zoneSpot?.seatUid) keys.push(`${ch.zoneSpot.col},${ch.zoneSpot.row}`);
+    const unblocked = keys.filter((k) => this.blockedTiles.delete(k));
     const result = fn();
-    if (key) this.blockedTiles.add(key);
+    for (const k of unblocked) this.blockedTiles.add(k);
     return result;
   }
 
@@ -379,7 +406,12 @@ export class OfficeState {
     }
 
     // Stage 2 — unzoned seats (no area label, or layout has no areas at all).
-    const unzoned = freeSeats.filter((uid) => this.seatZone(uid) === null);
+    // Code-zone chairs make fine desks; other task zones are borrowed, not owned.
+    const unzoned = freeSeats.filter((uid) => {
+      if (this.seatZone(uid) === null) return true;
+      const seat = this.seats.get(uid)!;
+      return tileZoneKind(this.layout, seat.seatCol, seat.seatRow) === Zone.CODE;
+    });
     const pick2 = this.pickFromSeats(unzoned, electronicsTiles);
     if (pick2) return pick2;
 
@@ -793,6 +825,11 @@ export class OfficeState {
     if (ch) {
       ch.isActive = active;
       if (!active) {
+        if (!ch.isSubagent) {
+          ch.activityZone = null;
+          ch.errorHoldSec = 0;
+          this.leaveZone(ch);
+        }
         // Sentinel -1: signals turn just ended, skip next seat rest timer.
         // Prevents the WALK handler from setting a 2-4 min rest on arrival.
         ch.seatTimer = -1;
@@ -808,8 +845,12 @@ export class OfficeState {
     // Collect tiles where active agents face desks
     const autoOnTiles = new Set<string>();
     for (const ch of this.characters.values()) {
-      if (!ch.isActive || !ch.seatId) continue;
-      const seat = this.seats.get(ch.seatId);
+      if (!ch.isActive) continue;
+      // Where it works: the borrowed zone spot, else its own seat
+      const own = ch.seatId ? this.seats.get(ch.seatId) : undefined;
+      const seat = ch.zoneSpot
+        ? { seatCol: ch.zoneSpot.col, seatRow: ch.zoneSpot.row, facingDir: ch.zoneSpot.dir }
+        : own;
       if (!seat) continue;
       // Find the desk tile(s) the agent faces from their seat
       const dCol =
@@ -838,7 +879,7 @@ export class OfficeState {
     }
 
     if (autoOnTiles.size === 0) {
-      this.furniture = layoutToFurnitureInstances(this.layout.furniture);
+      this.furniture = this.withAmbientAnimation(layoutToFurnitureInstances(this.layout.furniture));
       return;
     }
 
@@ -868,7 +909,84 @@ export class OfficeState {
       return item;
     });
 
-    this.furniture = layoutToFurnitureInstances(modifiedFurniture);
+    this.furniture = this.withAmbientAnimation(layoutToFurnitureInstances(modifiedFurniture));
+  }
+
+  private withAmbientAnimation(instances: FurnitureInstance[]): FurnitureInstance[] {
+    return applyAmbientAnimation(
+      instances,
+      this.furnitureAnimTimer,
+      new Date(),
+      currentAmbient(getDayNightMode()),
+    );
+  }
+
+  /** Record the zone of the tool an agent just started (fork, Fase 3). */
+  setAgentActivity(id: number, status: string | null): void {
+    const ch = this.characters.get(id);
+    if (ch) ch.activityZone = status ? zoneForStatus(status) : null;
+  }
+
+  /** Give up the zone spot; the agent heads back to its desk if still working. */
+  private leaveZone(ch: Character): void {
+    ch.zoneAt = null;
+    ch.zoneSpot = null;
+    ch.zonePendingSec = 0;
+    ch.zoneStaySec = 0;
+  }
+
+  /** Move an agent to a zone (null = its desk), reserving a spot there. */
+  private enterZone(ch: Character, kind: ZoneKind | null): void {
+    ch.zoneAt = kind;
+    ch.zoneSpot = null;
+    ch.zonePendingSec = 0;
+    ch.zoneStaySec = 0;
+    if (kind) {
+      const home = ch.seatId ? this.seats.get(ch.seatId) : undefined;
+      // An agent whose own desk already sits in the zone just stays there
+      if (!home || tileZoneKind(this.layout, home.seatCol, home.seatRow) !== kind) {
+        const taken = new Set<string>();
+        for (const other of this.characters.values()) {
+          if (other === ch) continue;
+          taken.add(`${other.tileCol},${other.tileRow}`);
+          if (other.zoneSpot) taken.add(`${other.zoneSpot.col},${other.zoneSpot.row}`);
+        }
+        const tiers = findZoneSpots(this.layout, kind, this.seats, this.tileMap, this.blockedTiles);
+        ch.zoneSpot = pickZoneSpot(tiers, taken);
+      }
+    }
+    // Get up from wherever it is working so the FSM walks to the new spot
+    if (ch.isActive && ch.state === CharacterState.TYPE) {
+      ch.state = CharacterState.IDLE;
+      ch.frame = 0;
+      ch.frameTimer = 0;
+    }
+  }
+
+  /** A tool failed: the agent cries and, unless it went recently, heads to the
+   *  error zone for a moment (The Binding of Isaac). */
+  onToolFailed(id: number): void {
+    const ch = this.characters.get(id);
+    if (!ch || ch.matrixEffect) return;
+    if (areParticlesEnabled()) {
+      const sitting = isSeated(ch) ? CHARACTER_SITTING_OFFSET_PX : 0;
+      this.particles.burstTears(ch.x, ch.y + sitting - TEAR_EYE_HEIGHT_PX);
+    }
+    if (ch.isSubagent || ch.errorCooldownSec > 0) return;
+    ch.errorHoldSec = ZONE_ERROR_HOLD_SEC;
+    ch.errorCooldownSec = ZONE_ERROR_COOLDOWN_SEC;
+  }
+
+  /** A tool finished: a command done in the DeLorean workshop hits 88 mph. */
+  onToolDone(id: number): void {
+    const ch = this.characters.get(id);
+    if (!ch || ch.matrixEffect || !areParticlesEnabled()) return;
+    const spot = ch.zoneSpot;
+    if (ch.zoneAt !== Zone.COMMANDS || ch.activityZone !== Zone.COMMANDS || !spot) return;
+    if (ch.state !== CharacterState.TYPE || ch.tileCol !== spot.col || ch.tileRow !== spot.row) {
+      return;
+    }
+    this.particles.burst88mph(ch.x, ch.y + TILE_SIZE / 2 - 1);
   }
 
   setAgentTool(id: number, tool: string | null): void {
@@ -917,6 +1035,11 @@ export class OfficeState {
       ch.bubbleType = 'waiting';
       ch.waitingAwaitingInput = awaitingInput;
       ch.bubbleTimer = WAITING_BUBBLE_DURATION_SEC;
+      // Turn finished: a little burst of sparks over the head
+      if (areParticlesEnabled() && !ch.matrixEffect) {
+        const sitting = isSeated(ch) ? CHARACTER_SITTING_OFFSET_PX : 0;
+        this.particles.burstSparks(ch.x, ch.y + sitting - SPARK_HEAD_HEIGHT_PX);
+      }
     }
   }
 
@@ -1126,6 +1249,11 @@ export class OfficeState {
         continue; // skip normal FSM while the effect is (or just was) active
       }
 
+      ch.errorHoldSec = Math.max(0, ch.errorHoldSec - dt);
+      ch.errorCooldownSec = Math.max(0, ch.errorCooldownSec - dt);
+      const wanted = wantedZone(ch);
+      if (shouldSwitchZone(ch, wanted, dt)) this.enterZone(ch, wanted);
+
       // Temporarily unblock own seat so character can pathfind to it
       this.withOwnSeatUnblocked(ch, () =>
         updateCharacter(ch, dt, this.walkableTiles, this.seats, this.tileMap, this.blockedTiles),
@@ -1147,6 +1275,8 @@ export class OfficeState {
     for (const id of toDelete) {
       this.characters.delete(id);
     }
+
+    this.particles.update(dt, this.furniture, areParticlesEnabled());
 
     // ── Pet FSM ────────────────────────────────────────────────
     for (const pet of this.pets) {
@@ -1198,7 +1328,7 @@ export class OfficeState {
       if (ch.matrixEffect === 'despawn') continue;
       // Character sprite is 16x24, anchored bottom-center
       // Apply sitting offset to match visual position
-      const sittingOffset = ch.state === CharacterState.TYPE ? CHARACTER_SITTING_OFFSET_PX : 0;
+      const sittingOffset = isSeated(ch) ? CHARACTER_SITTING_OFFSET_PX : 0;
       const anchorY = ch.y + sittingOffset;
       const left = ch.x - CHARACTER_HIT_HALF_WIDTH;
       const right = ch.x + CHARACTER_HIT_HALF_WIDTH;

@@ -132,6 +132,9 @@ components:
         - $ref: '#/components/schemas/SetLastSeenVersion'
         - $ref: '#/components/schemas/SetAlwaysShowLabels'
         - $ref: '#/components/schemas/SetGhostHeadlessAgents'
+        - $ref: '#/components/schemas/SetShadowsEnabled'
+        - $ref: '#/components/schemas/SetParticlesEnabled'
+        - $ref: '#/components/schemas/SetDayNightMode'
         - $ref: '#/components/schemas/SetHooksEnabled'
         - $ref: '#/components/schemas/HooksConsentResponse'
         - $ref: '#/components/schemas/SetHooksInfoShown'
@@ -309,6 +312,9 @@ components:
           type: integer
         toolId:
           type: string
+        failed:
+          type: boolean
+          description: The tool ran and failed (not a user rejection or interrupt). Omitted when it succeeded.
 
     AgentToolsClear:
       description: All foreground tools cleared (turn end). Background agents preserved.
@@ -646,6 +652,9 @@ components:
         - hooksInfoShown
         - externalAssetDirectories
         - showAreas
+        - shadowsEnabled
+        - particlesEnabled
+        - dayNightMode
       properties:
         type:
           const: settingsLoaded
@@ -671,6 +680,19 @@ components:
             type: string
         showAreas:
           type: boolean
+        shadowsEnabled:
+          type: boolean
+        particlesEnabled:
+          type: boolean
+        dayNightMode:
+          $ref: '#/components/schemas/DayNightMode'
+
+    DayNightMode:
+      description: >-
+        Office lighting: follow the viewer's local clock (auto), or pin it to
+        day or night.
+      type: string
+      enum: [auto, day, night]
 
     HooksStatus:
       description: |
@@ -903,6 +925,39 @@ components:
           const: setGhostHeadlessAgents
         enabled:
           type: boolean
+
+    SetShadowsEnabled:
+      description: Toggle the drop shadows under characters, pets and furniture.
+      type: object
+      additionalProperties: false
+      required: [type, enabled]
+      properties:
+        type:
+          const: setShadowsEnabled
+        enabled:
+          type: boolean
+
+    SetParticlesEnabled:
+      description: Toggle ambient particles (coffee steam, sparks, dust).
+      type: object
+      additionalProperties: false
+      required: [type, enabled]
+      properties:
+        type:
+          const: setParticlesEnabled
+        enabled:
+          type: boolean
+
+    SetDayNightMode:
+      description: Pick the office lighting mode.
+      type: object
+      additionalProperties: false
+      required: [type, mode]
+      properties:
+        type:
+          const: setDayNightMode
+        mode:
+          $ref: '#/components/schemas/DayNightMode'
 
     SetHooksEnabled:
       type: object

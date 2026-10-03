@@ -12,7 +12,19 @@ export interface AdapterSettings {
   watchAllSessions: boolean;
   hooksInfoShown: boolean;
   showAreas: boolean;
+  shadowsEnabled: boolean;
+  particlesEnabled: boolean;
+  dayNightMode: DayNightMode;
   areaMappings: Record<string, string[]>;
+}
+
+/** Office lighting: follow the viewer's clock, or pin it to day or night. */
+export type DayNightMode = 'auto' | 'day' | 'night';
+
+const DAY_NIGHT_MODES: ReadonlySet<string> = new Set<DayNightMode>(['auto', 'day', 'night']);
+
+export function isDayNightMode(value: unknown): value is DayNightMode {
+  return typeof value === 'string' && DAY_NIGHT_MODES.has(value);
 }
 
 /** All keys in AdapterSettings. Used by adapters to map `pixel-agents.foo` → `foo`.
@@ -27,6 +39,9 @@ export const ADAPTER_SETTING_KEYS = [
   'watchAllSessions',
   'hooksInfoShown',
   'showAreas',
+  'shadowsEnabled',
+  'particlesEnabled',
+  'dayNightMode',
   'areaMappings',
 ] as const;
 
@@ -63,6 +78,9 @@ const DEFAULT_ADAPTER_SETTINGS: AdapterSettings = {
   watchAllSessions: false,
   hooksInfoShown: false,
   showAreas: false,
+  shadowsEnabled: true,
+  particlesEnabled: true,
+  dayNightMode: 'auto',
   areaMappings: {},
 };
 
@@ -144,6 +162,17 @@ function parseAdapterSettings(raw: unknown): AdapterSettings {
         : DEFAULT_ADAPTER_SETTINGS.hooksInfoShown,
     showAreas:
       typeof obj.showAreas === 'boolean' ? obj.showAreas : DEFAULT_ADAPTER_SETTINGS.showAreas,
+    shadowsEnabled:
+      typeof obj.shadowsEnabled === 'boolean'
+        ? obj.shadowsEnabled
+        : DEFAULT_ADAPTER_SETTINGS.shadowsEnabled,
+    particlesEnabled:
+      typeof obj.particlesEnabled === 'boolean'
+        ? obj.particlesEnabled
+        : DEFAULT_ADAPTER_SETTINGS.particlesEnabled,
+    dayNightMode: isDayNightMode(obj.dayNightMode)
+      ? obj.dayNightMode
+      : DEFAULT_ADAPTER_SETTINGS.dayNightMode,
     areaMappings: parseAreaMappings(obj.areaMappings),
   };
 }

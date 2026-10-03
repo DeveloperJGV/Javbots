@@ -51,6 +51,9 @@ export type ClientMessage =
   | SetLastSeenVersion
   | SetAlwaysShowLabels
   | SetGhostHeadlessAgents
+  | SetShadowsEnabled
+  | SetParticlesEnabled
+  | SetDayNightMode
   | SetHooksEnabled
   | HooksConsentResponse
   | SetHooksInfoShown
@@ -127,6 +130,7 @@ export interface AgentToolDone {
   type: 'agentToolDone';
   id: number;
   toolId: string;
+  failed?: boolean;
 }
 
 export interface AgentToolsClear {
@@ -275,7 +279,12 @@ export interface SettingsLoaded {
   hooksInfoShown: boolean;
   externalAssetDirectories: string[];
   showAreas: boolean;
+  shadowsEnabled: boolean;
+  particlesEnabled: boolean;
+  dayNightMode: DayNightMode;
 }
+
+export type DayNightMode = 'auto' | 'day' | 'night';
 
 export interface HooksStatus {
   type: 'hooksStatus';
@@ -369,6 +378,21 @@ export interface SetAlwaysShowLabels {
 export interface SetGhostHeadlessAgents {
   type: 'setGhostHeadlessAgents';
   enabled: boolean;
+}
+
+export interface SetShadowsEnabled {
+  type: 'setShadowsEnabled';
+  enabled: boolean;
+}
+
+export interface SetParticlesEnabled {
+  type: 'setParticlesEnabled';
+  enabled: boolean;
+}
+
+export interface SetDayNightMode {
+  type: 'setDayNightMode';
+  mode: DayNightMode;
 }
 
 export interface SetHooksEnabled {

@@ -10,6 +10,7 @@ import type {
   TileType as TileTypeVal,
 } from '../types.js';
 import { MAX_COLS, MAX_ROWS, TileType } from '../types.js';
+import type { ZoneKind } from '../zones/taskZones.js';
 
 /** Paint a single tile with pattern and color. Returns new layout (immutable). */
 export function paintTile(
@@ -330,6 +331,24 @@ export function renameArea(layout: OfficeLayout, oldLabel: string, newLabel: str
     areaTiles = areaTiles.map((t) => (t === oldLabel ? trimmed : t));
   }
   return { ...layout, areas, areaTiles };
+}
+
+/** Turn an Area into a task zone (or back into a project area with null). */
+export function setAreaZoneKind(
+  layout: OfficeLayout,
+  label: string,
+  zoneKind: ZoneKind | null,
+): OfficeLayout {
+  const existing = layout.areas ?? [];
+  const idx = existing.findIndex((a) => a.label === label);
+  if (idx < 0 || (existing[idx].zoneKind ?? null) === zoneKind) return layout;
+  const areas = existing.map((a, i) => {
+    if (i !== idx) return a;
+    const next: AreaDefinition = { label: a.label, color: a.color };
+    if (zoneKind) next.zoneKind = zoneKind;
+    return next;
+  });
+  return { ...layout, areas };
 }
 
 /** Update an Area's display color. No-op if the area doesn't exist or color is unchanged. */

@@ -554,7 +554,21 @@ describe('HookEventHandler', () => {
     const doneMsg = mockWebview.messages.find((m) => m.type === 'agentToolDone');
     expect(doneMsg).toBeTruthy();
     expect(doneMsg?.toolId).toBe('hook-456');
+    expect(doneMsg?.failed).toBe(true);
     expect(agent.currentHookToolId).toBeUndefined();
+  });
+
+  it('PostToolUse sends agentToolDone without failed', () => {
+    const agent = createTestAgent({ id: 1 });
+    agent.currentHookToolId = 'hook-789';
+    agents.set(1, agent);
+    handler.registerAgent('sess-1', 1);
+
+    handler.handleEvent('claude', { hook_event_name: 'PostToolUse', session_id: 'sess-1' });
+
+    const doneMsg = mockWebview.messages.find((m) => m.type === 'agentToolDone');
+    expect(doneMsg).toBeTruthy();
+    expect('failed' in (doneMsg ?? {})).toBe(false);
   });
 
   // ── Pending external session confirmation ────────────────────

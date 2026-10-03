@@ -274,4 +274,29 @@ describe('configPersistence: areas', () => {
       expect(reloaded.standalone.areaMappings).toEqual({});
     });
   });
+
+  describe('visual effect settings', () => {
+    it('defaults to shadows + particles on and auto lighting', () => {
+      const cfg = readConfig();
+      expect(cfg.standalone.shadowsEnabled).toBe(true);
+      expect(cfg.standalone.particlesEnabled).toBe(true);
+      expect(cfg.standalone.dayNightMode).toBe('auto');
+    });
+
+    it('coerces hand-edited junk back to the defaults', () => {
+      const configDir = path.join(tempHome, '.pixel-agents');
+      fs.mkdirSync(configDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(configDir, 'config.json'),
+        JSON.stringify({
+          standalone: { shadowsEnabled: 'no', particlesEnabled: false, dayNightMode: 'dusk' },
+        }),
+        'utf-8',
+      );
+      const cfg = readConfig();
+      expect(cfg.standalone.shadowsEnabled).toBe(true);
+      expect(cfg.standalone.particlesEnabled).toBe(false);
+      expect(cfg.standalone.dayNightMode).toBe('auto');
+    });
+  });
 });

@@ -146,6 +146,41 @@ describe('clientMessageHandler: areas + carpet wire ordering', () => {
     });
   });
 
+  // ── Visual effects (shadows, particles, day/night) ──────────
+
+  describe('visual effect settings', () => {
+    it('defaults to everything on and the clock-driven lighting', () => {
+      handleClientMessage({ type: 'webviewReady' }, (m) => sent.push(m), ctx);
+      const settings = sent.find((m) => m.type === 'settingsLoaded') as Record<string, unknown>;
+      expect(settings.shadowsEnabled).toBe(true);
+      expect(settings.particlesEnabled).toBe(true);
+      expect(settings.dayNightMode).toBe('auto');
+    });
+
+    it('persists each toggle and reports it back on the next connect', () => {
+      handleClientMessage({ type: 'setShadowsEnabled', enabled: false }, (m) => sent.push(m), ctx);
+      handleClientMessage(
+        { type: 'setParticlesEnabled', enabled: false },
+        (m) => sent.push(m),
+        ctx,
+      );
+      handleClientMessage({ type: 'setDayNightMode', mode: 'night' }, (m) => sent.push(m), ctx);
+      sent = [];
+
+      handleClientMessage({ type: 'webviewReady' }, (m) => sent.push(m), ctx);
+      const settings = sent.find((m) => m.type === 'settingsLoaded') as Record<string, unknown>;
+      expect(settings.shadowsEnabled).toBe(false);
+      expect(settings.particlesEnabled).toBe(false);
+      expect(settings.dayNightMode).toBe('night');
+    });
+
+    it('drops a day/night mode outside the enum', () => {
+      handleClientMessage({ type: 'setDayNightMode', mode: 'day' }, (m) => sent.push(m), ctx);
+      handleClientMessage({ type: 'setDayNightMode', mode: 'sunset' }, (m) => sent.push(m), ctx);
+      expect(readConfig().standalone.dayNightMode).toBe('day');
+    });
+  });
+
   // ── hooksStatus (actual install state, not the hooksEnabled setting) ──
 
   describe('hooksStatus', () => {

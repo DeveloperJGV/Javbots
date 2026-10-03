@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AgentStateStore } from '../src/agentStateStore.js';
 import { claudeProvider } from '../src/providers/hook/claude/claude.js';
 import {
+  isFailedToolResult,
   processTranscriptLine,
   setHookProvider,
   setTeamSwitchCallback,
@@ -347,5 +348,30 @@ describe('transcriptParser: teammate spawn results (new-harness implicit teams)'
     );
     expect(agent.teamName).toBeUndefined();
     expect(agent.isTeamLead).toBeUndefined();
+  });
+});
+
+describe('isFailedToolResult (error zone)', () => {
+  it('an is_error result is a failure', () => {
+    expect(
+      isFailedToolResult({ type: 'tool_result', is_error: true, content: 'Exit code 1' }),
+    ).toBe(true);
+  });
+  it('a successful result is not', () => {
+    expect(isFailedToolResult({ type: 'tool_result', content: 'ok' })).toBe(false);
+  });
+  it('the user rejecting the tool is not a failure', () => {
+    expect(
+      isFailedToolResult({
+        type: 'tool_result',
+        is_error: true,
+        content: [
+          {
+            type: 'text',
+            text: "The user doesn't want to proceed with this tool use. The tool use was rejected.",
+          },
+        ],
+      }),
+    ).toBe(false);
   });
 });

@@ -87,12 +87,29 @@ describe('claudeProvider', () => {
       expect(result?.event.kind).toBe('toolEnd');
     });
 
-    it('normalizes PostToolUseFailure to toolEnd (same as PostToolUse)', () => {
+    it('normalizes PostToolUseFailure to a failed toolEnd', () => {
       const result = claudeProvider.normalizeHookEvent({
         hook_event_name: 'PostToolUseFailure',
         session_id: 'sess-1',
       });
-      expect(result?.event.kind).toBe('toolEnd');
+      expect(result?.event).toEqual({ kind: 'toolEnd', toolId: 'current', failed: true });
+    });
+
+    it('an interrupted tool is not a failure', () => {
+      const result = claudeProvider.normalizeHookEvent({
+        hook_event_name: 'PostToolUseFailure',
+        session_id: 'sess-1',
+        is_interrupt: true,
+      });
+      expect(result?.event).toEqual({ kind: 'toolEnd', toolId: 'current', failed: false });
+    });
+
+    it('PostToolUse never reports a failure', () => {
+      const result = claudeProvider.normalizeHookEvent({
+        hook_event_name: 'PostToolUse',
+        session_id: 'sess-1',
+      });
+      expect(result?.event).toEqual({ kind: 'toolEnd', toolId: 'current' });
     });
 
     it('normalizes Stop to turnEnd without awaitingInput (Done, not waiting)', () => {
