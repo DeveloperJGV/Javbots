@@ -106,12 +106,13 @@ describe('claudeProvider', () => {
       }
     });
 
-    it('ignores UserPromptSubmit (no normalized kind yet)', () => {
+    it('normalizes UserPromptSubmit to promptSubmit without the prompt text', () => {
       const result = claudeProvider.normalizeHookEvent({
         hook_event_name: 'UserPromptSubmit',
         session_id: 'sess-1',
+        prompt: 'secret words from an older hook script',
       });
-      expect(result).toBeNull();
+      expect(result).toEqual({ sessionId: 'sess-1', event: { kind: 'promptSubmit' } });
     });
 
     it('normalizes SubagentStart with agent_type as toolName', () => {

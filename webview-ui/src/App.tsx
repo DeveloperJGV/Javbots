@@ -270,7 +270,7 @@ function App() {
       // bypassing the layoutLoaded message whose dirty guard would skip it.
       if (
         isEditDirty() &&
-        !window.confirm('Replace the current layout? Unsaved edits will be lost.')
+        !window.confirm('¿Reemplazar la oficina actual? Se perderán los cambios sin guardar.')
       ) {
         return;
       }
@@ -285,7 +285,7 @@ function App() {
             !Array.isArray(imported.tiles) ||
             !Array.isArray(imported.furniture)
           ) {
-            window.alert('Invalid layout file.');
+            window.alert('El archivo de oficina no es válido.');
             return;
           }
           const migrated = migrateLayoutColors(imported as unknown as OfficeLayout);
@@ -297,7 +297,7 @@ function App() {
           });
           editor.markClean();
         } catch {
-          window.alert('Failed to read or parse layout file.');
+          window.alert('No se pudo leer el archivo de oficina.');
         }
       };
       reader.readAsText(file);
@@ -371,7 +371,7 @@ function App() {
               className="absolute left-1/2 -translate-x-1/2 z-11 bg-accent-bright text-white text-sm py-3 px-8 rounded-none border-2 border-accent shadow-pixel pointer-events-none whitespace-nowrap"
               style={{ top: editor.isDirty ? 64 : 8 }}
             >
-              Rotate (R)
+              Girar (R)
             </div>
           )}
 
@@ -456,7 +456,7 @@ function App() {
           Detection Active" before anything is installed would be a lie. */}
       {hooksEnabled && claudeHooksInstalled && !hooksInfoShown && !hooksTooltipDismissed && (
         <Tooltip
-          title="Instant Detection Active"
+          title="Detección instantánea activa"
           position="top-right"
           onDismiss={() => {
             setHooksTooltipDismissed(true);
@@ -464,7 +464,7 @@ function App() {
           }}
         >
           <span className="text-sm text-text leading-none">
-            Your agents now respond in real-time.{' '}
+            Tus agentes ahora reaccionan al instante.{' '}
             <span
               className="text-accent cursor-pointer underline"
               onClick={() => {
@@ -473,7 +473,7 @@ function App() {
                 transport.send({ type: 'setHooksInfoShown' });
               }}
             >
-              View more
+              Ver más
             </span>
           </span>
         </Tooltip>
@@ -483,30 +483,30 @@ function App() {
       <Modal
         isOpen={isHooksInfoOpen}
         onClose={() => setIsHooksInfoOpen(false)}
-        title="Instant Detection is ON"
+        title="La detección instantánea está activada"
         zIndex={52}
       >
         <div className="text-base text-text px-10" style={{ lineHeight: 1.4 }}>
-          <p className="mb-8">Your Pixel Agents office now reacts in real-time:</p>
+          <p className="mb-8">Tu oficina ahora reacciona al instante:</p>
           <ul className="mb-8 pl-18 list-disc m-0">
-            <li className="text-sm mb-2">Permission prompts appear instantly</li>
-            <li className="text-sm mb-2">Turn completions detected the moment they happen</li>
-            <li className="text-sm mb-2">Sound notifications play immediately</li>
+            <li className="text-sm mb-2">Las solicitudes de permiso aparecen en cuanto llegan</li>
+            <li className="text-sm mb-2">Se nota en el momento en que un agente termina</li>
+            <li className="text-sm mb-2">Los sonidos de aviso suenan de inmediato</li>
           </ul>
           <p className="mb-12 text-text-muted">
-            This works through Claude Code Hooks, small event listeners that notify Pixel Agents
-            whenever something happens in your Claude sessions.
+            Funciona con los hooks de Claude Code: pequeños avisos que le cuentan a la oficina lo
+            que pasa en tus sesiones de Claude.
           </p>
           <div className="text-center">
             <button
               onClick={() => setIsHooksInfoOpen(false)}
               className="py-4 px-20 text-lg bg-accent text-white border-2 border-accent rounded-none cursor-pointer shadow-pixel"
             >
-              Got it
+              Entendido
             </button>
           </div>
           <p className="mt-8 text-xs text-text-muted text-center">
-            To disable, go to Settings {'>'} Instant Detection
+            Para desactivarla: Ajustes {'>'} Detección instantánea
           </p>
         </div>
       </Modal>

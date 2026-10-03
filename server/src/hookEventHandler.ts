@@ -327,6 +327,8 @@ export class HookEventHandler {
     switch (normEvent.kind) {
       case 'sessionEnd':
         return this.handleSessionEnd(normEvent, agent, agentId);
+      case 'promptSubmit':
+        return this.handlePromptSubmit(agent, agentId);
       case 'toolStart':
         return this.handlePreToolUse(normEvent, agent, agentId);
       case 'toolEnd':
@@ -456,6 +458,17 @@ export class HookEventHandler {
       id: agentId,
       status: 'active',
     });
+  }
+
+  /**
+   * Handle UserPromptSubmit: the agent is thinking until its first tool
+   * (toolStart -> active) or the end of a text-only turn (turnEnd -> waiting).
+   */
+  private handlePromptSubmit(agent: AgentState, agentId: number): void {
+    cancelWaitingTimer(agentId, this.waitingTimers);
+    agent.isWaiting = false;
+    agent.permissionSent = false;
+    this.agents.broadcast({ type: 'agentStatus', id: agentId, status: 'thinking' });
   }
 
   /**

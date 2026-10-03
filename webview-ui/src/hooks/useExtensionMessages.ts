@@ -483,7 +483,13 @@ export function useExtensionMessages(
           }
           return { ...prev, [id]: status };
         });
-        os.setAgentActive(id, status === 'active');
+        // Thinking counts as active so the character heads to its desk.
+        os.setAgentActive(id, status === 'active' || status === 'thinking');
+        if (status === 'thinking') {
+          os.showThinkingBubble(id);
+        } else {
+          os.clearThinkingBubble(id);
+        }
         if (status === 'waiting') {
           os.showWaitingBubble(id, msg.awaitingInput === true);
           playDoneSound();

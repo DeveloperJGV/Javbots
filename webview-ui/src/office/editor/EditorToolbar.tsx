@@ -239,51 +239,51 @@ export function EditorToolbar({
           variant={isFurnitureActive ? 'active' : 'default'}
           size="md"
           onClick={() => onToolChange(EditTool.FURNITURE_PLACE)}
-          title="Place furniture"
+          title="Colocar muebles"
         >
-          Furniture
+          Muebles
         </Button>
         <Button
           variant={isFloorActive ? 'active' : 'default'}
           size="md"
           onClick={() => onToolChange(EditTool.TILE_PAINT)}
-          title="Paint floor tiles"
+          title="Pintar el piso"
         >
-          Floor
+          Piso
         </Button>
         <Button
           variant={isWallActive ? 'active' : 'default'}
           size="md"
           onClick={() => onToolChange(EditTool.WALL_PAINT)}
-          title="Paint walls (click to toggle)"
+          title="Pintar paredes (clic para poner o quitar)"
         >
-          Walls
+          Paredes
         </Button>
         <Button
           variant={isPetsActive ? 'active' : 'default'}
           size="md"
           onClick={() => onToolChange(EditTool.PETS)}
-          title="Place pets"
+          title="Colocar mascotas"
         >
-          Pets
+          Mascotas
         </Button>
         {areasAvailable && (
           <Button
             variant={isAreasActive ? 'active' : 'default'}
             size="md"
             onClick={() => onToolChange(EditTool.AREA_PAINT)}
-            title="Define folder-bound areas — agents spawn in their folder's area"
+            title="Definir áreas por carpeta: cada agente aparece en el área de su carpeta"
           >
-            Areas
+            Áreas
           </Button>
         )}
         <Button
           variant={isEraseActive ? 'active' : 'default'}
           size="md"
           onClick={() => onToolChange(EditTool.ERASE)}
-          title="Erase tiles to void"
+          title="Borrar casillas (dejar vacío)"
         >
-          Erase
+          Borrar
         </Button>
       </div>
 
@@ -296,15 +296,15 @@ export function EditorToolbar({
               variant={activeTool === EditTool.EYEDROPPER ? 'active' : 'ghost'}
               size="sm"
               onClick={() => onToolChange(EditTool.EYEDROPPER)}
-              title="Pick floor pattern + color from existing tile"
+              title="Copiar diseño y color de una casilla del piso"
             >
-              Pick
+              Copiar
             </Button>
             <Button
               variant={showColor ? 'active' : 'ghost'}
               size="sm"
               onClick={() => setShowColor((v) => !v)}
-              title="Adjust floor color"
+              title="Ajustar el color del piso"
             >
               Color
             </Button>
@@ -319,7 +319,7 @@ export function EditorToolbar({
                 height={32}
                 selected={selectedTileType === patIdx}
                 onClick={() => onTileTypeChange(patIdx as TileTypeVal)}
-                title={`Floor ${patIdx}`}
+                title={`Piso ${patIdx}`}
                 deps={[patIdx, floorColor]}
                 draw={(ctx, w, h) => {
                   if (!hasFloorSprites()) {
@@ -348,7 +348,7 @@ export function EditorToolbar({
               variant={showWallColor ? 'active' : 'default'}
               size="sm"
               onClick={() => setShowWallColor((v) => !v)}
-              title="Adjust wall color"
+              title="Ajustar el color de las paredes"
             >
               Color
             </Button>
@@ -364,7 +364,7 @@ export function EditorToolbar({
                   height={64}
                   selected={selectedWallSet === i}
                   onClick={() => onWallSetChange(i)}
-                  title={`Wall ${i + 1}`}
+                  title={`Pared ${i + 1}`}
                   deps={[i, wallColor]}
                   draw={(ctx, w, h) => {
                     const sprite = getWallSetPreviewSprite(i);
@@ -431,8 +431,8 @@ export function EditorToolbar({
         <div className="flex flex-col-reverse gap-4 pb-2">
           <AreaAddRow areas={areas} onAddArea={onAddArea} />
           <div className="text-xs text-text-muted px-4 leading-none">
-            Paint areas on the map, then assign workspace folders. Agents will sit in their folder's
-            area.
+            Pinta áreas en el mapa y luego asígnales carpetas. Cada agente se sentará en el área de
+            su carpeta.
           </div>
           {/* Fixed 4-per-row grid; no overflow clip, or the upward Add-folder dropdown is cut off. */}
           <div className="grid grid-cols-[repeat(4,130px)] gap-4">
@@ -487,9 +487,9 @@ export function EditorToolbar({
                   setActiveCategory(CARPET_CATEGORY_ID);
                   onToolChange(EditTool.CARPET_PAINT);
                 }}
-                title="Paint carpets"
+                title="Pintar tapetes"
               >
-                Carpet
+                Tapete
               </Button>
             )}
             <div className="w-[1px] h-14 bg-white/15 mx-2 shrink-0" />
@@ -504,18 +504,18 @@ export function EditorToolbar({
                       : EditTool.CARPET_PICK,
                   )
                 }
-                title="Pick carpet variant + colors from existing tile (P)"
+                title="Copiar tapete y colores de una casilla (P)"
               >
-                Pick
+                Copiar
               </Button>
             ) : (
               <Button
                 variant={activeTool === EditTool.FURNITURE_PICK ? 'active' : 'ghost'}
                 size="sm"
                 onClick={() => onToolChange(EditTool.FURNITURE_PICK)}
-                title="Pick furniture type from placed item"
+                title="Copiar el tipo de un mueble ya colocado"
               >
-                Pick
+                Copiar
               </Button>
             )}
             {/* Color toggle — available across the whole Furniture tab. Carpet
@@ -534,8 +534,8 @@ export function EditorToolbar({
               }
               title={
                 activeCategory === CARPET_CATEGORY_ID
-                  ? 'Adjust carpet main + accent colors'
-                  : 'Adjust color for new furniture'
+                  ? 'Ajustar colores del tapete (principal y acento)'
+                  : 'Ajustar el color de los muebles nuevos'
               }
             >
               Color
@@ -561,7 +561,7 @@ export function EditorToolbar({
                         onToolChange(EditTool.CARPET_PAINT);
                       }
                     }}
-                    title={`Carpet ${variantIdx + 1}`}
+                    title={`Tapete ${variantIdx + 1}`}
                     deps={[variantIdx, carpetColor, carpetAccentColor]}
                     draw={(ctx, w, h) => drawCarpetPreview(ctx, w, h, variantIdx)}
                   />
@@ -574,13 +574,13 @@ export function EditorToolbar({
                 <div className="flex gap-8 ml-2 mb-6 -mt-6">
                   <div className="flex flex-col gap-2">
                     <span className="text-xs uppercase tracking-[0.08em] text-text-muted">
-                      Main
+                      Principal
                     </span>
                     <VisualColorPicker value={carpetColor} onChange={onCarpetColorChange} />
                   </div>
                   <div className="flex flex-col gap-2">
                     <span className="text-xs uppercase tracking-[0.08em] text-text-muted">
-                      Accent
+                      Acento
                     </span>
                     <VisualColorPicker
                       value={carpetAccentColor}
@@ -645,7 +645,7 @@ export function EditorToolbar({
               variant={showFurnitureColor ? 'active' : 'default'}
               size="sm"
               onClick={() => setShowFurnitureColor((v) => !v)}
-              title="Adjust selected furniture color"
+              title="Ajustar el color del mueble seleccionado"
             >
               Color
             </Button>
@@ -654,9 +654,9 @@ export function EditorToolbar({
                 variant="ghost"
                 size="sm"
                 onClick={() => onSelectedFurnitureColorChange(null)}
-                title="Remove color (restore original)"
+                title="Quitar color (volver al original)"
               >
-                Clear
+                Quitar
               </Button>
             )}
           </div>
@@ -741,11 +741,11 @@ function AreaAddRow({
             handleSubmit();
           }
         }}
-        placeholder="Area name…"
+        placeholder="Nombre del área…"
         className="flex-1 text-sm py-2 px-6 bg-bg-dark border-2 border-border rounded-none text-text"
       />
-      <Button variant="default" size="sm" onClick={handleSubmit} title="Add a new Area">
-        Add Area
+      <Button variant="default" size="sm" onClick={handleSubmit} title="Agregar un área nueva">
+        Agregar área
       </Button>
     </div>
   );
@@ -812,7 +812,7 @@ function AreaCard({
           onChange={(e) => onColorChange(e.target.value)}
           onClick={(e) => e.stopPropagation()}
           className="w-24 h-24 p-0 border-2 border-border bg-transparent cursor-pointer"
-          title="Area color"
+          title="Color del área"
         />
         {renaming ? (
           <input
@@ -839,7 +839,7 @@ function AreaCard({
               setRenaming(true);
             }}
             className="flex-1 text-sm text-text overflow-hidden text-ellipsis whitespace-nowrap"
-            title={`${area.label} — double-click to rename`}
+            title={`${area.label}: doble clic para renombrar`}
           >
             {area.label}
           </span>
@@ -851,7 +851,7 @@ function AreaCard({
             e?.stopPropagation();
             onRemove();
           }}
-          title="Remove area"
+          title="Quitar área"
         >
           x
         </Button>
@@ -876,7 +876,7 @@ function AreaCard({
                   e?.stopPropagation();
                   onAreaMappingChange(folder, area.label, 'remove');
                 }}
-                title="Unmap folder"
+                title="Desasignar carpeta"
               >
                 x
               </Button>
@@ -894,9 +894,13 @@ function AreaCard({
             if (availableFolders.length === 0) return;
             setAddFolderOpen((v) => !v);
           }}
-          title={availableFolders.length === 0 ? 'All folders already mapped' : 'Map a folder…'}
+          title={
+            availableFolders.length === 0
+              ? 'Todas las carpetas ya están asignadas'
+              : 'Asignar una carpeta…'
+          }
         >
-          Add folder…
+          Agregar carpeta…
         </Button>
         <Dropdown isOpen={addFolderOpen}>
           {availableFolders.map((f) => (

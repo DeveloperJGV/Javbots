@@ -263,9 +263,11 @@ components:
             absent/false means the agent finished its turn ("Done").
 
     AgentActivityStatus:
-      description: Activity state of an agent.
+      description: >-
+        Activity state of an agent. "thinking" = the user sent a prompt and the
+        agent has not started a tool yet.
       type: string
-      enum: [active, waiting]
+      enum: [active, thinking, waiting]
 
     AgentToolStart:
       description: Agent began executing a tool.

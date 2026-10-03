@@ -201,13 +201,13 @@ export interface Character {
   /** Assigned seat uid, or null if no seat */
   seatId: string | null;
   /** Active speech bubble type, or null if none showing */
-  bubbleType: 'permission' | 'waiting' | null;
+  bubbleType: 'permission' | 'thinking' | 'waiting' | null;
   /** Only meaningful while bubbleType === 'waiting': true when the agent went
    *  idle waiting on the user (surfaces the "Waiting for input" label);
    *  false/undefined when the agent simply finished its turn (checkmark only,
    *  label falls through to idle). */
   waitingAwaitingInput?: boolean;
-  /** Countdown timer for bubble (waiting: 2→0, permission: unused) */
+  /** Countdown timer for bubble (waiting: 2→0, thinking: counts up to animate the dots, permission: unused) */
   bubbleTimer: number;
   /** Timer to stay seated while inactive after seat reassignment (counts down to 0) */
   seatTimer: number;

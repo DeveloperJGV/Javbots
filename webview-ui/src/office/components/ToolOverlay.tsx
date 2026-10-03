@@ -20,14 +20,19 @@ import {
 import type { SubagentCharacter } from '../../hooks/useExtensionMessages.js';
 import type { OfficeState } from '../engine/officeState.js';
 import { overlayProjection } from '../projection.js';
-import type { ToolActivity } from '../types.js';
+import { translateStatus } from '../statusText.js';
+import type { Character, ToolActivity } from '../types.js';
 import { CharacterState } from '../types.js';
 
 // Both turn-end states show the green checkmark bubble. A finished turn (Stop)
 // shows ONLY the checkmark (the label falls through to its normal idle text);
 // going idle waiting on the user (Notification(idle_prompt)) additionally
 // surfaces this label. Driven by Character.waitingAwaitingInput.
-const WAITING_INPUT_ACTIVITY_TEXT = 'Waiting for input';
+const WAITING_INPUT_ACTIVITY_TEXT = 'Esperando instrucciones';
+const THINKING_ACTIVITY_TEXT = 'Pensando…';
+// Sub-agents are drawn as their spawner's interns; this names the boss.
+const INTERN_LABEL_PREFIX = 'Becario de';
+const NEEDS_APPROVAL_TEXT = 'Necesita tu permiso';
 
 interface ToolOverlayProps {
   officeState: OfficeState;
@@ -47,10 +52,11 @@ function getActivityText(
   agentId: number,
   agentTools: Record<number, ToolActivity[]>,
   isActive: boolean,
-  bubbleType: 'permission' | 'waiting' | null,
+  bubbleType: Character['bubbleType'],
   waitingAwaitingInput: boolean,
 ): string {
-  if (bubbleType === 'permission') return 'Needs approval';
+  if (bubbleType === 'permission') return NEEDS_APPROVAL_TEXT;
+  if (bubbleType === 'thinking') return THINKING_ACTIVITY_TEXT;
   // Only the idle case ("Waiting for input") gets a dedicated label. A finished
   // turn (Stop, waitingAwaitingInput=false) falls through so the checkmark alone
   // signals "done", same as the original behavior.
@@ -61,7 +67,7 @@ function getActivityText(
     // Find the latest non-done tool
     const activeTool = [...tools].reverse().find((t) => !t.done);
     if (activeTool) {
-      if (activeTool.permissionWait) return 'Needs approval';
+      if (activeTool.permissionWait) return NEEDS_APPROVAL_TEXT;
       return activeTool.status;
     }
     // All tools done but agent still active (mid-turn) — keep showing last tool status
@@ -71,7 +77,7 @@ function getActivityText(
     }
   }
 
-  return 'Idle';
+  return 'Descansando';
 }
 
 function getFuelColor(ratio: number): string {
@@ -167,7 +173,7 @@ export function ToolOverlay({
           activityText = WAITING_INPUT_ACTIVITY_TEXT;
         } else if (isSub) {
           if (subHasPermission) {
-            activityText = 'Needs approval';
+            activityText = NEEDS_APPROVAL_TEXT;
           } else {
             // Hover shows the subtask title; SELECTING the sub reveals its live
             // tool activity (watched sub-agents stream it via subagentToolStart).
@@ -175,7 +181,7 @@ export function ToolOverlay({
             const rows = sub ? subagentTools[sub.parentAgentId]?.[sub.parentToolId] : undefined;
             const activeRow =
               isSelected && rows ? [...rows].reverse().find((t) => !t.done) : undefined;
-            activityText = activeRow?.status ?? (sub?.label || 'Subtask');
+            activityText = activeRow?.status ?? (sub?.label || 'Subtarea');
           }
         } else {
           activityText = getActivityText(
@@ -202,8 +208,16 @@ export function ToolOverlay({
         }
 
         // Team info
-        const teamRoleLabel = ch.isTeamLead ? 'LEAD' : ch.agentName || null;
-        const hasExtraLines = !!(ch.folderName || teamRoleLabel);
+        const teamRoleLabel = ch.isTeamLead ? 'LÍDER' : ch.agentName || null;
+        const bossId = isSub
+          ? subagentCharacters.find((s) => s.id === id)?.parentAgentId
+          : undefined;
+        const internLabel =
+          bossId !== undefined
+            ? `${INTERN_LABEL_PREFIX} ${officeState.characters.get(bossId)?.folderName ?? `Agente ${bossId}`}`
+            : null;
+        const subtitle = internLabel ?? ch.folderName;
+        const hasExtraLines = !!(subtitle || teamRoleLabel);
 
         // Context gauge. Every agent gets one — lead, teammate, adopted,
         // headless — as soon as it has taken a turn. Sub-agents never do: they
@@ -252,11 +266,11 @@ export function ToolOverlay({
                     fontStyle: isSub ? 'italic' : undefined,
                   }}
                 >
-                  {activityText}
+                  {translateStatus(activityText)}
                 </span>
-                {ch.folderName && (
+                {subtitle && (
                   <span className="text-2xs leading-none overflow-hidden text-ellipsis block">
-                    {ch.folderName}
+                    {subtitle}
                   </span>
                 )}
               </div>
@@ -268,7 +282,7 @@ export function ToolOverlay({
                     e.stopPropagation();
                     onCloseAgent(id);
                   }}
-                  title="Close agent"
+                  title="Cerrar agente"
                   className="ml-2 shrink-0 leading-none"
                 >
                   ×
@@ -283,7 +297,7 @@ export function ToolOverlay({
                   background: CONTEXT_GAUGE_BG,
                   marginTop: 2,
                 }}
-                title={`${Math.round(contextRatio * 100)}% context used (${(ch.contextTokens / 1000).toFixed(0)}k of ${(ch.maxContextTokens / 1000).toFixed(0)}k tokens)`}
+                title={`${Math.round(contextRatio * 100)}% de contexto usado (${(ch.contextTokens / 1000).toFixed(0)}k de ${(ch.maxContextTokens / 1000).toFixed(0)}k tokens)`}
                 data-testid="context-gauge"
                 data-context-pct={Math.round(contextRatio * 100)}
               >

@@ -195,6 +195,10 @@ export const WHATS_NEW_FADE_MS = 1000;
 // ── Game Logic ───────────────────────────────────────────────
 export const MAX_DELTA_TIME_SEC = 0.1;
 export const WAITING_BUBBLE_DURATION_SEC = 2.0;
+/** Size of a sub-agent (intern) relative to a full agent, rounded to a whole zoom level. */
+export const SUBAGENT_SCALE = 0.75;
+/** Seconds each frame of the thinking bubble's dots stays on screen. */
+export const THINKING_DOT_FRAME_SEC = 0.4;
 export const DISMISS_BUBBLE_FAST_FADE_SEC = 0.3;
 export const INACTIVE_SEAT_TIMER_MIN_SEC = 3.0;
 export const INACTIVE_SEAT_TIMER_RANGE_SEC = 2.0;

@@ -894,6 +894,23 @@ export class OfficeState {
     }
   }
 
+  /** The user sent a prompt and no tool has started yet. */
+  showThinkingBubble(id: number): void {
+    const ch = this.characters.get(id);
+    if (ch) {
+      ch.bubbleType = 'thinking';
+      ch.bubbleTimer = 0;
+    }
+  }
+
+  clearThinkingBubble(id: number): void {
+    const ch = this.characters.get(id);
+    if (ch && ch.bubbleType === 'thinking') {
+      ch.bubbleType = null;
+      ch.bubbleTimer = 0;
+    }
+  }
+
   showWaitingBubble(id: number, awaitingInput = false): void {
     const ch = this.characters.get(id);
     if (ch) {
@@ -1113,6 +1130,9 @@ export class OfficeState {
       this.withOwnSeatUnblocked(ch, () =>
         updateCharacter(ch, dt, this.walkableTiles, this.seats, this.tileMap, this.blockedTiles),
       );
+
+      // Thinking bubble counts up to drive its dot animation
+      if (ch.bubbleType === 'thinking') ch.bubbleTimer += dt;
 
       // Tick bubble timer for waiting bubbles
       if (ch.bubbleType === 'waiting') {

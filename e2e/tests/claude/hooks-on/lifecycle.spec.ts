@@ -853,7 +853,7 @@ test.describe('Hooks ON / lifecycle', () => {
               __pixelAgentsTestHooks?: {
                 getCharacters?: () => Array<{
                   agentName?: string;
-                  bubbleType: 'permission' | 'waiting' | null;
+                  bubbleType: 'permission' | 'thinking' | 'waiting' | null;
                   waitingAwaitingInput?: boolean;
                 }>;
               };

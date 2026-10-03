@@ -11,7 +11,8 @@ let tmpHome: string;
 let workspaceDir: string;
 
 function makeNodeCommand(scriptPath: string): string {
-  return `${JSON.stringify(process.execPath)} ${JSON.stringify(scriptPath)}`;
+  // Plain quotes like the real installer; JSON.stringify would double Windows backslashes.
+  return `"${process.execPath}" "${scriptPath}"`;
 }
 
 function writeHookScript(scriptPath: string, outputPath: string): void {
@@ -54,6 +55,7 @@ function runMockClaude(
       env: {
         ...process.env,
         HOME: tmpHome,
+        USERPROFILE: tmpHome,
       },
       stdio: ['ignore', 'ignore', 'pipe'],
     });

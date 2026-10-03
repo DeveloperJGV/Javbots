@@ -320,6 +320,8 @@ export function updateCharacter(
 export function getCharacterSprite(ch: Character, sprites: CharacterSprites): SpriteData {
   switch (ch.state) {
     case CharacterState.TYPE:
+      // Thinking: seated, hands resting on the keyboard, not typing yet.
+      if (ch.bubbleType === 'thinking') return sprites.typing[ch.dir][0];
       if (isReadingTool(ch.currentTool)) {
         return sprites.reading[ch.dir][ch.frame % 2];
       }

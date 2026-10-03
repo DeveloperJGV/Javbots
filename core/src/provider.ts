@@ -23,6 +23,9 @@ export type AgentEvent =
       runInBackground?: boolean;
     }
   | { kind: 'toolEnd'; toolId: string }
+  /** The user sent a prompt: the agent is thinking until its first tool or turn end.
+   *  Carries no prompt text. */
+  | { kind: 'promptSubmit' }
   | {
       kind: 'turnEnd';
       /** True when the turn ended because the agent went idle waiting on the

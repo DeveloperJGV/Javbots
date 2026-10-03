@@ -5,6 +5,7 @@ import type { Direction, SpriteData } from '../types.js';
 import { Direction as Dir } from '../types.js';
 import bubblePermissionData from './bubble-permission.json';
 import bubblePetData from './bubble-pet.json';
+import bubbleThinkingData from './bubble-thinking.json';
 import bubbleWaitingData from './bubble-waiting.json';
 
 // ── Speech Bubble Sprites ───────────────────────────────────────
@@ -23,6 +24,11 @@ export const BUBBLE_PERMISSION_SPRITE: SpriteData = resolveBubbleSprite(bubblePe
 
 /** Waiting bubble: white square with green checkmark, and a tail pointer (11x13) */
 export const BUBBLE_WAITING_SPRITE: SpriteData = resolveBubbleSprite(bubbleWaitingData);
+
+/** Thinking bubble: thought cloud whose dots light up one by one (11x13, 3 frames) */
+export const BUBBLE_THINKING_FRAMES: SpriteData[] = bubbleThinkingData.frames.map((pixels) =>
+  resolveBubbleSprite({ palette: bubbleThinkingData.palette, pixels }),
+);
 
 /** Heart bubble: pet petting feedback (11x13) */
 export const BUBBLE_HEART_SPRITE: SpriteData = resolveBubbleSprite(bubblePetData);

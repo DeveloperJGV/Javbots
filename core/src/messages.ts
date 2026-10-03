@@ -110,7 +110,7 @@ export interface AgentStatus {
   awaitingInput?: boolean;
 }
 
-export type AgentActivityStatus = 'active' | 'waiting';
+export type AgentActivityStatus = 'active' | 'thinking' | 'waiting';
 
 export interface AgentToolStart {
   type: 'agentToolStart';

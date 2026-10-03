@@ -11,6 +11,7 @@ import {
 } from '../../../../constants.js';
 import type { ServerConfig, ServerTarget } from '../../../../serverConfig.js';
 import { isServerConfig, isServerTarget } from '../../../../serverConfig.js';
+import { PROMPT_TEXT_FIELDS } from '../constants.js';
 
 const SERVER_JSON = path.join(os.homedir(), SERVER_JSON_DIR, SERVER_JSON_NAME);
 const SERVERS_REGISTRY_DIR = path.join(os.homedir(), SERVER_JSON_DIR, SERVERS_DIR);
@@ -188,6 +189,10 @@ async function main(): Promise<void> {
     const withDebugLog = servers.find((s) => s.debugLog);
     if (withDebugLog?.debugLog) debugLogPath = withDebugLog.debugLog;
   }
+
+  // Only the fact that a prompt was sent is needed for the "thinking" state;
+  // what the user typed stays in this process.
+  for (const field of PROMPT_TEXT_FIELDS) delete data[field];
 
   const body = JSON.stringify(data);
   await Promise.all(servers.map((server) => postToServer(server, body, eventName, sid)));

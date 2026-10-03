@@ -160,11 +160,9 @@ function normalizeHookEvent(
       return { sessionId, event: { kind: 'turnEnd' } };
 
     case 'UserPromptSubmit':
-      // No normalized kind for user prompts yet; silently ignore. No longer
-      // installed (it forwarded the prompt text here only to be dropped), but a
-      // stale install keeps POSTing it until its next install/uninstall runs,
-      // so the drop must stay graceful.
-      return null;
+      // Drives the "thinking" state. The prompt text is deliberately not read:
+      // our hook script strips it, and an older script's payload is ignored here.
+      return { sessionId, event: { kind: 'promptSubmit' } };
 
     case 'SubagentStart': {
       const agentType = typeof raw.agent_type === 'string' ? raw.agent_type : 'unknown';

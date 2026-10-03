@@ -41,6 +41,8 @@ import {
   SELECTED_OUTLINE_ALPHA,
   SELECTION_DASH_PATTERN,
   SELECTION_HIGHLIGHT_COLOR,
+  SUBAGENT_SCALE,
+  THINKING_DOT_FRAME_SEC,
   VOID_TILE_DASH_PATTERN,
   VOID_TILE_OUTLINE_COLOR,
 } from '../../constants.js';
@@ -56,6 +58,7 @@ import { getCachedSprite, getOutlineSprite } from '../sprites/spriteCache.js';
 import {
   BUBBLE_HEART_SPRITE,
   BUBBLE_PERMISSION_SPRITE,
+  BUBBLE_THINKING_FRAMES,
   BUBBLE_WAITING_SPRITE,
   getCharacterSprites,
 } from '../sprites/spriteData.js';
@@ -391,7 +394,10 @@ export function renderScene(
   for (const ch of characters) {
     const sprites = getCharacterSprites(ch.palette, ch.hueShift);
     const spriteData = getCharacterSprite(ch, sprites);
-    const cached = getCachedSprite(spriteData, zoom);
+    // Sub-agents (interns) draw smaller, at the next whole zoom level down so
+    // they stay pixel-perfect. Positions still use the office zoom.
+    const charZoom = ch.isSubagent ? Math.max(1, Math.round(zoom * SUBAGENT_SCALE)) : zoom;
+    const cached = getCachedSprite(spriteData, charZoom);
     // Sitting offset: shift character down when seated so they visually sit in the chair
     const sittingOffset = ch.state === CharacterState.TYPE ? CHARACTER_SITTING_OFFSET_PX : 0;
     // Anchor at bottom-center of character — round to integer device pixels
@@ -418,7 +424,7 @@ export function renderScene(
         draw: (c) => {
           c.save();
           c.globalAlpha = alpha;
-          renderMatrixEffect(c, mCh, mSpriteData, mDrawX, mDrawY, zoom);
+          renderMatrixEffect(c, mCh, mSpriteData, mDrawX, mDrawY, charZoom);
           c.restore();
         },
       });
@@ -431,9 +437,9 @@ export function renderScene(
     if (isSelected || isHovered) {
       const outlineAlpha = isSelected ? SELECTED_OUTLINE_ALPHA : HOVERED_OUTLINE_ALPHA;
       const outlineData = getOutlineSprite(spriteData);
-      const outlineCached = getCachedSprite(outlineData, zoom);
-      const olDrawX = drawX - zoom; // 1 sprite-pixel offset, scaled
-      const olDrawY = drawY - zoom; // outline follows sitting offset via drawY
+      const outlineCached = getCachedSprite(outlineData, charZoom);
+      const olDrawX = drawX - charZoom; // 1 sprite-pixel offset, scaled
+      const olDrawY = drawY - charZoom; // outline follows sitting offset via drawY
       drawables.push({
         zY: charZY - OUTLINE_Z_SORT_OFFSET, // sort just before character
         draw: (c) => {
@@ -779,8 +785,15 @@ function renderBubbles(
     // bubble, so skip the bubble for it.
     if (ch.bubbleType === 'waiting' && ch.waitingAwaitingInput) continue;
 
-    const sprite =
-      ch.bubbleType === 'permission' ? BUBBLE_PERMISSION_SPRITE : BUBBLE_WAITING_SPRITE;
+    let sprite: SpriteData;
+    if (ch.bubbleType === 'permission') {
+      sprite = BUBBLE_PERMISSION_SPRITE;
+    } else if (ch.bubbleType === 'thinking') {
+      const frame = Math.floor(ch.bubbleTimer / THINKING_DOT_FRAME_SEC);
+      sprite = BUBBLE_THINKING_FRAMES[frame % BUBBLE_THINKING_FRAMES.length];
+    } else {
+      sprite = BUBBLE_WAITING_SPRITE;
+    }
 
     // Compute opacity: permission = full, waiting = fade in last 0.5s
     let alpha = 1.0;

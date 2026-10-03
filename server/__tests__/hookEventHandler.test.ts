@@ -157,6 +157,25 @@ describe('HookEventHandler', () => {
     expect(msg?.awaitingInput).toBe(true);
   });
 
+  // ── UserPromptSubmit ────────────────────────────────────────
+
+  it('UserPromptSubmit marks a waiting agent as thinking', () => {
+    const agent = createTestAgent({ id: 1, isWaiting: true });
+    agents.set(1, agent);
+    handler.registerAgent('sess-1', 1);
+
+    handler.handleEvent('claude', {
+      hook_event_name: 'UserPromptSubmit',
+      session_id: 'sess-1',
+    });
+
+    expect(agent.isWaiting).toBe(false);
+    const msg = mockWebview.messages.find(
+      (m) => m.type === 'agentStatus' && m.status === 'thinking',
+    );
+    expect(msg?.id).toBe(1);
+  });
+
   // ── Stop ────────────────────────────────────────────────────
 
   it('Stop marks agent waiting without awaitingInput (Done)', () => {

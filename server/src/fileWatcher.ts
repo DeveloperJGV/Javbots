@@ -44,6 +44,11 @@ import {
 } from './constants.js';
 import { seedContextUsage } from './contextUsage.js';
 import type { DismissalTracker } from './dismissalTracker.js';
+import {
+  folderNameFromCwd,
+  folderNameFromProjectDir,
+  folderNameFromTranscript,
+} from './folderName.js';
 import { assignPaletteIfNeeded } from './paletteAssigner.js';
 import { pathsMatch } from './pathKey.js';
 import type { SubagentWatch } from './subagentWatch.js';
@@ -1086,6 +1091,8 @@ export function adoptExternalSessionFromHook(
     const projectDir = path.dirname(transcriptPath);
     const folderName =
       folderNameResolver?.({ cwd, projectDir }) ??
+      folderNameFromCwd(cwd) ??
+      folderNameFromTranscript(transcriptPath) ??
       folderNameFromProjectDir(path.basename(projectDir));
 
     adoptExternalSession(
@@ -1115,7 +1122,7 @@ export function adoptExternalSessionFromHook(
   } else {
     // Hooks-only provider (OpenCode, Copilot): no transcript file, all state from hooks
     const id = nextAgentIdRef.current++;
-    const folderName = folderNameResolver?.({ cwd }) ?? (cwd ? path.basename(cwd) : undefined);
+    const folderName = folderNameResolver?.({ cwd }) ?? folderNameFromCwd(cwd);
     const agent: AgentState = {
       id,
       sessionId,
@@ -1465,12 +1472,6 @@ export function scanExternalDir(
   }
 }
 
-/** Derive a readable folder name from the Claude project dir hash. */
-function folderNameFromProjectDir(dirName: string): string {
-  const parts = dirName.replace(/^-+/, '').split('-');
-  return parts[parts.length - 1] || dirName;
-}
-
 /** Scan every session root the active provider exposes for active sessions
  *  (global discovery — powers the "Watch All Sessions" toggle). */
 function scanGlobalProjectDirs(
@@ -1535,6 +1536,7 @@ function scanGlobalProjectDirs(
 
       const folderName =
         folderNameResolver?.({ projectDir: dirPath }) ??
+        folderNameFromTranscript(file) ??
         folderNameFromProjectDir(path.basename(dirPath));
       knownJsonlFiles.add(file);
       console.log(

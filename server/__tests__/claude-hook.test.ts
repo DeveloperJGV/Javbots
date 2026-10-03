@@ -248,6 +248,29 @@ describe('claude-hook.js integration', () => {
     expect(legacy.received).toHaveLength(1);
   });
 
+  // 10b. UserPromptSubmit drives the thinking state; what the user typed must
+  // never leave the hook process.
+  itBuilt('strips the prompt text from UserPromptSubmit before posting', async () => {
+    const server = await startRecordingServer();
+    writeServerJson(server.port, 'prompt-token');
+
+    const { code } = await runHookScript(
+      JSON.stringify({
+        session_id: 'prompt-strip',
+        hook_event_name: 'UserPromptSubmit',
+        prompt: 'top secret plans',
+      }),
+    );
+
+    server.close();
+    expect(code).toBe(0);
+    expect(server.received).toHaveLength(1);
+    const posted = JSON.parse(server.received[0]) as Record<string, unknown>;
+    expect(posted.hook_event_name).toBe('UserPromptSubmit');
+    expect(posted).not.toHaveProperty('prompt');
+    expect(server.received[0]).not.toContain('top secret plans');
+  });
+
   // 11. Fan-out delivers in parallel, not sequentially: two unresponsive
   // servers must not make the script wait ~2x the per-server timeout.
   itBuilt('fans out to multiple unresponsive servers in parallel, not sequentially', async () => {
