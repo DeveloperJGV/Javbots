@@ -1,0 +1,55 @@
+{
+  "group_id": "2d0cd638-bace-4c9b-a2ba-dff704f94a77",
+  "states": [
+    {
+      "character": {
+        "id": "4bb30e66-da0e-4edb-9cff-f8168a841b90",
+        "name": "Idle",
+        "prompt": "cheerful young man with spiky brown hair and a rope tied around his forehead like a headband, round brown eyes, short sleeved dark blue shirt, dark blue trousers, rope belt, two brown cloth satchel bags with straps crossing over his chest, sandals, full body",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 4,
+        "view": "low top-down",
+        "created_at": "2026-10-05T14:30:13.631799+00:00"
+      },
+      "folder": "Idle",
+      "frames": {
+        "rotations": {
+          "south": "Idle/rotations/south.png",
+          "west": "Idle/rotations/west.png",
+          "east": "Idle/rotations/east.png",
+          "north": "Idle/rotations/north.png"
+        },
+        "animations": {
+          "caminar8": {
+            "east": [
+              "Idle/animations/caminar8/east/frame_000.png",
+              "Idle/animations/caminar8/east/frame_001.png",
+              "Idle/animations/caminar8/east/frame_002.png",
+              "Idle/animations/caminar8/east/frame_003.png",
+              "Idle/animations/caminar8/east/frame_004.png",
+              "Idle/animations/caminar8/east/frame_005.png",
+              "Idle/animations/caminar8/east/frame_006.png",
+              "Idle/animations/caminar8/east/frame_007.png"
+            ],
+            "south": [
+              "Idle/animations/caminar8/south/frame_000.png",
+              "Idle/animations/caminar8/south/frame_001.png",
+              "Idle/animations/caminar8/south/frame_002.png",
+              "Idle/animations/caminar8/south/frame_003.png",
+              "Idle/animations/caminar8/south/frame_004.png",
+              "Idle/animations/caminar8/south/frame_005.png",
+              "Idle/animations/caminar8/south/frame_006.png",
+              "Idle/animations/caminar8/south/frame_007.png"
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-10-05T14:33:39.762449"
+}

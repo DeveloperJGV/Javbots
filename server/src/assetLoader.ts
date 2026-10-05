@@ -481,8 +481,10 @@ export function mergeCharacterSprites(
 }
 
 /**
- * Load pre-colored character sprites from assets/characters/ (6 PNGs, each 112×96).
- * Each PNG has 3 direction rows (down, up, right) × 7 frames (16×32 each).
+ * Load pre-colored character sprites from assets/characters/ (char_0.png, char_1.png, … each 192×132).
+ * Each PNG has 3 direction rows (down, up, right) × 8 frames (24×44 each). The first CHAR_COUNT are
+ * the bosses agents are drawn as; the rest are their interns (fork, Fase 4B). Loads consecutive
+ * files from char_0 until one is missing, and needs at least the CHAR_COUNT bosses.
  */
 export async function loadCharacterSprites(
   assetsRoot: string,
@@ -491,9 +493,10 @@ export async function loadCharacterSprites(
     const charDir = path.join(assetsRoot, 'assets', 'characters');
     const characters: CharacterDirectionSprites[] = [];
 
-    for (let ci = 0; ci < CHAR_COUNT; ci++) {
+    for (let ci = 0; ; ci++) {
       const filePath = path.join(charDir, `char_${ci}.png`);
       if (!fs.existsSync(filePath)) {
+        if (ci >= CHAR_COUNT) break;
         console.log(`[AssetLoader] No character sprite found at: ${filePath}`);
         return null;
       }

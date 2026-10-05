@@ -1,0 +1,55 @@
+{
+  "group_id": "df83c8c9-cc89-4b47-bcb3-8a0476cf26f0",
+  "states": [
+    {
+      "character": {
+        "id": "34b808d0-6f5b-4a61-9348-6b58e6816d4c",
+        "name": "Idle",
+        "prompt": "teenage boy with short brown hair, puffy sleeveless bright red down vest over a denim jacket, light grey shirt, blue jeans, white sneakers, full body",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 4,
+        "view": "low top-down",
+        "created_at": "2026-10-05T14:20:35.717319+00:00"
+      },
+      "folder": "Idle",
+      "frames": {
+        "rotations": {
+          "south": "Idle/rotations/south.png",
+          "west": "Idle/rotations/west.png",
+          "east": "Idle/rotations/east.png",
+          "north": "Idle/rotations/north.png"
+        },
+        "animations": {
+          "caminar8": {
+            "east": [
+              "Idle/animations/caminar8/east/frame_000.png",
+              "Idle/animations/caminar8/east/frame_001.png",
+              "Idle/animations/caminar8/east/frame_002.png",
+              "Idle/animations/caminar8/east/frame_003.png",
+              "Idle/animations/caminar8/east/frame_004.png",
+              "Idle/animations/caminar8/east/frame_005.png",
+              "Idle/animations/caminar8/east/frame_006.png",
+              "Idle/animations/caminar8/east/frame_007.png"
+            ],
+            "south": [
+              "Idle/animations/caminar8/south/frame_000.png",
+              "Idle/animations/caminar8/south/frame_001.png",
+              "Idle/animations/caminar8/south/frame_002.png",
+              "Idle/animations/caminar8/south/frame_003.png",
+              "Idle/animations/caminar8/south/frame_004.png",
+              "Idle/animations/caminar8/south/frame_005.png",
+              "Idle/animations/caminar8/south/frame_006.png",
+              "Idle/animations/caminar8/south/frame_007.png"
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-10-05T14:24:58.475192"
+}

@@ -2,6 +2,7 @@ import { pickDiversePalette } from '../../../../core/src/paletteUtils.js';
 import {
   AUTO_ON_FACING_DEPTH,
   AUTO_ON_SIDE_DEPTH,
+  BOSS_INTERNS,
   CHARACTER_HIT_HALF_WIDTH,
   CHARACTER_HIT_HEIGHT,
   CHARACTER_SITTING_OFFSET_PX,
@@ -11,7 +12,9 @@ import {
   GREETER_TILE_MARGIN,
   INACTIVE_SEAT_TIMER_MIN_SEC,
   INACTIVE_SEAT_TIMER_RANGE_SEC,
+  INTERN_LEAVE_MAX_SEC,
   MAX_PET_ID_LENGTH,
+  PALETTE_COUNT,
   PET_HIT_HALF_WIDTH,
   PET_HIT_HEIGHT,
   SPARK_HEAD_HEIGHT_PX,
@@ -448,8 +451,9 @@ export class OfficeState {
    * repeat in balanced rounds with a random hue shift (≥45°).
    */
   private pickDiversePalette(): { palette: number; hueShift: number } {
-    // Count how many non-sub-agents use each base palette (0-5)
-    const paletteCount = getLoadedCharacterCount();
+    // Count how many non-sub-agents use each base palette (0-5). Only the bosses
+    // (char_0..5) are drawn for agents; higher char_N files are interns (Fase 4B).
+    const paletteCount = Math.min(getLoadedCharacterCount(), PALETTE_COUNT);
     const counts = new Array(paletteCount).fill(0) as number[];
     for (const ch of this.characters.values()) {
       if (ch.isSubagent) continue;
@@ -722,15 +726,66 @@ export class OfficeState {
     return true;
   }
 
-  /** Create a sub-agent character with the parent's palette. Returns the sub-agent ID. */
+  /** Which intern a boss sends (Fase 4B): the first of its interns (BOSS_INTERNS) not already
+   *  out on another task, round-robin when all are busy. Same hue shift as the boss, so a
+   *  repeated boss and its interns match. Bosses without interns (external characters) send a
+   *  copy of themselves, as before. */
+  private pickInternPalette(parentCh: Character | undefined): { palette: number; hueShift: number } {
+    if (!parentCh) return { palette: 0, hueShift: 0 };
+    const interns = (BOSS_INTERNS[parentCh.palette] ?? []).filter(
+      (i) => i < getLoadedCharacterCount(),
+    );
+    if (interns.length === 0) return { palette: parentCh.palette, hueShift: parentCh.hueShift };
+    const busy: number[] = [];
+    for (const ch of this.characters.values()) {
+      if (ch.isSubagent && ch.parentAgentId === parentCh.id && ch.leavingSec === null) {
+        if (ch.matrixEffect !== 'despawn') busy.push(ch.palette);
+      }
+    }
+    const free = interns.find((i) => !busy.includes(i));
+    return { palette: free ?? interns[busy.length % interns.length], hueShift: parentCh.hueShift };
+  }
+
+  /** An intern done with its task walks back to its boss and fades out there (Fase 4B). With no
+   *  boss to walk to (it is leaving too) or no path, it fades out where it stands. */
+  private startInternLeaving(ch: Character): void {
+    if (ch.seatId) {
+      const seat = this.seats.get(ch.seatId);
+      if (seat) seat.assigned = false;
+      ch.seatId = null;
+    }
+    ch.bubbleType = null;
+    ch.zoneSpot = null;
+    ch.zoneAt = null;
+    const boss = ch.parentAgentId !== null ? this.characters.get(ch.parentAgentId) : undefined;
+    const target =
+      boss && boss.matrixEffect !== 'despawn'
+        ? this.closestFreeWalkableTile(boss.tileCol, boss.tileRow)
+        : null;
+    const path =
+      target && !ch.matrixEffect
+        ? findPath(ch.tileCol, ch.tileRow, target.col, target.row, this.tileMap, this.blockedTiles)
+        : [];
+    if (path.length === 0) {
+      startMatrixEffect(ch, 'despawn');
+      return;
+    }
+    ch.path = path;
+    ch.moveProgress = 0;
+    ch.state = CharacterState.WALK;
+    ch.frame = 0;
+    ch.frameTimer = 0;
+    ch.leavingSec = INTERN_LEAVE_MAX_SEC;
+  }
+
+  /** Create a sub-agent character: one of its boss's interns (Fase 4B). Returns the sub-agent ID. */
   addSubagent(parentAgentId: number, parentToolId: string): number {
     const key = `${parentAgentId}:${parentToolId}`;
     if (this.subagentIdMap.has(key)) return this.subagentIdMap.get(key)!;
 
     const id = this.nextSubagentId--;
     const parentCh = this.characters.get(parentAgentId);
-    const palette = parentCh ? parentCh.palette : 0;
-    const hueShift = parentCh ? parentCh.hueShift : 0;
+    const { palette, hueShift } = this.pickInternPalette(parentCh);
 
     // Find the closest walkable tile to the parent, avoiding tiles occupied by other characters
     const parentCol = parentCh ? parentCh.tileCol : 0;
@@ -765,19 +820,14 @@ export class OfficeState {
 
     const ch = this.characters.get(id);
     if (ch) {
-      if (ch.matrixEffect === 'despawn') {
-        // Already despawning — just clean up maps
+      if (ch.matrixEffect === 'despawn' || ch.leavingSec !== null) {
+        // Already leaving — just clean up maps
         this.subagentIdMap.delete(key);
         this.subagentMeta.delete(id);
         return;
       }
-      if (ch.seatId) {
-        const seat = this.seats.get(ch.seatId);
-        if (seat) seat.assigned = false;
-      }
-      // Start despawn animation — keep character in map for rendering
-      startMatrixEffect(ch, 'despawn');
-      ch.bubbleType = null;
+      // Walk back to the boss, then fade out — keeps the character in the map meanwhile
+      this.startInternLeaving(ch);
     }
     // Clean up tracking maps immediately so keys don't collide
     this.subagentIdMap.delete(key);
@@ -794,19 +844,13 @@ export class OfficeState {
       if (meta && meta.parentAgentId === parentAgentId) {
         const ch = this.characters.get(id);
         if (ch) {
-          if (ch.matrixEffect === 'despawn') {
-            // Already despawning — just clean up maps
+          if (ch.matrixEffect === 'despawn' || ch.leavingSec !== null) {
+            // Already leaving — just clean up maps
             this.subagentMeta.delete(id);
             toRemove.push(key);
             continue;
           }
-          if (ch.seatId) {
-            const seat = this.seats.get(ch.seatId);
-            if (seat) seat.assigned = false;
-          }
-          // Start despawn animation
-          startMatrixEffect(ch, 'despawn');
-          ch.bubbleType = null;
+          this.startInternLeaving(ch);
         }
         this.subagentMeta.delete(id);
         if (this.selectedAgentId === id) this.selectedAgentId = null;
@@ -1267,6 +1311,17 @@ export class OfficeState {
       if (effect !== 'none') {
         if (effect === 'despawned') toDelete.push(ch.id);
         continue; // skip normal FSM while the effect is (or just was) active
+      }
+
+      // An intern walking back to its boss: no zones, just the walk, then fade out
+      if (ch.leavingSec !== null) {
+        ch.leavingSec -= dt;
+        updateCharacter(ch, dt, this.walkableTiles, this.seats, this.tileMap, this.blockedTiles);
+        if (ch.leavingSec <= 0 || ch.path.length === 0) {
+          ch.leavingSec = null;
+          startMatrixEffect(ch, 'despawn');
+        }
+        continue;
       }
 
       ch.errorHoldSec = Math.max(0, ch.errorHoldSec - dt);

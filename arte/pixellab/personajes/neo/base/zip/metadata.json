@@ -1,0 +1,69 @@
+{
+  "group_id": "238374a7-ef24-4c45-9be9-685686e957f2",
+  "states": [
+    {
+      "character": {
+        "id": "2360fac7-f7a0-4bea-a66c-af7b4af5bf4e",
+        "name": "Idle",
+        "prompt": "man with short slicked back black hair, small black oval sunglasses, long black leather trench coat reaching his ankles, black shirt, black trousers, black boots, serious face, full body",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 4,
+        "view": "low top-down",
+        "created_at": "2026-10-04T20:35:36.578391+00:00"
+      },
+      "folder": "Idle",
+      "frames": {
+        "rotations": {
+          "south": "Idle/rotations/south.png",
+          "west": "Idle/rotations/west.png",
+          "east": "Idle/rotations/east.png",
+          "north": "Idle/rotations/north.png"
+        },
+        "animations": {
+          "caminar": {
+            "east": [
+              "Idle/animations/caminar/east/frame_000.png",
+              "Idle/animations/caminar/east/frame_001.png",
+              "Idle/animations/caminar/east/frame_002.png",
+              "Idle/animations/caminar/east/frame_003.png"
+            ],
+            "south": [
+              "Idle/animations/caminar/south/frame_000.png",
+              "Idle/animations/caminar/south/frame_001.png",
+              "Idle/animations/caminar/south/frame_002.png",
+              "Idle/animations/caminar/south/frame_003.png"
+            ]
+          },
+          "caminar8": {
+            "south": [
+              "Idle/animations/caminar8/south/frame_000.png",
+              "Idle/animations/caminar8/south/frame_001.png",
+              "Idle/animations/caminar8/south/frame_002.png",
+              "Idle/animations/caminar8/south/frame_003.png",
+              "Idle/animations/caminar8/south/frame_004.png",
+              "Idle/animations/caminar8/south/frame_005.png",
+              "Idle/animations/caminar8/south/frame_006.png",
+              "Idle/animations/caminar8/south/frame_007.png"
+            ],
+            "east": [
+              "Idle/animations/caminar8/east/frame_000.png",
+              "Idle/animations/caminar8/east/frame_001.png",
+              "Idle/animations/caminar8/east/frame_002.png",
+              "Idle/animations/caminar8/east/frame_003.png",
+              "Idle/animations/caminar8/east/frame_004.png",
+              "Idle/animations/caminar8/east/frame_005.png",
+              "Idle/animations/caminar8/east/frame_006.png",
+              "Idle/animations/caminar8/east/frame_007.png"
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-10-05T14:17:46.902523"
+}

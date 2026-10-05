@@ -1,0 +1,55 @@
+{
+  "group_id": "29ce98cb-ed90-497b-9677-ab5b4184fcdd",
+  "states": [
+    {
+      "character": {
+        "id": "6a9b5077-0722-43a5-a852-96a95ca88cec",
+        "name": "Idle",
+        "prompt": "stout young hobbit with short curly light brown hair, round friendly face, cream shirt, brown waistcoat, grey green cloak with a leaf brooch, brown trousers, big bare hairy feet, small backpack with a frying pan, full body",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 4,
+        "view": "low top-down",
+        "created_at": "2026-10-05T15:39:59.191591+00:00"
+      },
+      "folder": "Idle",
+      "frames": {
+        "rotations": {
+          "south": "Idle/rotations/south.png",
+          "west": "Idle/rotations/west.png",
+          "east": "Idle/rotations/east.png",
+          "north": "Idle/rotations/north.png"
+        },
+        "animations": {
+          "caminar8": {
+            "south": [
+              "Idle/animations/caminar8/south/frame_000.png",
+              "Idle/animations/caminar8/south/frame_001.png",
+              "Idle/animations/caminar8/south/frame_002.png",
+              "Idle/animations/caminar8/south/frame_003.png",
+              "Idle/animations/caminar8/south/frame_004.png",
+              "Idle/animations/caminar8/south/frame_005.png",
+              "Idle/animations/caminar8/south/frame_006.png",
+              "Idle/animations/caminar8/south/frame_007.png"
+            ],
+            "east": [
+              "Idle/animations/caminar8/east/frame_000.png",
+              "Idle/animations/caminar8/east/frame_001.png",
+              "Idle/animations/caminar8/east/frame_002.png",
+              "Idle/animations/caminar8/east/frame_003.png",
+              "Idle/animations/caminar8/east/frame_004.png",
+              "Idle/animations/caminar8/east/frame_005.png",
+              "Idle/animations/caminar8/east/frame_006.png",
+              "Idle/animations/caminar8/east/frame_007.png"
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-10-05T15:44:32.755241"
+}

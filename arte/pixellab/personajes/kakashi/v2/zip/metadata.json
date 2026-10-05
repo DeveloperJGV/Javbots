@@ -1,0 +1,55 @@
+{
+  "group_id": "d240ae1a-ad11-4071-b661-4c4c56ff5418",
+  "states": [
+    {
+      "character": {
+        "id": "7df50391-e173-4822-a1f7-99023f6e3fb5",
+        "name": "Idle",
+        "prompt": "anime ninja with a big spiky silver white hair mass leaning diagonally to one side like a tilted flame, dark navy cloth mask covering nose and mouth, metal forehead protector headband slanted down covering his left eye, one lazy half closed eye, olive green flak jacket vest with a high collar and two chest pockets, dark navy long sleeve shirt, dark navy trousers, dark ninja sandals, full body",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 4,
+        "view": "low top-down",
+        "created_at": "2026-10-04T20:51:13.267701+00:00"
+      },
+      "folder": "Idle",
+      "frames": {
+        "rotations": {
+          "south": "Idle/rotations/south.png",
+          "west": "Idle/rotations/west.png",
+          "east": "Idle/rotations/east.png",
+          "north": "Idle/rotations/north.png"
+        },
+        "animations": {
+          "caminar8": {
+            "south": [
+              "Idle/animations/caminar8/south/frame_000.png",
+              "Idle/animations/caminar8/south/frame_001.png",
+              "Idle/animations/caminar8/south/frame_002.png",
+              "Idle/animations/caminar8/south/frame_003.png",
+              "Idle/animations/caminar8/south/frame_004.png",
+              "Idle/animations/caminar8/south/frame_005.png",
+              "Idle/animations/caminar8/south/frame_006.png",
+              "Idle/animations/caminar8/south/frame_007.png"
+            ],
+            "east": [
+              "Idle/animations/caminar8/east/frame_000.png",
+              "Idle/animations/caminar8/east/frame_001.png",
+              "Idle/animations/caminar8/east/frame_002.png",
+              "Idle/animations/caminar8/east/frame_003.png",
+              "Idle/animations/caminar8/east/frame_004.png",
+              "Idle/animations/caminar8/east/frame_005.png",
+              "Idle/animations/caminar8/east/frame_006.png",
+              "Idle/animations/caminar8/east/frame_007.png"
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-10-04T20:55:04.854107"
+}

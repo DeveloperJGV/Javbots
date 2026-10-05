@@ -4,13 +4,11 @@ import { test } from 'vitest';
 
 import {
   AREA_DEFAULT_COLORS,
-  CLONE_SPAWN_SEC,
+  BOSS_INTERNS,
   FIRE_TRAIL_LENGTH_PX,
-  FLUX_SPARK_COLORS,
   FLUX_SPARK_COUNT,
-  PETRIFY_SEC,
-  STONE_COLORS,
-  STONE_CRACK_COLOR,
+  INTERN_FADE_SEC,
+  INTERN_LEAVE_MAX_SEC,
   TELEPORT_BEAM_COUNT,
   TELEPORT_BEAM_HALF_WIDTH_PX,
   ZONE_MIN_STAY_SEC,
@@ -20,46 +18,72 @@ import { setParticlesEnabled } from '../src/office/effects/effectsSettings.js';
 import { ParticleSystem } from '../src/office/effects/particles.js';
 import { advanceMatrixEffect, effectDurationSec } from '../src/office/engine/matrixEffectState.js';
 import { OfficeState } from '../src/office/engine/officeState.js';
-import { stonePixel } from '../src/office/engine/stone.js';
+import { setCharacterTemplates } from '../src/office/sprites/spriteData.js';
 import type { OfficeLayout } from '../src/office/types.js';
 import { MATRIX_EFFECT_DURATION, TileType } from '../src/office/types.js';
 
-test('interns use the slower clone / petrify effects; agents keep the matrix rain', () => {
-  const os = new OfficeState({
+function internOffice(): OfficeState {
+  return new OfficeState({
     version: 1,
-    cols: 6,
+    cols: 12,
     rows: 4,
-    tiles: new Array<TileType>(24).fill(TileType.FLOOR_1),
+    tiles: new Array<TileType>(48).fill(TileType.FLOOR_1),
     furniture: [],
   });
+}
+
+test('interns fade in and out; agents keep the matrix rain', () => {
+  const os = internOffice();
   os.addAgent(1, 0, 0);
   const agent = os.characters.get(1)!;
   assert.equal(effectDurationSec(agent), MATRIX_EFFECT_DURATION);
 
   const sub = os.characters.get(os.addSubagent(1, 'toolu_1'))!;
   assert.equal(sub.matrixEffect, 'spawn');
-  assert.equal(effectDurationSec(sub), CLONE_SPAWN_SEC);
-  assert.equal(advanceMatrixEffect(sub, MATRIX_EFFECT_DURATION + 0.01), 'running');
-  assert.equal(advanceMatrixEffect(sub, CLONE_SPAWN_SEC), 'spawned');
-
-  os.removeSubagent(1, 'toolu_1');
-  assert.equal(sub.matrixEffect, 'despawn');
-  assert.equal(effectDurationSec(sub), PETRIFY_SEC);
-  assert.equal(advanceMatrixEffect(sub, PETRIFY_SEC - 0.1), 'running');
-  assert.equal(advanceMatrixEffect(sub, 0.2), 'despawned');
+  assert.equal(effectDurationSec(sub), INTERN_FADE_SEC);
+  assert.equal(advanceMatrixEffect(sub, INTERN_FADE_SEC - 0.1), 'running');
+  assert.equal(advanceMatrixEffect(sub, 0.2), 'spawned');
 });
 
-test('stone keeps the shape: dark pixels stay dark, light ones light', () => {
-  const crack = (c: string) => c === STONE_CRACK_COLOR;
-  let dark = 0;
-  let light = 0;
-  for (let i = 0; i < 40; i++) {
-    const d = stonePixel(STONE_CRACK_COLOR, i, 3);
-    const l = stonePixel(FLUX_SPARK_COLORS[0], i, 3);
-    if (!crack(d)) dark += d === STONE_COLORS[0] ? 1 : 0;
-    if (!crack(l)) light += l === STONE_COLORS[STONE_COLORS.length - 1] ? 1 : 0;
+test("a boss sends its own interns, one per task, with the boss's hue shift", () => {
+  const os = internOffice();
+  os.addAgent(1, 1, 90); // Senku: Chrome and Kohaku
+  // With only the 6 bosses loaded, a boss sends a copy of itself (the pre-Fase 4B behavior,
+  // kept for external characters without interns)
+  setCharacterTemplates(new Array(6).fill(null).map(() => ({ down: [], up: [], right: [] })));
+  assert.equal(os.characters.get(os.addSubagent(1, 'toolu_0'))!.palette, 1);
+
+  setCharacterTemplates(new Array(15).fill(null).map(() => ({ down: [], up: [], right: [] })));
+  const a = os.characters.get(os.addSubagent(1, 'toolu_a'))!;
+  const b = os.characters.get(os.addSubagent(1, 'toolu_b'))!;
+  assert.deepEqual([a.palette, b.palette], [...BOSS_INTERNS[1]]);
+  assert.equal(b.hueShift, 90);
+  // Both out: the next one repeats an intern instead of failing
+  assert.ok(BOSS_INTERNS[1].includes(os.characters.get(os.addSubagent(1, 'toolu_c'))!.palette));
+});
+
+test('a finished intern walks back to its boss, then fades out', () => {
+  const os = internOffice();
+  os.addAgent(1, 0, 0);
+  const boss = os.characters.get(1)!;
+  const subId = os.addSubagent(1, 'toolu_1');
+  const sub = os.characters.get(subId)!;
+  advanceMatrixEffect(sub, INTERN_FADE_SEC + 0.1);
+  // Put the intern across the room so there is a walk back
+  sub.tileCol = boss.tileCol >= 6 ? 0 : 11;
+  sub.x = sub.tileCol * 16 + 8;
+
+  os.removeSubagent(1, 'toolu_1');
+  assert.equal(sub.matrixEffect, null, 'walks first, no fade yet');
+  assert.ok(sub.leavingSec !== null && sub.path.length > 0);
+
+  // Walk until it arrives (or the walk times out), then the fade-out starts
+  for (let t = 0; t < INTERN_LEAVE_MAX_SEC + 1 && sub.matrixEffect !== 'despawn'; t += 0.05) {
+    os.update(0.05);
   }
-  assert.ok(dark > 30 && light > 30);
+  assert.equal(sub.matrixEffect, 'despawn');
+  for (let t = 0; t <= INTERN_FADE_SEC + 0.1; t += 0.05) os.update(0.05);
+  assert.equal(os.characters.has(subId), false);
 });
 
 test('88 mph: flux sparks plus two fire trails', () => {

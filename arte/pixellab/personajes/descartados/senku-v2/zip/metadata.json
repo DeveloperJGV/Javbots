@@ -1,0 +1,32 @@
+{
+  "group_id": "d33d4e26-9f3e-4884-a9cf-4dc9fe51d815",
+  "states": [
+    {
+      "character": {
+        "id": "1a019ad4-43e6-4b9d-89c1-b6954579e52d",
+        "name": "Idle",
+        "prompt": "teenage scientist with huge hair standing straight up, very tall upward spikes as tall as his head like a flame or a leek, two long strands of bangs hanging down beside his face, pale whitish hair with bright green tips, red eyes, confident smirk, white lab coat over a beige tunic, dark trousers, brown sandals, full body",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 4,
+        "view": "low top-down",
+        "created_at": "2026-10-04T20:27:36.628747+00:00"
+      },
+      "folder": "Idle",
+      "frames": {
+        "rotations": {
+          "south": "Idle/rotations/south.png",
+          "west": "Idle/rotations/west.png",
+          "east": "Idle/rotations/east.png",
+          "north": "Idle/rotations/north.png"
+        },
+        "animations": {}
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-10-04T20:28:08.811604"
+}

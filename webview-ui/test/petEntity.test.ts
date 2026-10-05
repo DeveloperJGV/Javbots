@@ -81,6 +81,7 @@ function makeChar(id: number, col: number, row: number): Character {
     seatTimer: 0,
     isSubagent: false,
     parentAgentId: null,
+    leavingSec: null,
     matrixEffect: null,
     matrixEffectTimer: 0,
     matrixEffectSeeds: [],

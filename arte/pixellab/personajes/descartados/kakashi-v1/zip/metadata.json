@@ -1,0 +1,47 @@
+{
+  "group_id": "fd2f6afc-39ee-4039-a591-35a9bf1c129a",
+  "states": [
+    {
+      "character": {
+        "id": "9c9bed7b-cb9b-4902-ac38-00e78d2ee6bb",
+        "name": "Idle",
+        "prompt": "ninja with spiky silver white hair swept up and to one side, dark navy cloth mask covering nose and mouth, metal forehead protector headband tilted down over his left eye, dark navy long sleeve shirt, olive green tactical vest with pockets, navy trousers, ninja sandals, relaxed tired eyes, full body",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 4,
+        "view": "low top-down",
+        "created_at": "2026-10-04T20:44:26.674001+00:00"
+      },
+      "folder": "Idle",
+      "frames": {
+        "rotations": {
+          "south": "Idle/rotations/south.png",
+          "west": "Idle/rotations/west.png",
+          "east": "Idle/rotations/east.png",
+          "north": "Idle/rotations/north.png"
+        },
+        "animations": {
+          "caminar": {
+            "south": [
+              "Idle/animations/caminar/south/frame_000.png",
+              "Idle/animations/caminar/south/frame_001.png",
+              "Idle/animations/caminar/south/frame_002.png",
+              "Idle/animations/caminar/south/frame_003.png"
+            ],
+            "east": [
+              "Idle/animations/caminar/east/frame_000.png",
+              "Idle/animations/caminar/east/frame_001.png",
+              "Idle/animations/caminar/east/frame_002.png",
+              "Idle/animations/caminar/east/frame_003.png"
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-10-04T20:47:53.339039"
+}

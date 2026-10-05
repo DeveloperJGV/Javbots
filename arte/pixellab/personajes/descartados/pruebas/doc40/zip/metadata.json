@@ -1,0 +1,32 @@
+{
+  "group_id": "1b01fa6e-8e87-4beb-8c10-77c6146c3819",
+  "states": [
+    {
+      "character": {
+        "id": "4f094152-0c03-4e8b-b0cb-b37a6e5d808c",
+        "name": "Idle",
+        "prompt": "eccentric old scientist with wild spiky white hair, white lab coat over a light blue shirt, dark trousers, brown shoes, wide surprised eyes, full body",
+        "size": {
+          "width": 56,
+          "height": 56
+        },
+        "template_id": "mannequin",
+        "directions": 4,
+        "view": "low top-down",
+        "created_at": "2026-10-04T20:00:51.587096+00:00"
+      },
+      "folder": "Idle",
+      "frames": {
+        "rotations": {
+          "south": "Idle/rotations/south.png",
+          "west": "Idle/rotations/west.png",
+          "east": "Idle/rotations/east.png",
+          "north": "Idle/rotations/north.png"
+        },
+        "animations": {}
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-10-04T20:01:57.403477"
+}

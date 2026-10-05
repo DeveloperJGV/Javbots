@@ -1,0 +1,69 @@
+{
+  "group_id": "5878f2ce-4374-4005-b2e2-5dec6c941be1",
+  "states": [
+    {
+      "character": {
+        "id": "5210bcad-58c2-4d1b-84e1-83f643241f53",
+        "name": "Idle",
+        "prompt": "young woman with dark brown hair tied in a ponytail, white tank top, orange jumpsuit with its top half tied around her waist by the sleeves, orange trousers, white mechanical leg braces on her lower legs, determined calm face, full body",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 4,
+        "view": "low top-down",
+        "created_at": "2026-10-04T20:35:35.876053+00:00"
+      },
+      "folder": "Idle",
+      "frames": {
+        "rotations": {
+          "south": "Idle/rotations/south.png",
+          "west": "Idle/rotations/west.png",
+          "east": "Idle/rotations/east.png",
+          "north": "Idle/rotations/north.png"
+        },
+        "animations": {
+          "caminar8": {
+            "south": [
+              "Idle/animations/caminar8/south/frame_000.png",
+              "Idle/animations/caminar8/south/frame_001.png",
+              "Idle/animations/caminar8/south/frame_002.png",
+              "Idle/animations/caminar8/south/frame_003.png",
+              "Idle/animations/caminar8/south/frame_004.png",
+              "Idle/animations/caminar8/south/frame_005.png",
+              "Idle/animations/caminar8/south/frame_006.png",
+              "Idle/animations/caminar8/south/frame_007.png"
+            ],
+            "east": [
+              "Idle/animations/caminar8/east/frame_000.png",
+              "Idle/animations/caminar8/east/frame_001.png",
+              "Idle/animations/caminar8/east/frame_002.png",
+              "Idle/animations/caminar8/east/frame_003.png",
+              "Idle/animations/caminar8/east/frame_004.png",
+              "Idle/animations/caminar8/east/frame_005.png",
+              "Idle/animations/caminar8/east/frame_006.png",
+              "Idle/animations/caminar8/east/frame_007.png"
+            ]
+          },
+          "caminar": {
+            "south": [
+              "Idle/animations/caminar/south/frame_000.png",
+              "Idle/animations/caminar/south/frame_001.png",
+              "Idle/animations/caminar/south/frame_002.png",
+              "Idle/animations/caminar/south/frame_003.png"
+            ],
+            "east": [
+              "Idle/animations/caminar/east/frame_000.png",
+              "Idle/animations/caminar/east/frame_001.png",
+              "Idle/animations/caminar/east/frame_002.png",
+              "Idle/animations/caminar/east/frame_003.png"
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-10-05T14:17:44.286702"
+}

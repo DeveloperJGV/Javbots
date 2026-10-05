@@ -21,8 +21,8 @@ export const SEAT_REST_MAX_SEC = 240.0;
 // ── Matrix Effect ────────────────────────────────────────────
 export const MATRIX_EFFECT_DURATION_SEC = 0.3;
 export const MATRIX_TRAIL_LENGTH = 6;
-export const MATRIX_SPRITE_COLS = 16;
-export const MATRIX_SPRITE_ROWS = 24;
+export const MATRIX_SPRITE_COLS = 24;
+export const MATRIX_SPRITE_ROWS = 44;
 export const MATRIX_FLICKER_FPS = 30;
 export const MATRIX_FLICKER_VISIBILITY_THRESHOLD = 180;
 export const MATRIX_COLUMN_STAGGER_RANGE = 0.3;
@@ -53,7 +53,7 @@ export const BUTTON_LINE_WIDTH_MIN = 1.5;
 export const BUTTON_LINE_WIDTH_ZOOM_FACTOR = 0.5;
 export const BUBBLE_FADE_DURATION_SEC = 0.5;
 export const BUBBLE_SITTING_OFFSET_PX = 10;
-export const BUBBLE_VERTICAL_OFFSET_PX = 24;
+export const BUBBLE_VERTICAL_OFFSET_PX = 36;
 export const FALLBACK_FLOOR_COLOR = '#808080';
 
 // ── Rendering - Overlay Colors (canvas, not CSS) ─────────────
@@ -195,8 +195,9 @@ export const WHATS_NEW_FADE_MS = 1000;
 // ── Game Logic ───────────────────────────────────────────────
 export const MAX_DELTA_TIME_SEC = 0.1;
 export const WAITING_BUBBLE_DURATION_SEC = 2.0;
-/** Size of a sub-agent (intern) relative to a full agent, rounded to a whole zoom level. */
-export const SUBAGENT_SCALE = 0.75;
+/** Size of a sub-agent (intern) relative to a full agent, rounded to a whole zoom level.
+ *  Fase 4B: interns are their own characters now, drawn at full size. */
+export const SUBAGENT_SCALE = 1;
 /** Seconds each frame of the thinking bubble's dots stays on screen. */
 export const THINKING_DOT_FRAME_SEC = 0.4;
 export const DISMISS_BUBBLE_FAST_FADE_SEC = 0.3;
@@ -206,9 +207,9 @@ export const INACTIVE_SEAT_TIMER_RANGE_SEC = 2.0;
 export const PALETTE_COUNT = 6;
 export const AUTO_ON_FACING_DEPTH = 3;
 export const AUTO_ON_SIDE_DEPTH = 2;
-export const CHARACTER_HIT_HALF_WIDTH = 8;
-export const CHARACTER_HIT_HEIGHT = 24;
-export const TOOL_OVERLAY_VERTICAL_OFFSET = 32;
+export const CHARACTER_HIT_HALF_WIDTH = 9;
+export const CHARACTER_HIT_HEIGHT = 36;
+export const TOOL_OVERLAY_VERTICAL_OFFSET = 44;
 
 // ── Greeter + Intro bubble ──────────────────────────────────
 /** Reserved character id for the Intro's greeter. Far outside both real agent
@@ -322,7 +323,7 @@ export const MAX_PET_ID_LENGTH = 128;
 export const SHADOW_CORE_COLOR = '#0000004a';
 export const SHADOW_EDGE_COLOR = '#00000026';
 /** Character shadow: 10×3 sprite px ellipse at the feet. */
-export const CHARACTER_SHADOW_WIDTH = 10;
+export const CHARACTER_SHADOW_WIDTH = 12;
 export const PET_SHADOW_WIDTH = 8;
 /** Rows of a furniture sprite's base scanned to size its contact shadow. */
 export const FURNITURE_SHADOW_BASE_ROWS = 4;
@@ -475,22 +476,22 @@ export const ZONE_SWITCH_DELAY_SEC = 2;
 /** Minimum time in a zone before moving on to the next one (no ping-pong). */
 export const ZONE_MIN_STAY_SEC = 8;
 
-// Interns (sub-agents) appear like shadow clones (Naruto: a puff of smoke)
-// and leave turning to stone (Dr. Stone: petrified, then crumbling).
-export const CLONE_SPAWN_SEC = 0.8;
-/** Share of the spawn after which the clone is visible inside the smoke. */
-export const CLONE_REVEAL_AT = 0.3;
-export const CLONE_SMOKE_PUFFS = 9;
-export const CLONE_SMOKE_RADIUS_PX = 11;
-export const CLONE_SMOKE_COLORS = ['#ffffff', '#e6e9ef', '#c9ced8'] as const;
-export const PETRIFY_SEC = 1.8;
-/** Share of the despawn spent turning to stone (feet first); the rest crumbles. */
-export const PETRIFY_STONE_SHARE = 0.55;
-/** Stone shades, dark to light, picked by each pixel's brightness. */
-export const STONE_COLORS = ['#4d4f52', '#76797d', '#a2a5a8', '#c8cacb'] as const;
-export const STONE_CRACK_COLOR = '#2b2c2e';
-/** How far crumbling pixels fall (sprite pixels) before vanishing. */
-export const STONE_FALL_PX = 6;
+// Interns (sub-agents), Fase 4B: they fade in next to their boss and walk to the interns'
+// room; when done they walk back to the boss and fade out there.
+export const INTERN_FADE_SEC = 0.5;
+/** Longest walk back to the boss before fading out anyway (blocked path, far boss). */
+export const INTERN_LEAVE_MAX_SEC = 10;
+/** Interns of each boss (char_N index → interns' char_N), from arte/pixellab/personajes/elenco.json.
+ *  0 Doc → Marty · 1 Senku → Chrome, Kohaku · 2 Chell → Wheatley · 3 Neo → Trinity ·
+ *  4 Gandalf → Frodo, Sam · 5 Kakashi → Naruto, Sakura. */
+export const BOSS_INTERNS: Readonly<Record<number, readonly number[]>> = {
+  0: [6],
+  1: [7, 8],
+  2: [9],
+  3: [10],
+  4: [11, 12],
+  5: [13, 14],
+};
 
 // 88 mph: a command finished in the DeLorean workshop -> flux sparks + two fire trails
 export const FLUX_SPARK_COLORS = ['#ffffff', '#9ff0ff', '#5fb7ff'] as const;

@@ -8,7 +8,7 @@
  * into its module graph just to reset three fields.
  */
 
-import { CLONE_SPAWN_SEC, MATRIX_SPRITE_COLS, PETRIFY_SEC } from '../../constants.js';
+import { INTERN_FADE_SEC, MATRIX_SPRITE_COLS } from '../../constants.js';
 import type { Character } from '../types.js';
 import { MATRIX_EFFECT_DURATION } from '../types.js';
 
@@ -39,11 +39,10 @@ export function startMatrixEffect(ch: Character, kind: 'spawn' | 'despawn'): voi
  *    character keeps rendering as gone, and removing it is the caller's job. */
 export type MatrixEffectTick = 'none' | 'running' | 'spawned' | 'despawned';
 
-/** Length of the running effect. Interns (sub-agents) use their own, slower
- *  shadow-clone / petrify effect (fork, Fase 3); everyone else the matrix rain. */
+/** Length of the running effect. Interns (sub-agents) fade in and out (fork,
+ *  Fase 4B: they walk in and out, no smoke); everyone else the matrix rain. */
 export function effectDurationSec(ch: Character): number {
-  if (!ch.isSubagent) return MATRIX_EFFECT_DURATION;
-  return ch.matrixEffect === 'despawn' ? PETRIFY_SEC : CLONE_SPAWN_SEC;
+  return ch.isSubagent ? INTERN_FADE_SEC : MATRIX_EFFECT_DURATION;
 }
 
 export function advanceMatrixEffect(ch: Character, dt: number): MatrixEffectTick {

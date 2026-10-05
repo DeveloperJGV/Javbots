@@ -101,6 +101,7 @@ export function createCharacter(
     seatTimer: 0,
     isSubagent: false,
     parentAgentId: null,
+    leavingSec: null,
     matrixEffect: null,
     matrixEffectTimer: 0,
     matrixEffectSeeds: [],

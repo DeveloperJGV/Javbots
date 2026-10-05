@@ -13,9 +13,11 @@ export const WALL_GRID_COLS = 4;
 export const WALL_BITMASK_COUNT = 16;
 export const FLOOR_TILE_SIZE = 16;
 export const CHARACTER_DIRECTIONS = ['down', 'up', 'right'] as const;
-export const CHAR_FRAME_W = 16;
-export const CHAR_FRAME_H = 32;
-export const CHAR_FRAMES_PER_ROW = 7;
+// Fork, Fase 4B: 24×44 frames, 8 per row (walk ×4, type ×2, read ×2) → 192×132 sheets.
+export const CHAR_FRAME_W = 24;
+export const CHAR_FRAME_H = 44;
+export const CHAR_FRAMES_PER_ROW = 8;
+/** Bosses (char_0..CHAR_COUNT-1), the ones agents are drawn as. Higher char_N files are interns. */
 export const CHAR_COUNT = 6;
 
 // ── Pet Sprite Dimensions (96×96 spritesheet) ──────────────

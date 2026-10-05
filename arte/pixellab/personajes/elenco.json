@@ -1,0 +1,13 @@
+{
+  "nota": "Fase 4B. Hojas 192x132 (8 cuadros de 24x44: caminar 1-4, teclear 1-2, leer 1-2; filas frente, espaldas, lado). Asignación de jefes al azar; los becarios de un jefe son sus compañeros de historia; entran y salen caminando; mismo tamaño que el jefe.",
+  "jefes": {
+    "doc": ["marty"],
+    "senku": ["chrome", "kohaku"],
+    "chell": ["wheatley"],
+    "neo": ["trinity"],
+    "gandalf": ["frodo", "sam"],
+    "kakashi": ["naruto", "sakura"]
+  },
+  "flotantes": ["wheatley"],
+  "dlc": ["drlight"]
+}

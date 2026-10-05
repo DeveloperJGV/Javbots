@@ -1,0 +1,32 @@
+{
+  "group_id": "ac31fb35-e494-4daf-881f-3860fa8736d5",
+  "states": [
+    {
+      "character": {
+        "id": "475a81ba-07d3-4677-9063-e91595051a1f",
+        "name": "Idle",
+        "prompt": "athletic young huntress with blonde hair in a tall spiky ponytail tied with a cord, uneven bangs, blue eyes, short sleeveless indigo blue dress with a deep V neck and a ragged fringed zigzag hem above the knees, white wrap underneath showing at the neckline, thick tan rope tied around the waist, tan ribbon choker, bare arms and legs, grey stone sandals, full body",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 4,
+        "view": "low top-down",
+        "created_at": "2026-10-05T15:39:40.397919+00:00"
+      },
+      "folder": "Idle",
+      "frames": {
+        "rotations": {
+          "south": "Idle/rotations/south.png",
+          "west": "Idle/rotations/west.png",
+          "east": "Idle/rotations/east.png",
+          "north": "Idle/rotations/north.png"
+        },
+        "animations": {}
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-10-05T15:40:53.340040"
+}

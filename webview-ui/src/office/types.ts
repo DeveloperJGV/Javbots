@@ -229,6 +229,8 @@ export interface Character {
   isSubagent: boolean;
   /** Parent agent ID if this is a sub-agent, null otherwise */
   parentAgentId: number | null;
+  /** Intern on its way back to its boss before fading out (Fase 4B); seconds left for that walk. */
+  leavingSec: number | null;
   /** Active matrix spawn/despawn effect, or null */
   matrixEffect: 'spawn' | 'despawn' | null;
   /** Timer counting up from 0 to MATRIX_EFFECT_DURATION */
