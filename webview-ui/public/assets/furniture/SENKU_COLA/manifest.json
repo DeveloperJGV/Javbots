@@ -1,0 +1,13 @@
+{
+  "id": "SENKU_COLA",
+  "name": "Caja de cola de Senku",
+  "category": "misc",
+  "type": "asset",
+  "canPlaceOnWalls": false,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 0,
+  "width": 16,
+  "height": 16,
+  "footprintW": 1,
+  "footprintH": 1
+}

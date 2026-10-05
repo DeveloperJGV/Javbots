@@ -1,13 +1,28 @@
 import type { DayNightMode } from '../../../../core/src/messages.js';
 import {
   DAY_NIGHT_REFRESH_SEC,
+  FIRE_LIGHT_COLOR,
+  FIRE_LIGHT_INTENSITY,
+  FIRE_LIGHT_RADIUS_PX,
+  FLUX_LIGHT_COLOR,
+  FLUX_LIGHT_INTENSITY,
+  FLUX_LIGHT_RADIUS_PX,
   IDLE_SCREEN_LIGHT_INTENSITY,
   IDLE_SCREEN_LIGHT_RADIUS_PX,
+  JEDI_LIGHT_COLOR,
+  JEDI_LIGHT_INTENSITY,
+  JEDI_LIGHT_RADIUS_PX,
   LAMP_LIGHT_COLOR,
   LAMP_LIGHT_INTENSITY,
   LAMP_LIGHT_RADIUS_PX,
+  LAVA_LIGHT_COLOR,
+  LAVA_LIGHT_INTENSITY,
+  LAVA_LIGHT_RADIUS_PX,
   LIGHT_LEVELS,
   LIGHT_TINT_ALPHA,
+  MATRIX_LIGHT_COLOR,
+  MATRIX_LIGHT_INTENSITY,
+  MATRIX_LIGHT_RADIUS_PX,
   MOON_BEAM_HALF_WIDTH_BOTTOM_PX,
   MOON_BEAM_HALF_WIDTH_TOP_PX,
   MOON_BEAM_INTENSITY,
@@ -17,9 +32,25 @@ import {
   MOONSTONE_LIGHT_COLOR,
   MOONSTONE_LIGHT_INTENSITY,
   MOONSTONE_LIGHT_RADIUS_PX,
+  NEON_LIGHT_COLOR,
+  NEON_LIGHT_INTENSITY,
+  NEON_LIGHT_RADIUS_PX,
+  PORTAL_BLUE_LIGHT_COLOR,
+  PORTAL_LIGHT_INTENSITY,
+  PORTAL_LIGHT_RADIUS_PX,
+  PORTAL_ORANGE_LIGHT_COLOR,
+  RING_LIGHT_COLOR,
+  RING_LIGHT_INTENSITY,
+  RING_LIGHT_RADIUS_PX,
   SCREEN_LIGHT_COLOR,
   SCREEN_LIGHT_INTENSITY,
   SCREEN_LIGHT_RADIUS_PX,
+  TRON_LIGHT_COLOR,
+  TRON_LIGHT_INTENSITY,
+  TRON_LIGHT_RADIUS_PX,
+  WORK_LIGHT_COLOR,
+  WORK_LIGHT_INTENSITY,
+  WORK_LIGHT_RADIUS_PX,
 } from '../../constants.js';
 import type { Character, FurnitureInstance } from '../types.js';
 import { CharacterState, Direction } from '../types.js';
@@ -49,6 +80,27 @@ const SCREEN_RGB = hexToRgb(SCREEN_LIGHT_COLOR);
 const LAMP_RGB = hexToRgb(LAMP_LIGHT_COLOR);
 const MOON_RGB = hexToRgb(MOON_LIGHT_COLOR);
 const MOONSTONE_RGB = hexToRgb(MOONSTONE_LIGHT_COLOR);
+const FLUX_RGB = hexToRgb(FLUX_LIGHT_COLOR);
+const RING_RGB = hexToRgb(RING_LIGHT_COLOR);
+const FIRE_RGB = hexToRgb(FIRE_LIGHT_COLOR);
+const JEDI_RGB = hexToRgb(JEDI_LIGHT_COLOR);
+const NEON_RGB = hexToRgb(NEON_LIGHT_COLOR);
+const LAVA_RGB = hexToRgb(LAVA_LIGHT_COLOR);
+/** Wall pieces that glow at night: light center (sprite px) plus color, radius and strength. */
+const GLOW_SPECS: Record<string, { y: number; color: Rgb; radius: number; intensity: number }> = {
+  TRON_DISC: { y: 16, color: hexToRgb(TRON_LIGHT_COLOR), radius: TRON_LIGHT_RADIUS_PX, intensity: TRON_LIGHT_INTENSITY },
+  MATRIX_SCREEN: {
+    y: 16,
+    color: hexToRgb(MATRIX_LIGHT_COLOR),
+    radius: MATRIX_LIGHT_RADIUS_PX,
+    intensity: MATRIX_LIGHT_INTENSITY,
+  },
+};
+const PORTAL_RGB: Record<string, Rgb> = {
+  PORTAL_BLUE: hexToRgb(PORTAL_BLUE_LIGHT_COLOR),
+  PORTAL_ORANGE: hexToRgb(PORTAL_ORANGE_LIGHT_COLOR),
+};
+const WORK_RGB = hexToRgb(WORK_LIGHT_COLOR);
 
 /** Strength (0–1) of a light at a map pixel center. */
 export function lightStrengthAt(l: LightSource, wx: number, wy: number): number {
@@ -78,6 +130,7 @@ function lightBounds(l: LightSource): [number, number, number, number] {
 /** Furniture that glows, and where its light comes from (sprite px from the top-left). */
 const LAMP_SPECS: Record<string, { x: number; y: number }> = {
   LAMP: { x: 8, y: 12 },
+  SENKU_BULB: { x: 8, y: 7 },
 };
 
 function baseType(type: string): string {
@@ -141,6 +194,91 @@ export function collectLights(
           halfBottom: MOON_BEAM_HALF_WIDTH_BOTTOM_PX,
           skew: MOON_BEAM_SKEW,
         },
+      });
+      continue;
+    }
+    if (type === 'JEDI_BRAZIER' || type === 'HOLO_TABLE') {
+      lights.push({
+        x: f.x + w / 2,
+        y: f.y + 6,
+        radius: JEDI_LIGHT_RADIUS_PX,
+        intensity: JEDI_LIGHT_INTENSITY,
+        color: JEDI_RGB,
+      });
+      continue;
+    }
+    if (type === 'BASEMENT_FIRE' || type === 'BASEMENT_TORCH') {
+      lights.push({
+        x: f.x + w / 2,
+        y: f.y + (type === 'BASEMENT_TORCH' ? 8 : 10),
+        radius: FIRE_LIGHT_RADIUS_PX,
+        intensity: FIRE_LIGHT_INTENSITY,
+        color: FIRE_RGB,
+      });
+      continue;
+    }
+    if (type === 'RING_PEDESTAL') {
+      lights.push({
+        x: f.x + w / 2,
+        y: f.y + 8,
+        radius: RING_LIGHT_RADIUS_PX,
+        intensity: RING_LIGHT_INTENSITY,
+        color: RING_RGB,
+      });
+      continue;
+    }
+    if (type === 'FLUX_CAPACITOR') {
+      lights.push({
+        x: f.x + w / 2,
+        y: f.y + 14,
+        radius: FLUX_LIGHT_RADIUS_PX,
+        intensity: FLUX_LIGHT_INTENSITY,
+        color: FLUX_RGB,
+      });
+      continue;
+    }
+    if (PORTAL_RGB[type]) {
+      lights.push({
+        x: f.x + w / 2,
+        y: f.y + 18,
+        radius: PORTAL_LIGHT_RADIUS_PX,
+        intensity: PORTAL_LIGHT_INTENSITY,
+        color: PORTAL_RGB[type],
+      });
+      continue;
+    }
+    const glow = GLOW_SPECS[type];
+    if (glow) {
+      lights.push({ x: f.x + w / 2, y: f.y + glow.y, radius: glow.radius, intensity: glow.intensity, color: glow.color });
+      continue;
+    }
+    if (type === 'LAVA_LAMP') {
+      lights.push({
+        x: f.x + w / 2,
+        y: f.y + 16,
+        radius: LAVA_LIGHT_RADIUS_PX,
+        intensity: LAVA_LIGHT_INTENSITY,
+        color: LAVA_RGB,
+      });
+      continue;
+    }
+    if (type === 'NEON_88') {
+      lights.push({
+        x: f.x + w / 2,
+        y: f.y + 8,
+        radius: NEON_LIGHT_RADIUS_PX,
+        intensity: NEON_LIGHT_INTENSITY,
+        color: NEON_RGB,
+      });
+      continue;
+    }
+    if (type === 'WORK_LIGHT') {
+      lights.push({
+        x: f.x + 8,
+        y: f.y + 9,
+        radius: WORK_LIGHT_RADIUS_PX,
+        intensity: WORK_LIGHT_INTENSITY,
+        color: WORK_RGB,
       });
       continue;
     }

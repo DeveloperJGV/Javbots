@@ -13,6 +13,10 @@ import {
   MAX_PARTICLES,
   PAPER_CHANCE,
   PAPER_COLORS,
+  PORTAL_BLUE_SPARKS,
+  PORTAL_ORANGE_SPARKS,
+  PORTAL_SPARK_LIFE_SEC,
+  PORTAL_SPARK_SPAWN_SEC,
   SPARK_COLORS,
   SPARK_COUNT,
   SPARK_GRAVITY_PX_PER_SEC2,
@@ -25,6 +29,12 @@ import {
   TEAR_COLORS,
   TEAR_COUNT,
   TEAR_LIFE_SEC,
+  TELEPORT_BEAM_COLORS,
+  TELEPORT_BEAM_COUNT,
+  TELEPORT_BEAM_HALF_WIDTH_PX,
+  TELEPORT_BEAM_HEIGHT_PX,
+  TELEPORT_BEAM_LIFE_SEC,
+  TELEPORT_BEAM_RISE_PX_PER_SEC,
 } from '../../constants.js';
 import type { FurnitureInstance } from '../types.js';
 
@@ -58,8 +68,14 @@ export interface Particle {
 /** Where furniture emits from, in sprite px from its top-left. */
 const STEAM_SOURCES: Record<string, { x: number; y: number }> = {
   COFFEE: { x: 12, y: 0 },
+  COFFEE_MAKER: { x: 7, y: 14 },
 };
 const DUST_SOURCES = new Set(['BOOKSHELF', 'DOUBLE_BOOKSHELF', 'WHITEBOARD']);
+/** Portals shed sparkles off their rim: oval center and radii in sprite px, and their colors. */
+const SPARKLE_SOURCES: Record<string, { cx: number; cy: number; rx: number; ry: number; colors: readonly string[] }> = {
+  PORTAL_BLUE: { cx: 8, cy: 17, rx: 6, ry: 13, colors: PORTAL_BLUE_SPARKS },
+  PORTAL_ORANGE: { cx: 8, cy: 17, rx: 6, ry: 13, colors: PORTAL_ORANGE_SPARKS },
+};
 
 function baseType(type: string | undefined): string {
   if (!type) return '';
@@ -82,6 +98,7 @@ export function steppedAlpha(age: number, life: number): number {
 export class ParticleSystem {
   particles: Particle[] = [];
   private steamTimers = new Map<string, number>();
+  private sparkleTimers = new Map<string, number>();
   private dustTimer = DUST_SPAWN_SEC;
   private rand: () => number;
 
@@ -157,6 +174,25 @@ export class ParticleSystem {
     }
   }
 
+  /** Teleport beam (Mega Man): a column of light rising from (x, y), the base of the capsule glass. */
+  burstTeleport(x: number, y: number): void {
+    for (let i = 0; i < TELEPORT_BEAM_COUNT; i++) {
+      this.add({
+        kind: 'spark',
+        x: x + Math.round((this.rand() * 2 - 1) * TELEPORT_BEAM_HALF_WIDTH_PX),
+        y: y - this.rand() * TELEPORT_BEAM_HEIGHT_PX,
+        vx: 0,
+        vy: -TELEPORT_BEAM_RISE_PX_PER_SEC * (0.6 + this.rand() * 0.8),
+        ay: 0,
+        age: 0,
+        life: TELEPORT_BEAM_LIFE_SEC * (0.5 + this.rand() * 0.5),
+        color: pick(TELEPORT_BEAM_COLORS, this.rand),
+        w: 1,
+        phase: 0,
+      });
+    }
+  }
+
   /** Tears (The Binding of Isaac): drops arcing out of both eyes when a tool fails. */
   burstTears(x: number, y: number): void {
     for (let i = 0; i < TEAR_COUNT; i++) {
@@ -221,6 +257,38 @@ export class ParticleSystem {
     }
     for (const key of this.steamTimers.keys()) {
       if (!seen.has(key)) this.steamTimers.delete(key);
+    }
+
+    // Portal sparkles: a speck off a random point of the rim, drifting outward
+    const lit = new Set<string>();
+    for (const f of furniture) {
+      const src = SPARKLE_SOURCES[baseType(f.type)];
+      if (!src) continue;
+      const key = `${f.x},${f.y}`;
+      lit.add(key);
+      const t = (this.sparkleTimers.get(key) ?? this.rand() * PORTAL_SPARK_SPAWN_SEC) - dt;
+      if (t > 0) {
+        this.sparkleTimers.set(key, t);
+        continue;
+      }
+      this.sparkleTimers.set(key, PORTAL_SPARK_SPAWN_SEC * (0.6 + this.rand() * 0.8));
+      const a = this.rand() * Math.PI * 2;
+      this.add({
+        kind: 'spark',
+        x: f.x + src.cx + Math.cos(a) * src.rx,
+        y: f.y + src.cy + Math.sin(a) * src.ry,
+        vx: Math.cos(a) * 4,
+        vy: Math.sin(a) * 4,
+        ay: 0,
+        age: 0,
+        life: PORTAL_SPARK_LIFE_SEC * (0.6 + this.rand() * 0.6),
+        color: pick(src.colors, this.rand),
+        w: 1,
+        phase: 0,
+      });
+    }
+    for (const key of this.sparkleTimers.keys()) {
+      if (!lit.has(key)) this.sparkleTimers.delete(key);
     }
 
     // Dust and paper

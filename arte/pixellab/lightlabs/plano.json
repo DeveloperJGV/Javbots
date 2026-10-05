@@ -1,0 +1,46 @@
+{
+  "quitar": [
+    [
+      "LAMP",
+      29,
+      7
+    ],
+    [
+      "CUSHIONED_BENCH",
+      31,
+      5
+    ],
+    [
+      "SMALL_PAINTING_2",
+      32,
+      0
+    ]
+  ],
+  "poner": [
+    {
+      "uid": "light-vitrina-proto",
+      "type": "PROTO_CASE",
+      "col": 29,
+      "row": 7
+    },
+    {
+      "uid": "light-rush",
+      "type": "RUSH",
+      "col": 34,
+      "row": 6
+    },
+    {
+      "uid": "light-banco",
+      "type": "LAB_STOOL",
+      "col": 31,
+      "row": 5
+    }
+  ],
+  "mover": [
+    {
+      "uid": "light-etank",
+      "col": 29,
+      "row": 4
+    }
+  ]
+}

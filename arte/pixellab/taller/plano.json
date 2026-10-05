@@ -1,0 +1,106 @@
+{
+  "quitar": [
+    [
+      "LAMP",
+      1,
+      23
+    ],
+    [
+      "LAMP",
+      12,
+      23
+    ],
+    [
+      "BIN",
+      13,
+      28
+    ]
+  ],
+  "mover": [
+    {
+      "uid": "taller-ae86",
+      "col": 5,
+      "row": 21
+    },
+    {
+      "uid": "taller-delorean",
+      "col": 5,
+      "row": 26
+    },
+    {
+      "uid": "taller-gabinete",
+      "col": 1,
+      "row": 18
+    },
+    {
+      "uid": "taller-llantas",
+      "col": 3,
+      "row": 18
+    },
+    {
+      "uid": "taller-banco",
+      "col": 10,
+      "row": 18
+    },
+    {
+      "uid": "taller-brazo",
+      "col": 12,
+      "row": 18
+    },
+    {
+      "uid": "taller-gigante",
+      "col": 1,
+      "row": 26
+    },
+    {
+      "uid": "taller-armadura",
+      "col": 12,
+      "row": 26
+    },
+    {
+      "uid": "taller-gato",
+      "col": 11,
+      "row": 23
+    },
+    {
+      "uid": "taller-plutonio",
+      "col": 13,
+      "row": 23
+    }
+  ],
+  "poner": [
+    {
+      "uid": "taller-reflector-1",
+      "type": "WORK_LIGHT",
+      "col": 2,
+      "row": 20
+    },
+    {
+      "uid": "taller-reflector-2",
+      "type": "WORK_LIGHT",
+      "col": 12,
+      "row": 20
+    },
+    {
+      "uid": "taller-neon-88",
+      "type": "NEON_88",
+      "col": 13,
+      "row": 17
+    },
+    {
+      "uid": "taller-moto-kaneda",
+      "type": "KANEDA_BIKE",
+      "col": 1,
+      "row": 22
+    }
+  ],
+  "piso": {
+    "tipo": 10,
+    "color": {
+      "h": 205,
+      "s": 14,
+      "b": -42,
+      "c": -20
+    }
+  }
+}

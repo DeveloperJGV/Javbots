@@ -1,0 +1,16 @@
+{
+  "quitar": [["BASEMENT_ROCK", 37, 24], ["BASEMENT_ROCK", 42, 25], ["TEAR_STAINS", 39, 23], ["ISAAC_COINS", 37, 27]],
+  "mover": [
+    {"uid": "sotano-corazon", "col": 38, "row": 20},
+    {"uid": "sotano-cebolla", "col": 41, "row": 20},
+    {"uid": "sotano-isaac", "col": 39, "row": 23},
+    {"uid": "sotano-lagrimas-1", "col": 40, "row": 23},
+    {"uid": "sotano-trampilla", "col": 39, "row": 25},
+    {"uid": "sotano-roca-1", "col": 37, "row": 27},
+    {"uid": "sotano-cofre", "col": 38, "row": 27},
+    {"uid": "sotano-bomba", "col": 41, "row": 27},
+    {"uid": "sotano-roca-marcada", "col": 42, "row": 27}
+  ],
+  "poner": [],
+  "piso": {"tipo": 11, "color": {"h": 26, "s": 26, "b": -30, "c": -10}}
+}

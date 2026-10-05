@@ -1,0 +1,26 @@
+{
+  "quitar": [
+    ["SMALL_PAINTING", 32, 16], ["LARGE_PAINTING", 27, 16],
+    ["SOFA_FRONT", 28, 21], ["SOFA_SIDE", 27, 22], ["COFFEE_TABLE", 28, 22], ["SOFA_SIDE:left", 30, 22],
+    ["SOFA_BACK", 28, 24], ["COFFEE", 28, 23],
+    ["SOFA_FRONT", 33, 21], ["SOFA_SIDE", 32, 22], ["COFFEE_TABLE", 33, 22], ["SOFA_SIDE:left", 35, 22],
+    ["SOFA_BACK", 33, 24], ["COFFEE", 33, 23],
+    ["PLANT", 26, 18], ["LAMP", 35, 18], ["LAMP", 26, 26], ["LARGE_PLANT", 33, 26]
+  ],
+  "poner": [
+    {"uid": "becarios-chamarra-kaneda", "type": "KANEDA_JACKET", "col": 32, "row": 16},
+    {"uid": "becarios-velero", "type": "BOAT_PAINTING", "col": 27, "row": 16},
+    {"uid": "becarios-poster-tetris", "type": "POSTER_TETRIS", "col": 26, "row": 16},
+    {"uid": "becarios-poster-invasor", "type": "POSTER_INVADER", "col": 29, "row": 16},
+    {"uid": "becarios-poster-fantasma", "type": "POSTER_GHOST", "col": 35, "row": 16},
+    {"uid": "becarios-sillon-simpson", "type": "SOFA_SIMPSON", "col": 27, "row": 20},
+    {"uid": "becarios-tele", "type": "RETRO_TV", "col": 27, "row": 24},
+    {"uid": "becarios-puff-1", "type": "BEANBAG", "col": 27, "row": 26},
+    {"uid": "becarios-puff-2", "type": "BEANBAG", "col": 28, "row": 26},
+    {"uid": "becarios-sillon-friends", "type": "SOFA_ORANGE", "col": 32, "row": 22},
+    {"uid": "becarios-mesa-tazas", "type": "MUG_TABLE", "col": 32, "row": 25},
+    {"uid": "becarios-arcade", "type": "ARCADE", "col": 34, "row": 25},
+    {"uid": "becarios-lava-1", "type": "LAVA_LAMP", "col": 35, "row": 18},
+    {"uid": "becarios-lava-2", "type": "LAVA_LAMP", "col": 26, "row": 26}
+  ]
+}

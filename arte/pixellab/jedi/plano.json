@@ -1,0 +1,142 @@
+{
+  "nota": "v2: cuarto ordenado y simétrico; sin robot, consola ni muebles genéricos",
+  "quitar": [
+    [
+      "SMALL_TABLE_FRONT",
+      3,
+      5
+    ],
+    [
+      "CUSHIONED_BENCH",
+      3,
+      7
+    ],
+    [
+      "CUSHIONED_BENCH",
+      4,
+      7
+    ],
+    [
+      "CUSHIONED_BENCH",
+      8,
+      7
+    ],
+    [
+      "CUSHIONED_BENCH",
+      9,
+      7
+    ],
+    [
+      "MOONSTONES",
+      4,
+      6
+    ],
+    [
+      "ASTROMECH_DROID",
+      10,
+      5
+    ],
+    [
+      "ARCHIVE_CONSOLE",
+      8,
+      5
+    ]
+  ],
+  "poner": [
+    {
+      "uid": "jedi-mesa-estudio-izq",
+      "type": "JEDI_STUDY_TABLE",
+      "col": 2,
+      "row": 6
+    },
+    {
+      "uid": "jedi-mesa-estudio-der",
+      "type": "JEDI_STUDY_TABLE",
+      "col": 9,
+      "row": 6
+    },
+    {
+      "uid": "jedi-piedras-lunares",
+      "type": "MOONSTONES",
+      "col": 3,
+      "row": 6
+    },
+    {
+      "uid": "jedi-cojin-consejo-1",
+      "type": "JEDI_CUSHION",
+      "col": 5,
+      "row": 4
+    },
+    {
+      "uid": "jedi-cojin-consejo-2",
+      "type": "JEDI_CUSHION",
+      "col": 8,
+      "row": 4
+    },
+    {
+      "uid": "jedi-cojin-consejo-3",
+      "type": "JEDI_CUSHION",
+      "col": 6,
+      "row": 5
+    },
+    {
+      "uid": "jedi-cojin-consejo-4",
+      "type": "JEDI_CUSHION",
+      "col": 7,
+      "row": 5
+    },
+    {
+      "uid": "jedi-cojin-izq-1",
+      "type": "JEDI_CUSHION",
+      "col": 2,
+      "row": 8
+    },
+    {
+      "uid": "jedi-cojin-izq-2",
+      "type": "JEDI_CUSHION",
+      "col": 3,
+      "row": 8
+    },
+    {
+      "uid": "jedi-cojin-der-1",
+      "type": "JEDI_CUSHION",
+      "col": 9,
+      "row": 8
+    },
+    {
+      "uid": "jedi-cojin-der-2",
+      "type": "JEDI_CUSHION",
+      "col": 10,
+      "row": 8
+    }
+  ],
+  "mover": [
+    {
+      "uid": "jedi-brasero-11",
+      "col": 12,
+      "row": 3
+    },
+    {
+      "uid": "jedi-fantasma-capucha",
+      "col": 3,
+      "row": 2
+    }
+  ],
+  "privado": [
+    {
+      "uid": "privado-1",
+      "type": "USER_BUST",
+      "col": 18,
+      "row": 12
+    }
+  ],
+  "piso": {
+    "tipo": 4,
+    "color": {
+      "h": 35,
+      "s": 14,
+      "b": -28,
+      "c": -55
+    }
+  }
+}

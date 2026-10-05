@@ -357,6 +357,66 @@ export const WINDOW_NIGHT_UPPER = '#0d1636';
 export const WINDOW_NIGHT_LOWER = '#18264f';
 export const WINDOW_MOON = '#f3efc8';
 export const WINDOW_STAR = '#dfe7ff';
+/** Flux capacitor (Fase 4): the Y tubes as drawn in FLUX_CAPACITOR.png and their dim pulse. */
+export const FLUX_CORE = '#feffff';
+export const FLUX_GLOW = '#4bacdd';
+export const FLUX_DIM_CORE = '#8fd6f2';
+export const FLUX_DIM_GLOW = '#2b6f93';
+export const FLUX_PULSE_PERIOD_SEC = 0.9;
+export const FLUX_BRIGHT_FRACTION = 0.6;
+/** The One Ring (Fase 4): its gold as drawn in RING_PEDESTAL.png and the glint it flashes now and then. */
+export const RING_GOLD = '#f7d722';
+export const RING_GOLD_SOFT = '#e2cc51';
+export const RING_GLINT = '#fff6b8';
+export const RING_GLINT_SOFT = '#ffe680';
+export const RING_GLINT_PERIOD_SEC = 3.2;
+export const RING_GLINT_FRACTION = 0.18;
+/** Portals (Fase 4, Aperture): the swirl bands as drawn in PORTAL_BLUE/ORANGE.png; they rotate one band per step. */
+export const PORTAL_BLUE_BANDS = ['#1f6fd1', '#3f9cf0', '#7cccff', '#2f86e0'] as const;
+export const PORTAL_ORANGE_BANDS = ['#e0520c', '#ff8a1e', '#ffbb55', '#f26e14'] as const;
+export const PORTAL_CYCLE_STEP_SEC = 0.2;
+/** Code room (Fase 4): Matrix rain as drawn in MATRIX_SCREEN.png (head → tail); it falls one band per step. */
+export const MATRIX_BANDS = ['#d8ffd8', '#4dff6a', '#1fa83a', '#0b4a1a'] as const;
+export const MATRIX_CYCLE_STEP_SEC = 0.2;
+/** Server rack LEDs as drawn in SERVER_RACK.png and their dim blink. */
+export const RACK_LED_GREEN = '#3dff6a';
+export const RACK_LED_AMBER = '#ffb43c';
+export const RACK_LED_GREEN_DIM = '#14632a';
+export const RACK_LED_AMBER_DIM = '#6a4416';
+export const RACK_BLINK_PERIOD_SEC = 1.3;
+export const RACK_BLINK_FRACTION = 0.3;
+/** Lava lamp (Fase 4, Becarios): its bands as drawn in LAVA_LAMP.png; they creep along slowly. */
+export const LAVA_BANDS = ['#ff5a3c', '#ff9a3c', '#b8389c', '#7a2a8a'] as const;
+export const LAVA_CYCLE_STEP_SEC = 0.6;
+export const PORTAL_SPARK_SPAWN_SEC = 0.4;
+export const PORTAL_SPARK_LIFE_SEC = 0.7;
+export const PORTAL_BLUE_SPARKS = ['#ffffff', '#bfe8ff'] as const;
+export const PORTAL_ORANGE_SPARKS = ['#ffffff', '#ffe0a8'] as const;
+/** "88" neon sign in the garage (Fase 4): tube colors as drawn in NEON_88.png and a short flicker off now and then. */
+export const NEON_CORE = '#ff9ee6';
+export const NEON_GLOW = '#d634a0';
+export const NEON_DIM_CORE = '#7a3a6a';
+export const NEON_DIM_GLOW = '#4a2244';
+export const NEON_FLICKER_PERIOD_SEC = 4.5;
+export const NEON_FLICKER_FRACTION = 0.05;
+/** Basement fires and torch (Fase 4): flame colors as drawn -> their flicker (yellow sinks to orange, orange to red). */
+export const FIRE_FLICKER_SWAPS: ReadonlyArray<readonly [string, string]> = [
+  ['#f7e95d', '#f9a83a'],
+  ['#f9eb5d', '#f9a83a'],
+  ['#e9780b', '#f14527'],
+  ['#ec7d0b', '#f14527'],
+];
+export const TORCH_FLICKER_SWAPS: ReadonlyArray<readonly [string, string]> = [
+  ['#f7b400', '#f94708'],
+  ['#f94708', '#c73806'],
+  ['#f94507', '#c73806'],
+  ['#f74909', '#c73806'],
+  ['#f94809', '#c73806'],
+  ['#fd4608', '#c73806'],
+  ['#fb4607', '#c73806'],
+];
+export const FIRE_FLICKER_PERIOD_SEC = 0.4;
+export const FIRE_FLICKER_FRACTION = 0.45;
 
 // Day / night
 /** Lighting recompute cadence for the auto clock (the light set triggers its own recomputes). */
@@ -446,6 +506,39 @@ export const FIRE_TRAIL_LIFE_SEC = 0.9;
 export const MOONSTONE_LIGHT_COLOR = '#d6c8ff';
 export const MOONSTONE_LIGHT_RADIUS_PX = 18;
 export const MOONSTONE_LIGHT_INTENSITY = 0.55;
+export const FLUX_LIGHT_COLOR = '#7fd4ff';
+export const FLUX_LIGHT_RADIUS_PX = 26;
+export const FLUX_LIGHT_INTENSITY = 0.6;
+export const RING_LIGHT_COLOR = '#ffd75a';
+export const RING_LIGHT_RADIUS_PX = 22;
+export const RING_LIGHT_INTENSITY = 0.5;
+export const TRON_LIGHT_COLOR = '#5ff3ff';
+export const TRON_LIGHT_RADIUS_PX = 24;
+export const TRON_LIGHT_INTENSITY = 0.6;
+export const MATRIX_LIGHT_COLOR = '#4dff6a';
+export const MATRIX_LIGHT_RADIUS_PX = 30;
+export const MATRIX_LIGHT_INTENSITY = 0.5;
+export const LAVA_LIGHT_COLOR = '#ff7a4a';
+export const LAVA_LIGHT_RADIUS_PX = 22;
+export const LAVA_LIGHT_INTENSITY = 0.6;
+export const PORTAL_BLUE_LIGHT_COLOR = '#5fb7ff';
+export const PORTAL_ORANGE_LIGHT_COLOR = '#ff9a3c';
+export const PORTAL_LIGHT_RADIUS_PX = 28;
+export const PORTAL_LIGHT_INTENSITY = 0.7;
+export const NEON_LIGHT_COLOR = '#ff7ad6';
+export const NEON_LIGHT_RADIUS_PX = 22;
+export const NEON_LIGHT_INTENSITY = 0.5;
+/** Garage work light on a tripod: whiter and wider than a living-room lamp. */
+export const WORK_LIGHT_COLOR = '#fff1c4';
+export const WORK_LIGHT_RADIUS_PX = 64;
+export const WORK_LIGHT_INTENSITY = 1;
+export const FIRE_LIGHT_COLOR = '#ff9a3c';
+export const FIRE_LIGHT_RADIUS_PX = 30;
+export const FIRE_LIGHT_INTENSITY = 0.75;
+/** Jedi archive: blue brazier flames and the holo table glow. */
+export const JEDI_LIGHT_COLOR = '#6fb8ff';
+export const JEDI_LIGHT_RADIUS_PX = 26;
+export const JEDI_LIGHT_INTENSITY = 0.6;
 /** Task-zone names are drawn smaller than project areas: there are many, and close together. */
 export const ZONE_LABEL_FONT_SIZE_PX = 6;
 
@@ -457,5 +550,15 @@ export const ZONE_ERROR_COOLDOWN_SEC = 30;
 export const TEAR_COLORS = ['#8fd3ff', '#5fb7ff', '#d8f1ff'] as const;
 export const TEAR_COUNT = 6;
 export const TEAR_LIFE_SEC = 0.8;
+/** Light Labs teleporter (Mega Man): a beam rises inside the capsule when an agent arrives in the zone. */
+export const TELEPORT_BEAM_COLORS = ['#ffffff', '#bff6ff', '#6fd8ff'] as const;
+export const TELEPORT_BEAM_COUNT = 30;
+export const TELEPORT_BEAM_HALF_WIDTH_PX = 5;
+export const TELEPORT_BEAM_HEIGHT_PX = 22;
+export const TELEPORT_BEAM_RISE_PX_PER_SEC = 34;
+export const TELEPORT_BEAM_LIFE_SEC = 0.7;
+/** Glass base of the TELEPORTER sprite: where the beam starts (sprite px from its top-left). */
+export const TELEPORT_BEAM_ORIGIN_X = 16;
+export const TELEPORT_BEAM_ORIGIN_Y = 31;
 /** Eyes sit this far above the character's feet. */
 export const TEAR_EYE_HEIGHT_PX = 18;

@@ -1,0 +1,13 @@
+{
+  "id": "IRON_ARMOR",
+  "name": "Armadura en vitrina",
+  "category": "misc",
+  "type": "asset",
+  "canPlaceOnWalls": false,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 1,
+  "width": 32,
+  "height": 48,
+  "footprintW": 2,
+  "footprintH": 3
+}

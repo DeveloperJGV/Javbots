@@ -11,6 +11,8 @@ import {
   PETRIFY_SEC,
   STONE_COLORS,
   STONE_CRACK_COLOR,
+  TELEPORT_BEAM_COUNT,
+  TELEPORT_BEAM_HALF_WIDTH_PX,
   ZONE_MIN_STAY_SEC,
   ZONE_SWITCH_DELAY_SEC,
 } from '../src/constants.js';
@@ -68,6 +70,17 @@ test('88 mph: flux sparks plus two fire trails', () => {
     ps.particles.every((p) => p.kind === 'spark'),
     'glows over the night tint',
   );
+});
+
+test('teleport beam: a column of rising light inside the capsule', () => {
+  const ps = new ParticleSystem(() => 0.9);
+  ps.burstTeleport(50, 50);
+  assert.equal(ps.particles.length, TELEPORT_BEAM_COUNT);
+  for (const p of ps.particles) {
+    assert.equal(p.kind, 'spark');
+    assert.ok(Math.abs(p.x - 50) <= TELEPORT_BEAM_HALF_WIDTH_PX, 'stays inside the glass');
+    assert.ok(p.vy < 0 && p.y <= 50, 'rises from the base');
+  }
 });
 
 test('a command finishing in the DeLorean workshop hits 88 mph, elsewhere not', () => {

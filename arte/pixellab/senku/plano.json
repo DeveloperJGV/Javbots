@@ -1,0 +1,11 @@
+{
+  "quitar": [["SENKU_TABLE", 38, 4], ["CUSHIONED_BENCH", 38, 6], ["LAMP", 37, 8], ["SMALL_PAINTING", 41, 0]],
+  "poner": [
+    {"uid": "senku-mesa-tablones", "type": "SENKU_PLANK_TABLE", "col": 38, "row": 4},
+    {"uid": "senku-tocon-1", "type": "SENKU_STUMP", "col": 38, "row": 6},
+    {"uid": "senku-tocon-2", "type": "SENKU_STUMP", "col": 39, "row": 6},
+    {"uid": "senku-foco", "type": "SENKU_BULB", "col": 37, "row": 8},
+    {"uid": "senku-tabla-dias", "type": "SENKU_TALLY", "col": 41, "row": 0}
+  ],
+  "mover": []
+}

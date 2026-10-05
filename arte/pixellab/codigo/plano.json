@@ -1,0 +1,109 @@
+{
+  "quitar": [
+    [
+      "WHITEBOARD",
+      17,
+      0
+    ],
+    [
+      "SMALL_PAINTING",
+      26,
+      0
+    ],
+    [
+      "WINDOW",
+      24,
+      0
+    ],
+    [
+      "LAMP",
+      14,
+      7
+    ],
+    [
+      "PLANT_2",
+      27,
+      8
+    ],
+    [
+      "RUBBER_DUCK",
+      17,
+      3
+    ],
+    [
+      "RUBBER_DUCK",
+      21,
+      3
+    ],
+    [
+      "RUBBER_DUCK",
+      25,
+      3
+    ]
+  ],
+  "poner": [
+    {
+      "uid": "codigo-matrix",
+      "type": "MATRIX_SCREEN",
+      "col": 17,
+      "row": 0
+    },
+    {
+      "uid": "codigo-mascara",
+      "type": "FSOCIETY_MASK",
+      "col": 26,
+      "row": 0
+    },
+    {
+      "uid": "codigo-disco-tron",
+      "type": "TRON_DISC",
+      "col": 24,
+      "row": 0
+    },
+    {
+      "uid": "codigo-rack",
+      "type": "SERVER_RACK",
+      "col": 14,
+      "row": 7
+    },
+    {
+      "uid": "codigo-cafetera",
+      "type": "COFFEE_MAKER",
+      "col": 27,
+      "row": 8
+    },
+    {
+      "uid": "codigo-pokebola",
+      "type": "POKEBALL",
+      "col": 17,
+      "row": 3
+    },
+    {
+      "uid": "codigo-gameboy",
+      "type": "GAMEBOY",
+      "col": 21,
+      "row": 3
+    },
+    {
+      "uid": "codigo-groot",
+      "type": "BABY_GROOT",
+      "col": 25,
+      "row": 3
+    },
+    {
+      "uid": "codigo-rubik",
+      "type": "RUBIK_CUBE",
+      "col": 20,
+      "row": 7
+    }
+  ],
+  "piso": {
+    "tipo": 4,
+    "color": {
+      "h": 222,
+      "s": 35,
+      "b": -62,
+      "c": -30
+    }
+  }
+}

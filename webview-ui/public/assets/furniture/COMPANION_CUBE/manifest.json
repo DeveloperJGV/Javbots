@@ -1,0 +1,13 @@
+{
+  "id": "COMPANION_CUBE",
+  "name": "Cubo de compa\u00f1\u00eda",
+  "category": "misc",
+  "type": "asset",
+  "canPlaceOnWalls": false,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 0,
+  "width": 16,
+  "height": 16,
+  "footprintW": 1,
+  "footprintH": 1
+}

@@ -4,7 +4,15 @@ import { describe, test } from 'vitest';
 
 import {
   BREATH_PERIOD_SEC,
+  FIRE_FLICKER_PERIOD_SEC,
+  FIRE_FLICKER_SWAPS,
+  FLUX_CORE,
+  FLUX_DIM_CORE,
+  FLUX_PULSE_PERIOD_SEC,
   NIGHT_TINT_ALPHA,
+  RING_GLINT,
+  RING_GLINT_PERIOD_SEC,
+  RING_GOLD,
   SHADOW_CORE_COLOR,
   SHADOW_EDGE_COLOR,
   SPARK_COUNT,
@@ -18,7 +26,11 @@ import {
 import {
   applyAmbientAnimation,
   clockSprite,
+  cycleSprite,
+  cycleStep,
+  getAmbientSpec,
   handPixels,
+  pulseSwapped,
   skyPhase,
   swayOffset,
   swaySprite,
@@ -173,7 +185,7 @@ describe('ambient furniture', () => {
       { sprite: desk, x: 0, y: 0, zY: 1, type: 'DESK_FRONT' },
     ];
     const out = applyAmbientAnimation(instances, 0.1, new Date(2026, 0, 1, 12, 0));
-    assert.equal(out[0].sprite[14][14], STANDBY_LED_COLOR, 'LED on early in its cycle');
+    assert.equal(out[0].sprite[12][12], STANDBY_LED_COLOR, 'LED on early in its cycle');
     assert.equal(out[1], instances[1]);
   });
 });
@@ -264,6 +276,37 @@ describe('particles', () => {
   });
 });
 
+describe('pulsing furniture', () => {
+  test('the flux capacitor Y pulses between bright and dim', () => {
+    const sprite: SpriteData = [[FLUX_CORE.toUpperCase(), STANDBY_LED_COLOR]];
+    const inst = { type: 'FLUX_CAPACITOR', sprite, x: 0, y: 0, zY: 0 } as FurnitureInstance;
+    const [bright] = applyAmbientAnimation([inst], FLUX_PULSE_PERIOD_SEC * 0.9, new Date());
+    assert.equal(bright.sprite, sprite, 'bright is the art as drawn');
+    const [dim] = applyAmbientAnimation([inst], 0, new Date());
+    assert.equal(dim.sprite[0][0], FLUX_DIM_CORE);
+    assert.equal(dim.sprite[0][1], STANDBY_LED_COLOR, 'other pixels stay');
+  });
+
+  test('basement flames flicker', () => {
+    const [from, to] = FIRE_FLICKER_SWAPS[0];
+    const sprite: SpriteData = [[from.toUpperCase()]];
+    const inst = { type: 'BASEMENT_FIRE', sprite, x: 0, y: 0, zY: 0 } as FurnitureInstance;
+    assert.equal(applyAmbientAnimation([inst], 0, new Date())[0].sprite[0][0], to);
+    assert.equal(applyAmbientAnimation([inst], FIRE_FLICKER_PERIOD_SEC * 0.9, new Date())[0].sprite, sprite);
+  });
+
+  test('the ring glints for a moment, then stays plain gold', () => {
+    const spec = getAmbientSpec('RING_PEDESTAL');
+    assert.ok(spec?.kind === 'pulse');
+    assert.ok(pulseSwapped(0, spec));
+    assert.ok(!pulseSwapped(RING_GLINT_PERIOD_SEC * 0.5, spec));
+    const sprite: SpriteData = [[RING_GOLD.toUpperCase()]];
+    const inst = { type: 'RING_PEDESTAL', sprite, x: 0, y: 0, zY: 0 } as FurnitureInstance;
+    assert.equal(applyAmbientAnimation([inst], 0, new Date())[0].sprite[0][0], RING_GLINT);
+    assert.equal(applyAmbientAnimation([inst], RING_GLINT_PERIOD_SEC * 0.5, new Date())[0].sprite, sprite);
+  });
+});
+
 describe('night lights', () => {
   const night = ambientFor('night', new Date());
   const day = ambientFor('day', new Date());
@@ -317,5 +360,17 @@ describe('night lights', () => {
     const dusk = ambientForHour(18.75);
     assert.equal(moonlightFor(dusk), 0);
     assert.equal(collectLights([], furniture, moonlightFor(dusk)).length, 3);
+  });
+});
+
+describe('portal swirl (color cycle)', () => {
+  test('each step moves every band color one place along the ring', () => {
+    const spec = getAmbientSpec('PORTAL_BLUE');
+    assert.ok(spec && spec.kind === 'cycle');
+    const [a, b, c, d] = spec.colors;
+    const sprite = [[a, b, c, d, '']];
+    assert.deepEqual(cycleSprite(sprite, spec, 1), [[b, c, d, a, '']]);
+    assert.equal(cycleStep(0, spec), 0);
+    assert.equal(cycleStep(spec.stepSec * 5, spec), 1);
   });
 });

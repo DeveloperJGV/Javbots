@@ -1,0 +1,17 @@
+{
+  "quitar": [["LAMP", 23, 26], ["CUSHIONED_BENCH", 17, 22], ["CUSHIONED_BENCH", 21, 22]],
+  "poner": [
+    {"uid": "aperture-letrero-camara", "type": "CHAMBER_SIGN", "col": 17, "row": 16},
+    {"uid": "aperture-wheatley", "type": "WHEATLEY", "col": 21, "row": 16},
+    {"uid": "aperture-banco-1", "type": "APERTURE_STOOL", "col": 17, "row": 22},
+    {"uid": "aperture-banco-2", "type": "APERTURE_STOOL", "col": 21, "row": 22},
+    {"uid": "aperture-boton", "type": "BIG_BUTTON", "col": 16, "row": 27},
+    {"uid": "aperture-pastel", "type": "CAKE", "col": 23, "row": 26},
+    {"uid": "aperture-hierba", "type": "GREEN_HERB", "col": 15, "row": 18},
+    {"uid": "aperture-maquina", "type": "TYPEWRITER", "col": 23, "row": 18},
+    {"uid": "aperture-maletin", "type": "VIRUS_CASE", "col": 15, "row": 26},
+    {"uid": "aperture-ambar", "type": "AMBER_PEDESTAL", "col": 15, "row": 23},
+    {"uid": "aperture-lata", "type": "EMBRYO_CAN", "col": 24, "row": 27}
+  ],
+  "mover": [{"uid": "aperture-cubo", "col": 18, "row": 27}]
+}

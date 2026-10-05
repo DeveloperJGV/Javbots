@@ -1,9 +1,44 @@
 import {
+  FIRE_FLICKER_FRACTION,
+  FIRE_FLICKER_PERIOD_SEC,
+  FIRE_FLICKER_SWAPS,
+  FLUX_BRIGHT_FRACTION,
+  FLUX_CORE,
+  FLUX_DIM_CORE,
+  FLUX_DIM_GLOW,
+  FLUX_GLOW,
+  FLUX_PULSE_PERIOD_SEC,
+  LAVA_BANDS,
+  LAVA_CYCLE_STEP_SEC,
+  MATRIX_BANDS,
+  MATRIX_CYCLE_STEP_SEC,
+  NEON_CORE,
+  NEON_DIM_CORE,
+  NEON_DIM_GLOW,
+  NEON_FLICKER_FRACTION,
+  NEON_FLICKER_PERIOD_SEC,
+  NEON_GLOW,
   PLANT_SWAY_FOLIAGE_FRACTION,
   PLANT_SWAY_STEP_SEC,
+  PORTAL_BLUE_BANDS,
+  PORTAL_CYCLE_STEP_SEC,
+  PORTAL_ORANGE_BANDS,
+  RACK_BLINK_FRACTION,
+  RACK_BLINK_PERIOD_SEC,
+  RACK_LED_AMBER,
+  RACK_LED_AMBER_DIM,
+  RACK_LED_GREEN,
+  RACK_LED_GREEN_DIM,
+  RING_GLINT,
+  RING_GLINT_FRACTION,
+  RING_GLINT_PERIOD_SEC,
+  RING_GLINT_SOFT,
+  RING_GOLD,
+  RING_GOLD_SOFT,
   STANDBY_LED_COLOR,
   STANDBY_LED_ON_FRACTION,
   STANDBY_LED_PERIOD_SEC,
+  TORCH_FLICKER_SWAPS,
   WINDOW_CLOUD,
   WINDOW_DUSK_CLOUD,
   WINDOW_DUSK_LOWER,
@@ -41,6 +76,20 @@ type AmbientSpec =
   | { kind: 'sway'; hanging: boolean }
   | { kind: 'led'; x: number; y: number }
   | {
+      /** Swap some colors for others during part of a loop (glows, pulses, glints). */
+      kind: 'pulse';
+      swaps: ReadonlyArray<readonly [string, string]>;
+      periodSec: number;
+      /** Fraction of the loop, from its start, that shows the swapped colors. */
+      swapFraction: number;
+    }
+  | {
+      /** Rotate a ring of colors one step at a time (portal swirls). */
+      kind: 'cycle';
+      colors: readonly string[];
+      stepSec: number;
+    }
+  | {
       kind: 'window';
       /** Glass rows above this one are the upper pane (where the moon rises). */
       splitY: number;
@@ -54,7 +103,65 @@ const AMBIENT_SPECS: Record<string, AmbientSpec> = {
   PLANT_2: { kind: 'sway', hanging: false },
   LARGE_PLANT: { kind: 'sway', hanging: false },
   HANGING_PLANT: { kind: 'sway', hanging: true },
-  PC_FRONT_OFF: { kind: 'led', x: 14, y: 14 },
+  PC_FRONT_OFF: { kind: 'led', x: 12, y: 12 },
+  // Bright as drawn, dim between pulses
+  FLUX_CAPACITOR: {
+    kind: 'pulse',
+    swaps: [
+      [FLUX_CORE, FLUX_DIM_CORE],
+      [FLUX_GLOW, FLUX_DIM_GLOW],
+    ],
+    periodSec: FLUX_PULSE_PERIOD_SEC,
+    swapFraction: 1 - FLUX_BRIGHT_FRACTION,
+  },
+  // Flames flicker (fast, desynced only by the global clock: fine at this scale)
+  BASEMENT_FIRE: {
+    kind: 'pulse',
+    swaps: FIRE_FLICKER_SWAPS,
+    periodSec: FIRE_FLICKER_PERIOD_SEC,
+    swapFraction: FIRE_FLICKER_FRACTION,
+  },
+  BASEMENT_TORCH: {
+    kind: 'pulse',
+    swaps: TORCH_FLICKER_SWAPS,
+    periodSec: FIRE_FLICKER_PERIOD_SEC,
+    swapFraction: FIRE_FLICKER_FRACTION,
+  },
+  // Plain gold, with a short glint now and then
+  RING_PEDESTAL: {
+    kind: 'pulse',
+    swaps: [
+      [RING_GOLD, RING_GLINT],
+      [RING_GOLD_SOFT, RING_GLINT_SOFT],
+    ],
+    periodSec: RING_GLINT_PERIOD_SEC,
+    swapFraction: RING_GLINT_FRACTION,
+  },
+  // Neon "88": on as drawn, a short flicker off now and then
+  NEON_88: {
+    kind: 'pulse',
+    swaps: [
+      [NEON_CORE, NEON_DIM_CORE],
+      [NEON_GLOW, NEON_DIM_GLOW],
+    ],
+    periodSec: NEON_FLICKER_PERIOD_SEC,
+    swapFraction: NEON_FLICKER_FRACTION,
+  },
+  LAVA_LAMP: { kind: 'cycle', colors: LAVA_BANDS, stepSec: LAVA_CYCLE_STEP_SEC },
+  // Matrix rain falls; server LEDs blink
+  MATRIX_SCREEN: { kind: 'cycle', colors: MATRIX_BANDS, stepSec: MATRIX_CYCLE_STEP_SEC },
+  SERVER_RACK: {
+    kind: 'pulse',
+    swaps: [
+      [RACK_LED_GREEN, RACK_LED_GREEN_DIM],
+      [RACK_LED_AMBER, RACK_LED_AMBER_DIM],
+    ],
+    periodSec: RACK_BLINK_PERIOD_SEC,
+    swapFraction: RACK_BLINK_FRACTION,
+  },
+  // Portals: the swirl bands turn round and round
+  PORTAL_BLUE: { kind: 'cycle', colors: PORTAL_BLUE_BANDS, stepSec: PORTAL_CYCLE_STEP_SEC },
+  PORTAL_ORANGE: { kind: 'cycle', colors: PORTAL_ORANGE_BANDS, stepSec: PORTAL_CYCLE_STEP_SEC },
   WINDOW: {
     kind: 'window',
     splitY: 19,
@@ -198,6 +305,53 @@ export function ledSprite(sprite: SpriteData, x: number, y: number): SpriteData 
   return out;
 }
 
+// ── Pulses (flux capacitor, ring) ──────────────────────────────
+
+type PulseSpec = Extract<AmbientSpec, { kind: 'pulse' }>;
+
+export function pulseSwapped(timeSec: number, spec: PulseSpec): boolean {
+  return (timeSec % spec.periodSec) / spec.periodSec < spec.swapFraction;
+}
+
+const pulseCache = new WeakMap<SpriteData, SpriteData>();
+
+/** The sprite with the spec's colors swapped (sprites carry upper-case hex). */
+export function pulseSprite(sprite: SpriteData, spec: PulseSpec): SpriteData {
+  const hit = pulseCache.get(sprite);
+  if (hit) return hit;
+  const swaps = new Map(spec.swaps.map(([from, to]) => [from.toLowerCase(), to]));
+  const out = sprite.map((row) => row.map((px) => swaps.get(px.toLowerCase()) ?? px));
+  pulseCache.set(sprite, out);
+  return out;
+}
+
+// ── Color cycles (portals) ─────────────────────────────────────
+
+type CycleSpec = Extract<AmbientSpec, { kind: 'cycle' }>;
+
+/** Which step of its loop a cycle is on. */
+export function cycleStep(timeSec: number, spec: CycleSpec): number {
+  return Math.floor(timeSec / spec.stepSec) % spec.colors.length;
+}
+
+const cycleCache = new WeakMap<SpriteData, Map<number, SpriteData>>();
+
+/** The sprite with each listed color moved `step` places along the list. */
+export function cycleSprite(sprite: SpriteData, spec: CycleSpec, step: number): SpriteData {
+  let variants = cycleCache.get(sprite);
+  if (!variants) {
+    variants = new Map();
+    cycleCache.set(sprite, variants);
+  }
+  const hit = variants.get(step);
+  if (hit) return hit;
+  const n = spec.colors.length;
+  const to = new Map(spec.colors.map((c, i) => [c.toLowerCase(), spec.colors[(i + step) % n]]));
+  const out = sprite.map((row) => row.map((px) => to.get(px.toLowerCase()) ?? px));
+  variants.set(step, out);
+  return out;
+}
+
 // ── Windows ────────────────────────────────────────────────────
 
 export type SkyPhase = 'day' | 'dusk' | 'night';
@@ -273,6 +427,11 @@ export function applyAmbientAnimation(
       sprite = swaySprite(f.sprite, swayOffset(timeSec, phase), spec.hanging);
     } else if (spec.kind === 'window') {
       sprite = windowSprite(f.sprite, spec, phase);
+    } else if (spec.kind === 'pulse') {
+      if (pulseSwapped(timeSec, spec)) sprite = pulseSprite(f.sprite, spec);
+    } else if (spec.kind === 'cycle') {
+      const step = cycleStep(timeSec, spec);
+      if (step) sprite = cycleSprite(f.sprite, spec, step);
     } else if (ledOn(timeSec)) {
       sprite = ledSprite(f.sprite, spec.x, spec.y);
     }

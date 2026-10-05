@@ -1,0 +1,13 @@
+{
+  "id": "AE86",
+  "name": "AE86 (Initial D)",
+  "category": "misc",
+  "type": "asset",
+  "canPlaceOnWalls": false,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 1,
+  "width": 80,
+  "height": 48,
+  "footprintW": 5,
+  "footprintH": 3
+}

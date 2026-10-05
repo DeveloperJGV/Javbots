@@ -16,6 +16,8 @@ import {
   PET_HIT_HEIGHT,
   SPARK_HEAD_HEIGHT_PX,
   TEAR_EYE_HEIGHT_PX,
+  TELEPORT_BEAM_ORIGIN_X,
+  TELEPORT_BEAM_ORIGIN_Y,
   WAITING_BUBBLE_DURATION_SEC,
   ZONE_ERROR_COOLDOWN_SEC,
   ZONE_ERROR_HOLD_SEC,
@@ -82,6 +84,8 @@ export class OfficeState {
   furnitureAnimTimer = 0;
   /** Steam, sparks and dust (fork, Fase 2). */
   particles = new ParticleSystem();
+  /** Agents that already set off the Light Labs teleporter since they last entered the zone. */
+  private teleported = new WeakSet<Character>();
   selectedAgentId: number | null = null;
   cameraFollowId: number | null = null;
   hoveredAgentId: number | null = null;
@@ -929,6 +933,7 @@ export class OfficeState {
 
   /** Give up the zone spot; the agent heads back to its desk if still working. */
   private leaveZone(ch: Character): void {
+    this.teleported.delete(ch);
     ch.zoneAt = null;
     ch.zoneSpot = null;
     ch.zonePendingSec = 0;
@@ -937,6 +942,7 @@ export class OfficeState {
 
   /** Move an agent to a zone (null = its desk), reserving a spot there. */
   private enterZone(ch: Character, kind: ZoneKind | null): void {
+    this.teleported.delete(ch);
     ch.zoneAt = kind;
     ch.zoneSpot = null;
     ch.zonePendingSec = 0;
@@ -975,6 +981,20 @@ export class OfficeState {
     if (ch.isSubagent || ch.errorCooldownSec > 0) return;
     ch.errorHoldSec = ZONE_ERROR_HOLD_SEC;
     ch.errorCooldownSec = ZONE_ERROR_COOLDOWN_SEC;
+  }
+
+  /** An agent reaching its spot in Light Labs makes the teleporter capsule beam (Mega Man), once per visit. */
+  private fireTeleporterOnArrival(ch: Character): void {
+    const spot = ch.zoneSpot;
+    if (ch.zoneAt !== Zone.WEB || !spot || this.teleported.has(ch)) return;
+    if (ch.tileCol !== spot.col || ch.tileRow !== spot.row) return;
+    this.teleported.add(ch);
+    if (!areParticlesEnabled()) return;
+    for (const f of this.furniture) {
+      if (f.type === 'TELEPORTER') {
+        this.particles.burstTeleport(f.x + TELEPORT_BEAM_ORIGIN_X, f.y + TELEPORT_BEAM_ORIGIN_Y);
+      }
+    }
   }
 
   /** A tool finished: a command done in the DeLorean workshop hits 88 mph. */
@@ -1258,6 +1278,8 @@ export class OfficeState {
       this.withOwnSeatUnblocked(ch, () =>
         updateCharacter(ch, dt, this.walkableTiles, this.seats, this.tileMap, this.blockedTiles),
       );
+
+      this.fireTeleporterOnArrival(ch);
 
       // Thinking bubble counts up to drive its dot animation
       if (ch.bubbleType === 'thinking') ch.bubbleTimer += dt;

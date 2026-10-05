@@ -51,3 +51,8 @@ agent-orchestrator.yaml
 .serena/
 tasks/
 
+# Pixeles privados: se cargan como carpeta externa
+arte/privado/
+
+# Python
+__pycache__/

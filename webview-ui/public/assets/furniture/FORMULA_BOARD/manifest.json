@@ -1,0 +1,13 @@
+{
+  "id": "FORMULA_BOARD",
+  "name": "Pizarr\u00f3n de f\u00f3rmulas",
+  "category": "wall",
+  "type": "asset",
+  "canPlaceOnWalls": true,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 0,
+  "width": 32,
+  "height": 32,
+  "footprintW": 2,
+  "footprintH": 2
+}
