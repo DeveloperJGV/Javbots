@@ -5,6 +5,7 @@ import {
   LOOK_AROUND_MAX_SEC,
   LOOK_AROUND_MIN_SEC,
 } from '../../constants.js';
+import { atLeisureStop, leisurePose } from '../leisure/leisure.js';
 import type { Character, SpriteData } from '../types.js';
 import { CharacterState, Direction } from '../types.js';
 
@@ -24,11 +25,12 @@ export function isInhaling(breathTimer: number): boolean {
 }
 
 /** Breathing shows only while the body is otherwise still: standing idle, or
- *  seated thinking (the typing/reading frames already move). */
+ *  seated thinking / resting still (the typing/reading frames already move). */
 export function isBreathingPose(ch: Character): boolean {
   if (ch.matrixEffect) return false;
   if (ch.state === CharacterState.IDLE) return true;
-  return ch.state === CharacterState.TYPE && ch.bubbleType === 'thinking';
+  if (ch.state !== CharacterState.TYPE) return false;
+  return ch.bubbleType === 'thinking' || leisurePose(ch) === 'still';
 }
 
 const inhaleCache = new WeakMap<SpriteData, SpriteData>();
@@ -85,7 +87,8 @@ export function pickLookDirection(current: Direction, rand = Math.random): Direc
 /** Advance the idle timers. Called every frame from the character FSM. */
 export function updateIdleMotion(ch: Character, dt: number): void {
   ch.breathTimer += dt;
-  if (ch.state !== CharacterState.IDLE || ch.isActive) {
+  // Looking at a statue / the stars / the coffee maker: keep facing it
+  if (ch.state !== CharacterState.IDLE || ch.isActive || atLeisureStop(ch)) {
     // Re-arm so a character that just stopped doesn't spin around at once.
     ch.lookTimer = Math.max(ch.lookTimer, LOOK_AROUND_MIN_SEC);
     return;

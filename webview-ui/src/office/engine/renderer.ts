@@ -9,7 +9,6 @@ import {
   AREA_LABEL_SHADOW_COLOR,
   AREA_OVERLAY_ALPHA,
   BUBBLE_FADE_DURATION_SEC,
-  BUBBLE_SITTING_OFFSET_PX,
   BUBBLE_VERTICAL_OFFSET_PX,
   BUTTON_ICON_COLOR,
   BUTTON_ICON_SIZE_FACTOR,
@@ -19,7 +18,6 @@ import {
   BUTTON_RADIUS_ZOOM_FACTOR,
   CARPET_DEFAULT_ACCENT_COLOR,
   CARPET_DEFAULT_COLOR,
-  CHARACTER_SITTING_OFFSET_PX,
   CHARACTER_Z_SORT_OFFSET,
   DELETE_BUTTON_BG,
   FALLBACK_FLOOR_COLOR,
@@ -88,7 +86,7 @@ import { getCharacterSprite } from './characters.js';
 import { renderInternEffect } from './internEffect.js';
 import { renderMatrixEffect } from './matrixEffect.js';
 import { getPetSpriteData } from './petEntity.js';
-import { isSeated } from './posture.js';
+import { bubbleSittingDropPx, sittingDropPx } from './posture.js';
 
 // ── Settings ────────────────────────────────────────────────────
 
@@ -415,7 +413,7 @@ export function renderScene(
     const charZoom = ch.isSubagent ? Math.max(1, Math.round(zoom * SUBAGENT_SCALE)) : zoom;
     const cached = getCachedSprite(spriteData, charZoom);
     // Sitting offset: shift character down when seated so they visually sit in the chair
-    const sittingOffset = isSeated(ch) ? CHARACTER_SITTING_OFFSET_PX : 0;
+    const sittingOffset = sittingDropPx(ch);
     // Anchor at bottom-center of character — round to integer device pixels
     const drawX = Math.round(offsetX + ch.x * zoom - cached.width / 2);
     const drawY = Math.round(offsetY + (ch.y + sittingOffset) * zoom - cached.height);
@@ -825,7 +823,7 @@ function renderBubbles(
     // Position: centered above the character's head
     // Character is anchored bottom-center at (ch.x, ch.y), sprite is 16x24
     // Place bubble above head with a small gap; follow sitting offset
-    const sittingOff = isSeated(ch) ? BUBBLE_SITTING_OFFSET_PX : 0;
+    const sittingOff = bubbleSittingDropPx(ch);
     const bubbleX = Math.round(offsetX + ch.x * zoom - cached.width / 2);
     const bubbleY = Math.round(
       offsetY + (ch.y + sittingOff - BUBBLE_VERTICAL_OFFSET_PX) * zoom - cached.height - 1 * zoom,

@@ -75,3 +75,31 @@ export function overlayProjection(
     toWorldLength: (cssPx) => (cssPx * dpr) / zoom,
   };
 }
+
+/**
+ * How to show the whole map in the viewport (device px). Pixels only land on
+ * the grid at whole zooms, so the map is drawn at `zoom` (the next whole zoom
+ * at or above the exact fit) and the canvas carries `scale` times more pixels
+ * than the screen, which the browser shrinks to the exact size. `padTopTiles`
+ * counts the walls drawn above row 0. At `max`, nothing is shrunk.
+ */
+export function fitView(
+  viewW: number,
+  viewH: number,
+  cols: number,
+  rows: number,
+  padTopTiles: number,
+  min: number,
+  max: number,
+): { zoom: number; scale: number } {
+  const exact = Math.min(
+    viewW / (cols * TILE_SIZE),
+    viewH / ((rows + padTopTiles) * TILE_SIZE),
+  );
+  if (exact >= max) return { zoom: max, scale: 1 };
+  // A hair under a whole zoom is that zoom: no shrinking for a rounding error.
+  const nearest = Math.round(exact);
+  if (nearest >= min && Math.abs(exact - nearest) < 0.02) return { zoom: nearest, scale: 1 };
+  const zoom = Math.max(min, Math.ceil(exact));
+  return { zoom, scale: zoom / exact };
+}

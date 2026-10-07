@@ -49,4 +49,4 @@ npm run e2e       # Playwright (navegador)
 ## Créditos y licencia
 
 - Código original: © 2026 Pablo De Lucca, licencia [MIT](LICENSE). Este fork mantiene la misma licencia.
-- Personajes basados en [Metro City](https://jik-a-4.itch.io/metrocity-free-topdown-character-pack) de JIK-A-4.
+- Personajes propios (homenajes), hechos con [PixelLab](https://www.pixellab.ai) y retocados por código.

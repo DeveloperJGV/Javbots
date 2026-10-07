@@ -27,6 +27,7 @@ export type TileType = (typeof TileType)[keyof typeof TileType];
 /** Re-export ColorValue for consumers that import color types from office/types */
 export type { ColorValue } from '../components/ui/types.js';
 import type { ColorValue } from '../components/ui/types.js';
+import type { LeisureState } from './leisure/leisure.js';
 import type { ZoneKind } from './zones/taskZones.js';
 import type { ZoneSpot } from './zones/zoneSpots.js';
 
@@ -281,6 +282,14 @@ export interface Character {
   errorHoldSec: number;
   /** Counts down until a new failure may send it to the error zone again. */
   errorCooldownSec: number;
+
+  // -- Free time (fork, Fase 5.1) --
+  /** Free-time activity under way, or null (working, wandering, or resting at its desk). */
+  leisure: LeisureState | null;
+  /** Seconds since the agent last worked; free time starts at LEISURE_START_SEC. */
+  idleSec: number;
+  /** An intern done with its task, resting before it leaves: seconds left, else null. */
+  internRestSec: number | null;
 
   // -- Context gauge --
   /** Tokens in the agent's context as of its newest turn; 0 until reported.

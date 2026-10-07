@@ -5,7 +5,6 @@ import {
   BOSS_INTERNS,
   CHARACTER_HIT_HALF_WIDTH,
   CHARACTER_HIT_HEIGHT,
-  CHARACTER_SITTING_OFFSET_PX,
   DISMISS_BUBBLE_FAST_FADE_SEC,
   FURNITURE_ANIM_INTERVAL_SEC,
   GREETER_ID,
@@ -13,6 +12,18 @@ import {
   INACTIVE_SEAT_TIMER_MIN_SEC,
   INACTIVE_SEAT_TIMER_RANGE_SEC,
   INTERN_LEAVE_MAX_SEC,
+  INTERN_REST_MAX_SEC,
+  INTERN_REST_MIN_SEC,
+  LEISURE_ACTIVITY_MAX_SEC,
+  LEISURE_ACTIVITY_MIN_SEC,
+  LEISURE_NIGHT_LIGHTS_MIN,
+  LEISURE_RETRY_SEC,
+  LEISURE_START_SEC,
+  LEISURE_TOUR_STOPS_MAX,
+  LEISURE_TOUR_STOPS_MIN,
+  LEISURE_WANDER_CHANCE,
+  LEISURE_WANDER_MAX_SEC,
+  LEISURE_WANDER_MIN_SEC,
   MAX_PET_ID_LENGTH,
   PALETTE_COUNT,
   PET_HIT_HALF_WIDTH,
@@ -38,6 +49,16 @@ import {
   layoutToTileMap,
 } from '../layout/layoutSerializer.js';
 import { findPath, getWalkableTiles, isWalkable } from '../layout/tileMap.js';
+import type { LeisureActivity } from '../leisure/leisure.js';
+import {
+  ALL_LEISURE,
+  atLeisureStop,
+  findLeisureSpots,
+  INTERN_LEISURE,
+  isNightOnly,
+  pickLeisureStops,
+  shuffled,
+} from '../leisure/leisure.js';
 import { getPetCount, getPetName } from '../sprites/petSpriteData.js';
 import { getLoadedCharacterCount } from '../sprites/spriteData.js';
 import type {
@@ -63,7 +84,7 @@ import {
 import { createCharacter, updateCharacter } from './characters.js';
 import { advanceMatrixEffect, startMatrixEffect } from './matrixEffectState.js';
 import { createPet, updatePet } from './petEntity.js';
-import { isSeated } from './posture.js';
+import { sittingDropPx } from './posture.js';
 import { anchorTile, closestFreeSeat } from './seatPlacement.js';
 
 /** Internal helper: facing-tile coords for a seat. Returns null for invalid direction. */
@@ -295,6 +316,8 @@ export class OfficeState {
     const own = this.ownSeatKey(ch);
     if (own) keys.push(own);
     if (ch.zoneSpot?.seatUid) keys.push(`${ch.zoneSpot.col},${ch.zoneSpot.row}`);
+    const stop = ch.leisure?.stops[0];
+    if (stop?.seatUid) keys.push(`${stop.col},${stop.row}`);
     const unblocked = keys.filter((k) => this.blockedTiles.delete(k));
     const result = fn();
     for (const k of unblocked) this.blockedTiles.add(k);
@@ -475,7 +498,9 @@ export class OfficeState {
 
     let palette: number;
     let hueShift: number;
-    if (preferredPalette !== undefined) {
+    // A remembered palette must be a boss sheet: an older page could persist an
+    // intern's (e.g. 9 = Wheatley), which would turn the agent into that intern.
+    if (preferredPalette !== undefined && preferredPalette < PALETTE_COUNT) {
       palette = preferredPalette;
       hueShift = preferredHueShift ?? 0;
     } else {
@@ -749,6 +774,8 @@ export class OfficeState {
   /** An intern done with its task walks back to its boss and fades out there (Fase 4B). With no
    *  boss to walk to (it is leaving too) or no path, it fades out where it stands. */
   private startInternLeaving(ch: Character): void {
+    ch.leisure = null;
+    ch.internRestSec = null;
     if (ch.seatId) {
       const seat = this.seats.get(ch.seatId);
       if (seat) seat.assigned = false;
@@ -820,14 +847,15 @@ export class OfficeState {
 
     const ch = this.characters.get(id);
     if (ch) {
-      if (ch.matrixEffect === 'despawn' || ch.leavingSec !== null) {
-        // Already leaving — just clean up maps
+      if (this.isInternDone(ch)) {
+        // Already resting or leaving — just clean up maps
         this.subagentIdMap.delete(key);
         this.subagentMeta.delete(id);
         return;
       }
-      // Walk back to the boss, then fade out — keeps the character in the map meanwhile
-      this.startInternLeaving(ch);
+      // Rest a while in the interns' room, then walk back to the boss and fade out —
+      // keeps the character in the map meanwhile
+      this.startInternRest(ch);
     }
     // Clean up tracking maps immediately so keys don't collide
     this.subagentIdMap.delete(key);
@@ -844,13 +872,13 @@ export class OfficeState {
       if (meta && meta.parentAgentId === parentAgentId) {
         const ch = this.characters.get(id);
         if (ch) {
-          if (ch.matrixEffect === 'despawn' || ch.leavingSec !== null) {
-            // Already leaving — just clean up maps
+          if (this.isInternDone(ch)) {
+            // Already resting or leaving — just clean up maps
             this.subagentMeta.delete(id);
             toRemove.push(key);
             continue;
           }
-          this.startInternLeaving(ch);
+          this.startInternRest(ch);
         }
         this.subagentMeta.delete(id);
         if (this.selectedAgentId === id) this.selectedAgentId = null;
@@ -872,6 +900,11 @@ export class OfficeState {
     const ch = this.characters.get(id);
     if (ch) {
       ch.isActive = active;
+      if (active) {
+        // Back to work: drop the free-time activity and get up from the couch
+        ch.idleSec = 0;
+        this.endLeisure(ch);
+      }
       if (!active) {
         if (!ch.isSubagent) {
           ch.activityZone = null;
@@ -998,11 +1031,14 @@ export class OfficeState {
         const taken = new Set<string>();
         for (const other of this.characters.values()) {
           if (other === ch) continue;
-          taken.add(`${other.tileCol},${other.tileRow}`);
           if (other.zoneSpot) taken.add(`${other.zoneSpot.col},${other.zoneSpot.row}`);
+          // Someone on a break makes room for whoever comes to work (Fase 5.1)
+          if (other.leisure) continue;
+          taken.add(`${other.tileCol},${other.tileRow}`);
         }
         const tiers = findZoneSpots(this.layout, kind, this.seats, this.tileMap, this.blockedTiles);
         ch.zoneSpot = pickZoneSpot(tiers, taken);
+        if (ch.zoneSpot) this.makeRoomAt(ch, ch.zoneSpot.col, ch.zoneSpot.row);
       }
     }
     // Get up from wherever it is working so the FSM walks to the new spot
@@ -1013,13 +1049,186 @@ export class OfficeState {
     }
   }
 
+  // ── Free time (fork, Fase 5.1) ─────────────────────────────
+
+  /** An intern done with its task: resting first, or already walking home / fading. */
+  private isInternDone(ch: Character): boolean {
+    return ch.matrixEffect === 'despawn' || ch.leavingSec !== null || ch.internRestSec !== null;
+  }
+
+  private isNight(): boolean {
+    return currentAmbient(getDayNightMode()).lights >= LEISURE_NIGHT_LIGHTS_MIN;
+  }
+
+  /** "col,row" of every place someone else holds: where they are, their zone spot, their free-time stops. */
+  private leisureTaken(ch: Character): Set<string> {
+    const taken = new Set<string>();
+    for (const other of this.characters.values()) {
+      if (other === ch) continue;
+      taken.add(`${other.tileCol},${other.tileRow}`);
+      if (other.zoneSpot) taken.add(`${other.zoneSpot.col},${other.zoneSpot.row}`);
+      for (const stop of other.leisure?.stops ?? []) taken.add(`${stop.col},${stop.row}`);
+    }
+    return taken;
+  }
+
+  /** Pick a free-time activity from `pool` (never `except`) with a free spot; false when none has one. */
+  private startLeisure(
+    ch: Character,
+    pool: readonly LeisureActivity[],
+    except?: LeisureActivity,
+  ): boolean {
+    const night = this.isNight();
+    const taken = this.leisureTaken(ch);
+    const options = pool.filter((a) => a !== except && (night || !isNightOnly(a)));
+    for (const activity of shuffled(options, Math.random)) {
+      const groups = findLeisureSpots(
+        activity,
+        this.layout,
+        this.seats,
+        this.tileMap,
+        this.blockedTiles,
+      );
+      const tourStops = randomInt(LEISURE_TOUR_STOPS_MIN, LEISURE_TOUR_STOPS_MAX);
+      const stops = pickLeisureStops(activity, groups, taken, tourStops, {
+        col: ch.tileCol,
+        row: ch.tileRow,
+      });
+      if (!stops) continue;
+      const stopSec =
+        randomRange(LEISURE_ACTIVITY_MIN_SEC, LEISURE_ACTIVITY_MAX_SEC) / stops.length;
+      ch.leisure = { activity, stops, sec: stopSec, stopSec, arrived: false, failed: false };
+      ch.seatTimer = 0;
+      // Get up (from its own desk, or the previous activity's seat) and walk there
+      if (ch.state === CharacterState.TYPE) {
+        ch.state = CharacterState.IDLE;
+        ch.frame = 0;
+        ch.frameTimer = 0;
+      }
+      return true;
+    }
+    return false;
+  }
+
+  /** Drop the free-time activity; a seated agent stands up (and walks to work if it is working). */
+  private endLeisure(ch: Character): void {
+    if (!ch.leisure) return;
+    ch.leisure = null;
+    if (ch.state === CharacterState.TYPE) {
+      ch.state = CharacterState.IDLE;
+      ch.frame = 0;
+      ch.frameTimer = 0;
+    }
+  }
+
+  /** Wander as before for `sec` seconds, then pick an activity again. */
+  private wanderFor(ch: Character, sec: number): void {
+    ch.idleSec = Math.min(ch.idleSec, LEISURE_START_SEC - sec);
+  }
+
+  /** Whoever is resting on (or heading to) this tile gets up for an agent coming to work. */
+  private makeRoomAt(worker: Character, col: number, row: number): void {
+    for (const other of this.characters.values()) {
+      if (other === worker || !other.leisure) continue;
+      const here = other.tileCol === col && other.tileRow === row;
+      if (here || other.leisure.stops.some((s) => s.col === col && s.row === row)) {
+        this.endLeisure(other);
+      }
+    }
+  }
+
+  /** Advance the current activity: 'busy' while it lasts, 'done' when over, 'failed' when unreachable. */
+  private tickLeisure(ch: Character, dt: number): 'busy' | 'done' | 'failed' {
+    const l = ch.leisure!;
+    if (l.failed) return 'failed';
+    if (isNightOnly(l.activity) && !this.isNight()) return 'done';
+    if (!atLeisureStop(ch)) return 'busy';
+    l.sec -= dt;
+    if (l.sec > 0) return 'busy';
+    if (l.stops.length > 1) {
+      // Next statue of the gallery
+      l.stops.shift();
+      l.sec = l.stopSec;
+      l.arrived = false;
+      return 'busy';
+    }
+    return 'done';
+  }
+
+  /** Free time of an agent: starts after LEISURE_START_SEC without work, one activity after another. */
+  private updateLeisure(ch: Character, dt: number): void {
+    if (ch.isActive) {
+      ch.idleSec = 0;
+      return;
+    }
+    ch.idleSec += dt;
+    if (ch.leisure) {
+      const result = this.tickLeisure(ch, dt);
+      if (result === 'busy') return;
+      const last = ch.leisure.activity;
+      this.endLeisure(ch);
+      if (result === 'failed') {
+        this.wanderFor(ch, LEISURE_RETRY_SEC);
+      } else if (Math.random() < LEISURE_WANDER_CHANCE) {
+        this.wanderFor(ch, randomRange(LEISURE_WANDER_MIN_SEC, LEISURE_WANDER_MAX_SEC));
+      } else if (!this.startLeisure(ch, ALL_LEISURE, last)) {
+        this.wanderFor(ch, LEISURE_RETRY_SEC);
+      }
+      return;
+    }
+    if (ch.idleSec >= LEISURE_START_SEC && !this.startLeisure(ch, ALL_LEISURE)) {
+      this.wanderFor(ch, LEISURE_RETRY_SEC);
+    }
+  }
+
+  /** An intern done with its task rests in the interns' room before going home.
+   *  Nothing free there: it leaves at once, as before. */
+  private startInternRest(ch: Character): void {
+    if (ch.seatId) {
+      const seat = this.seats.get(ch.seatId);
+      if (seat) seat.assigned = false;
+      ch.seatId = null;
+    }
+    ch.bubbleType = null;
+    ch.zoneSpot = null;
+    ch.zoneAt = null;
+    ch.isActive = false;
+    ch.currentTool = null;
+    ch.internRestSec = randomRange(INTERN_REST_MIN_SEC, INTERN_REST_MAX_SEC);
+    if (!this.startLeisure(ch, INTERN_LEISURE)) this.startInternLeaving(ch);
+  }
+
+  /** Resting intern: one interns'-room activity after another, then home (at once if the boss left). */
+  private updateInternRest(ch: Character, dt: number): void {
+    ch.internRestSec = (ch.internRestSec ?? 0) - dt;
+    const boss = ch.parentAgentId !== null ? this.characters.get(ch.parentAgentId) : undefined;
+    const bossGone = !boss || boss.matrixEffect === 'despawn';
+    if (ch.internRestSec <= 0 || bossGone || !ch.leisure) {
+      this.endLeisure(ch);
+      this.startInternLeaving(ch);
+      return;
+    }
+    const result = this.tickLeisure(ch, dt);
+    if (result === 'busy') return;
+    const last = ch.leisure.activity;
+    this.endLeisure(ch);
+    if (!this.startLeisure(ch, INTERN_LEISURE, result === 'done' ? last : undefined)) {
+      this.startInternLeaving(ch);
+    }
+  }
+
+  /** The free-time activity an idle agent is on, or null. */
+  getLeisureActivity(id: number): LeisureActivity | null {
+    return this.characters.get(id)?.leisure?.activity ?? null;
+  }
+
   /** A tool failed: the agent cries and, unless it went recently, heads to the
    *  error zone for a moment (The Binding of Isaac). */
   onToolFailed(id: number): void {
     const ch = this.characters.get(id);
     if (!ch || ch.matrixEffect) return;
     if (areParticlesEnabled()) {
-      const sitting = isSeated(ch) ? CHARACTER_SITTING_OFFSET_PX : 0;
+      const sitting = sittingDropPx(ch);
       this.particles.burstTears(ch.x, ch.y + sitting - TEAR_EYE_HEIGHT_PX);
     }
     if (ch.isSubagent || ch.errorCooldownSec > 0) return;
@@ -1101,7 +1310,7 @@ export class OfficeState {
       ch.bubbleTimer = WAITING_BUBBLE_DURATION_SEC;
       // Turn finished: a little burst of sparks over the head
       if (areParticlesEnabled() && !ch.matrixEffect) {
-        const sitting = isSeated(ch) ? CHARACTER_SITTING_OFFSET_PX : 0;
+        const sitting = sittingDropPx(ch);
         this.particles.burstSparks(ch.x, ch.y + sitting - SPARK_HEAD_HEIGHT_PX);
       }
     }
@@ -1313,6 +1522,24 @@ export class OfficeState {
         continue; // skip normal FSM while the effect is (or just was) active
       }
 
+      // An intern resting before going home (Fase 5.1): no zones, just the interns' room
+      if (ch.internRestSec !== null) {
+        this.updateInternRest(ch, dt);
+        if (ch.internRestSec !== null) {
+          this.withOwnSeatUnblocked(ch, () =>
+            updateCharacter(
+              ch,
+              dt,
+              this.walkableTiles,
+              this.seats,
+              this.tileMap,
+              this.blockedTiles,
+            ),
+          );
+          continue;
+        }
+      }
+
       // An intern walking back to its boss: no zones, just the walk, then fade out
       if (ch.leavingSec !== null) {
         ch.leavingSec -= dt;
@@ -1328,6 +1555,7 @@ export class OfficeState {
       ch.errorCooldownSec = Math.max(0, ch.errorCooldownSec - dt);
       const wanted = wantedZone(ch);
       if (shouldSwitchZone(ch, wanted, dt)) this.enterZone(ch, wanted);
+      if (!ch.isSubagent) this.updateLeisure(ch, dt);
 
       // Temporarily unblock own seat so character can pathfind to it
       this.withOwnSeatUnblocked(ch, () =>
@@ -1405,7 +1633,7 @@ export class OfficeState {
       if (ch.matrixEffect === 'despawn') continue;
       // Character sprite is 16x24, anchored bottom-center
       // Apply sitting offset to match visual position
-      const sittingOffset = isSeated(ch) ? CHARACTER_SITTING_OFFSET_PX : 0;
+      const sittingOffset = sittingDropPx(ch);
       const anchorY = ch.y + sittingOffset;
       const left = ch.x - CHARACTER_HIT_HALF_WIDTH;
       const right = ch.x + CHARACTER_HIT_HALF_WIDTH;
@@ -1417,4 +1645,12 @@ export class OfficeState {
     }
     return null;
   }
+}
+
+function randomRange(min: number, max: number): number {
+  return min + Math.random() * (max - min);
+}
+
+function randomInt(min: number, max: number): number {
+  return min + Math.floor(Math.random() * (max - min + 1));
 }

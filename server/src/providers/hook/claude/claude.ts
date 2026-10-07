@@ -132,6 +132,9 @@ function normalizeHookEvent(
   const eventName = raw.hook_event_name;
   const sessionId = raw.session_id;
   if (typeof eventName !== 'string' || typeof sessionId !== 'string') return null;
+  // Present only when the hook fired inside a sub-agent (tool events included).
+  const subagentId =
+    typeof raw.agent_id === 'string' && raw.agent_id !== '' ? raw.agent_id : undefined;
 
   switch (eventName) {
     case 'PreToolUse': {
@@ -148,18 +151,27 @@ function normalizeHookEvent(
           toolName,
           input: toolInput,
           runInBackground: toolInput.run_in_background === true,
+          ...(subagentId ? { subagentId } : {}),
         },
       };
     }
 
     case 'PostToolUse':
-      return { sessionId, event: { kind: 'toolEnd', toolId: 'current' } };
+      return {
+        sessionId,
+        event: { kind: 'toolEnd', toolId: 'current', ...(subagentId ? { subagentId } : {}) },
+      };
 
     case 'PostToolUseFailure':
       // An interrupt (Esc) is the user stopping the tool, not the tool failing.
       return {
         sessionId,
-        event: { kind: 'toolEnd', toolId: 'current', failed: raw.is_interrupt !== true },
+        event: {
+          kind: 'toolEnd',
+          toolId: 'current',
+          failed: raw.is_interrupt !== true,
+          ...(subagentId ? { subagentId } : {}),
+        },
       };
 
     case 'Stop':

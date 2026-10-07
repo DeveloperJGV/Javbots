@@ -10,6 +10,7 @@ import {
 } from '../constants.js';
 import type { ConsentChoice } from '../hooks/introTourState.js';
 import type { OfficeState } from '../office/engine/officeState.js';
+import { renderDpr } from '../viewScale.js';
 import { DiscordIcon } from './ChangelogModal.js';
 import { computeIntroBubbleGeometry } from './introBubbleGeometry.js';
 import { Button } from './ui/Button.js';
@@ -143,7 +144,7 @@ export function IntroBubble({
             containerRect: container.getBoundingClientRect(),
             zoom,
             pan: panRef.current,
-            dpr: window.devicePixelRatio || 1,
+            dpr: renderDpr(),
             greeter: ch,
             bubbleWidth: bubble.offsetWidth,
             bubbleHeight: bubble.offsetHeight,
@@ -193,7 +194,7 @@ export function IntroBubble({
       containerRect: rect,
       zoom,
       pan: panRef.current,
-      dpr: window.devicePixelRatio || 1,
+      dpr: renderDpr(),
       greeter,
       bubbleWidth: bw,
       bubbleHeight: bh,

@@ -17,6 +17,8 @@ import { useEditorActions } from './hooks/useEditorActions.js';
 import { useEditorKeyboard } from './hooks/useEditorKeyboard.js';
 import { useExtensionMessages } from './hooks/useExtensionMessages.js';
 import { useIntroTour } from './hooks/useIntroTour.js';
+import { captureOffice, downloadBlob } from './office/capture.js';
+import { captureFileName } from './office/captureFrame.js';
 import { OfficeCanvas } from './office/components/OfficeCanvas.js';
 import { ToolOverlay } from './office/components/ToolOverlay.js';
 import { EditorState } from './office/editor/editorState.js';
@@ -167,6 +169,13 @@ function App() {
     setDayNightMode(next);
     transport.send({ type: 'setDayNightMode', mode: next });
   }, [dayNightMode, setDayNightMode]);
+
+  const handleCapture = useCallback(() => {
+    void captureOffice(getOfficeState()).then((blob) => {
+      if (blob) downloadBlob(blob, captureFileName(new Date()));
+      else console.warn('[Webview] Captura: no se pudo dibujar la oficina');
+    });
+  }, []);
 
   const handleSelectAgent = useCallback((id: number) => {
     transport.send({ type: 'focusAgent', id });
@@ -378,7 +387,11 @@ function App() {
 
       {!isDebugMode ? (
         <>
-          <ZoomControls zoom={editor.zoom} onZoomChange={editor.handleZoomChange} />
+          <ZoomControls
+            zoom={editor.zoom}
+            onZoomChange={editor.handleZoomChange}
+            onZoomFit={editor.handleZoomFit}
+          />
 
           {/* Vignette overlay */}
           <div
@@ -545,6 +558,7 @@ function App() {
         workspaceFolders={workspaceFolders}
         dayNightMode={dayNightMode}
         onCycleDayNight={handleCycleDayNight}
+        onCapture={handleCapture}
       />
 
       <VersionIndicator

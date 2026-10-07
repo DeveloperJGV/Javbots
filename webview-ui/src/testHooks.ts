@@ -15,6 +15,10 @@ declare global {
         waitingAwaitingInput?: boolean;
         isHeadless?: boolean;
         isGreeter?: boolean;
+        x: number;
+        y: number;
+        palette: number;
+        isSubagent: boolean;
       }>;
       /** Effective "Display headless as ghosts" setting the renderer is using. */
       getGhostHeadlessAgents?: () => boolean;
@@ -129,6 +133,11 @@ export function installTestHooks(officeStateRef: { current: OfficeState | null }
       waitingAwaitingInput: ch.waitingAwaitingInput,
       isHeadless: ch.isHeadless,
       isGreeter: ch.isGreeter,
+      // World position (sprite px, feet) + sheet: the trailer camera follows characters.
+      x: ch.x,
+      y: ch.y,
+      palette: ch.palette,
+      isSubagent: ch.isSubagent,
     }));
   };
 

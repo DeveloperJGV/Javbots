@@ -12,9 +12,11 @@ import { Button } from './ui/Button.js';
 interface ZoomControlsProps {
   zoom: number;
   onZoomChange: (zoom: number) => void;
+  /** Fit the whole office to the window. */
+  onZoomFit: () => void;
 }
 
-export function ZoomControls({ zoom, onZoomChange }: ZoomControlsProps) {
+export function ZoomControls({ zoom, onZoomChange, onZoomFit }: ZoomControlsProps) {
   const [showLevel, setShowLevel] = useState(false);
   const [fadeOut, setFadeOut] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -69,7 +71,7 @@ export function ZoomControls({ zoom, onZoomChange }: ZoomControlsProps) {
       )}
 
       {/* Vertically stacked round buttons — top-left */}
-      <div className="absolute top-8 left-8 z-10 flex flex-col gap-4">
+      <div className="absolute top-8 left-8 z-44 flex flex-col gap-4">
         <Button
           size="icon_lg"
           onClick={() => onZoomChange(zoom + 1)}
@@ -114,6 +116,22 @@ export function ZoomControls({ zoom, onZoomChange }: ZoomControlsProps) {
               stroke="currentColor"
               strokeWidth="2"
               strokeLinecap="round"
+            />
+          </svg>
+        </Button>
+        <Button
+          size="icon_lg"
+          onClick={onZoomFit}
+          className="border-border! shadow-pixel"
+          title="Ver toda la oficina (ajustar a la ventana)"
+        >
+          {/* Four corners pointing out */}
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <path
+              d="M3 7V3h4M11 3h4v4M15 11v4h-4M7 15H3v-4"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="square"
             />
           </svg>
         </Button>

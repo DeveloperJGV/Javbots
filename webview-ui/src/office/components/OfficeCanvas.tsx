@@ -10,6 +10,7 @@ import {
 } from '../../constants.js';
 import { unlockAudio } from '../../notificationSound.js';
 import { transport } from '../../transport/index.js';
+import { onRenderScaleChange, renderDpr } from '../../viewScale.js';
 import { getColorizedSprite } from '../colorize.js';
 import { canPlaceFurniture, getWallPlacementRow } from '../editor/editorActions.js';
 import type { EditorState } from '../editor/editorState.js';
@@ -105,7 +106,7 @@ export function OfficeCanvas({
     const container = containerRef.current;
     if (!canvas || !container) return;
     const rect = container.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = renderDpr();
     canvas.width = Math.round(rect.width * dpr);
     canvas.height = Math.round(rect.height * dpr);
     canvas.style.width = `${rect.width}px`;
@@ -120,6 +121,8 @@ export function OfficeCanvas({
     resizeCanvas();
 
     const observer = new ResizeObserver(() => resizeCanvas());
+    // "Fit to window" changes the canvas resolution without resizing anything
+    const offScale = onRenderScaleChange(resizeCanvas);
     if (containerRef.current) {
       observer.observe(containerRef.current);
     }
@@ -307,6 +310,7 @@ export function OfficeCanvas({
     return () => {
       stop();
       observer.disconnect();
+      offScale();
     };
   }, [
     officeState,
@@ -326,7 +330,7 @@ export function OfficeCanvas({
       const canvas = canvasRef.current;
       if (!canvas) return null;
       const rect = canvas.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = renderDpr();
       // CSS coords relative to canvas
       const cssX = clientX - rect.left;
       const cssY = clientY - rect.top;
@@ -386,7 +390,7 @@ export function OfficeCanvas({
     (e: React.MouseEvent) => {
       // Handle middle-mouse panning
       if (isPanningRef.current) {
-        const dpr = window.devicePixelRatio || 1;
+        const dpr = renderDpr();
         const dx = (e.clientX - panStartRef.current.mouseX) * dpr;
         const dy = (e.clientY - panStartRef.current.mouseY) * dpr;
         panRef.current = clampPan(panStartRef.current.panX + dx, panStartRef.current.panY + dy);
@@ -847,7 +851,7 @@ export function OfficeCanvas({
         }
       } else {
         // Pan via trackpad two-finger scroll or mouse wheel
-        const dpr = window.devicePixelRatio || 1;
+        const dpr = renderDpr();
         officeState.cameraFollowId = null;
         officeState.cancelGreeterCamera();
         panRef.current = clampPan(

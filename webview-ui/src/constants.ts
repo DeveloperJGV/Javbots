@@ -84,6 +84,10 @@ export const CAMERA_FOLLOW_SNAP_THRESHOLD = 0.5;
 export const ZOOM_MIN = 1;
 export const ZOOM_MAX = 10;
 export const ZOOM_DEFAULT_DPR_FACTOR = 2;
+/** "Fit to window" (fork, Fase 5.5): CSS px kept free on each side for the left button column. */
+export const ZOOM_FIT_SIDE_MARGIN_PX = 56;
+/** Extra tiles counted above row 0 (walls and wall items draw over it). */
+export const ZOOM_FIT_TOP_PAD_TILES = 1;
 export const ZOOM_LEVEL_FADE_DELAY_MS = 1500;
 export const ZOOM_LEVEL_HIDE_DELAY_MS = 2000;
 export const ZOOM_LEVEL_FADE_DURATION_SEC = 0.5;
@@ -325,6 +329,11 @@ export const SHADOW_EDGE_COLOR = '#00000026';
 /** Character shadow: 10×3 sprite px ellipse at the feet. */
 export const CHARACTER_SHADOW_WIDTH = 12;
 export const PET_SHADOW_WIDTH = 8;
+/** Characters that hover instead of walking (char_N sheets, arte/pixellab/personajes/elenco.json
+ *  "flotantes"): 9 = Wheatley. Smaller, fainter shadow, and they don't drop into a chair. */
+export const FLOATING_CHARACTERS: ReadonlySet<number> = new Set([9]);
+export const FLOATING_SHADOW_WIDTH = 8;
+export const FLOATING_SHADOW_ALPHA = 0.6;
 /** Rows of a furniture sprite's base scanned to size its contact shadow. */
 export const FURNITURE_SHADOW_BASE_ROWS = 4;
 /** Floor rows darkened right under a wall (ambient occlusion at its base). */
@@ -481,6 +490,30 @@ export const ZONE_MIN_STAY_SEC = 8;
 export const INTERN_FADE_SEC = 0.5;
 /** Longest walk back to the boss before fading out anyway (blocked path, far boss). */
 export const INTERN_LEAVE_MAX_SEC = 10;
+/** An intern done with its task first rests this long in the interns' room (Fase 5.1). */
+export const INTERN_REST_MIN_SEC = 20;
+export const INTERN_REST_MAX_SEC = 40;
+
+// ── Free time (fork, Fase 5.1) ──────────────────────────────
+/** Time without work before an agent picks a free-time activity (before that it wanders). */
+export const LEISURE_START_SEC = 45;
+/** How long one activity lasts once the agent got there. */
+export const LEISURE_ACTIVITY_MIN_SEC = 20;
+export const LEISURE_ACTIVITY_MAX_SEC = 60;
+/** Chance of wandering for a while between two activities, and for how long. */
+export const LEISURE_WANDER_CHANCE = 0.25;
+export const LEISURE_WANDER_MIN_SEC = 15;
+export const LEISURE_WANDER_MAX_SEC = 30;
+/** Nothing free (or unreachable): wander this long before trying again. */
+export const LEISURE_RETRY_SEC = 10;
+/** Statues visited on one walk through the gallery. */
+export const LEISURE_TOUR_STOPS_MIN = 3;
+export const LEISURE_TOUR_STOPS_MAX = 4;
+/** A cushion counts as "at" a table when it touches it (1 = next to it, diagonals too). */
+export const LEISURE_SEAT_REACH_TILES = 1;
+/** Stargazing only when lamps are at least this lit (`Ambient.lights`: 0 day, 1 night). */
+export const LEISURE_NIGHT_LIGHTS_MIN = 0.5;
+
 /** Interns of each boss (char_N index → interns' char_N), from arte/pixellab/personajes/elenco.json.
  *  0 Doc → Marty · 1 Senku → Chrome, Kohaku · 2 Chell → Wheatley · 3 Neo → Trinity ·
  *  4 Gandalf → Frodo, Sam · 5 Kakashi → Naruto, Sakura. */
@@ -563,3 +596,12 @@ export const TELEPORT_BEAM_ORIGIN_X = 16;
 export const TELEPORT_BEAM_ORIGIN_Y = 31;
 /** Eyes sit this far above the character's feet. */
 export const TEAR_EYE_HEIGHT_PX = 18;
+
+// ── Office photo (fork, Fase 5): "Captura" button in the bottom toolbar ──
+/** Device pixels per sprite pixel in the downloaded PNG (whole office, no UI). */
+export const CAPTURE_ZOOM = 4;
+/** Extra tiles above the map: walls and wall items draw up to 2 tiles over row 0. */
+export const CAPTURE_TOP_PAD_TILES = 2;
+export const CAPTURE_PAD_TILES = 1;
+export const CAPTURE_BG_COLOR = '#1e1e2e';
+export const CAPTURE_FILE_PREFIX = 'pixel-agents';

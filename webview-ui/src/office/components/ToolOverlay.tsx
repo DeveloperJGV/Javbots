@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 
 import { Button } from '../../components/ui/Button.js';
 import {
-  CHARACTER_SITTING_OFFSET_PX,
   CONTEXT_CRITICAL_THRESHOLD,
   CONTEXT_DANGER_THRESHOLD,
   CONTEXT_GAUGE_BG,
@@ -18,8 +17,11 @@ import {
   TOOL_OVERLAY_VERTICAL_OFFSET,
 } from '../../constants.js';
 import type { SubagentCharacter } from '../../hooks/useExtensionMessages.js';
+import { renderDpr } from '../../viewScale.js';
 import type { OfficeState } from '../engine/officeState.js';
-import { isSeated } from '../engine/posture.js';
+import { sittingDropPx } from '../engine/posture.js';
+import type { LeisureActivity } from '../leisure/leisure.js';
+import { leisureLabel } from '../leisure/leisure.js';
 import { overlayProjection } from '../projection.js';
 import { translateStatus } from '../statusText.js';
 import type { Character, ToolActivity } from '../types.js';
@@ -54,6 +56,7 @@ function getActivityText(
   isActive: boolean,
   bubbleType: Character['bubbleType'],
   waitingAwaitingInput: boolean,
+  leisure: LeisureActivity | null,
 ): string {
   if (bubbleType === 'permission') return NEEDS_APPROVAL_TEXT;
   if (bubbleType === 'thinking') return THINKING_ACTIVITY_TEXT;
@@ -77,7 +80,8 @@ function getActivityText(
     }
   }
 
-  return 'Descansando';
+  // Free time (Fase 5.1): say what it is doing on its break
+  return leisure ? leisureLabel(leisure) : 'Descansando';
 }
 
 function getFuelColor(ratio: number): string {
@@ -117,7 +121,7 @@ export function ToolOverlay({
     el.getBoundingClientRect(),
     zoom,
     panRef.current,
-    window.devicePixelRatio || 1,
+    renderDpr(),
   );
 
   const selectedId = officeState.selectedAgentId;
@@ -140,7 +144,7 @@ export function ToolOverlay({
         if (!alwaysShowOverlay && !isSelected && !isHovered) return null;
 
         // Position above character
-        const sittingOffset = isSeated(ch) ? CHARACTER_SITTING_OFFSET_PX : 0;
+        const sittingOffset = sittingDropPx(ch);
         const screenX = project.toScreenX(ch.x);
         const screenY = project.toScreenY(ch.y + sittingOffset - TOOL_OVERLAY_VERTICAL_OFFSET);
 
@@ -190,6 +194,7 @@ export function ToolOverlay({
             ch.isActive,
             ch.bubbleType,
             ch.waitingAwaitingInput ?? false,
+            ch.leisure?.activity ?? null,
           );
         }
 

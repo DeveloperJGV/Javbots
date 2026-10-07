@@ -411,6 +411,61 @@ describe('background spawns (teams OFF) classified by sidecar name', () => {
     expect(lead.backgroundAgentToolIds.size).toBe(0);
   });
 
+  // Shapes copied from a real run (Claude Code, 2026-10-05): a sub that left a
+  // `sleep` running stops with an interim notification, resumes when the sleep
+  // reports, and its FINAL notification carries only the task id.
+  function queueOpPausedRecord(): string {
+    return JSON.stringify({
+      type: 'queue-operation',
+      operation: 'enqueue',
+      content: `<task-notification>\n<task-id>a4cb86c99458dbe55</task-id>\n<tool-use-id>${SPAWN_TOOL_ID}</tool-use-id>\n<status>completed</status>\n<note>This agent stopped with background work of its own still running. It may resume on its own when that work completes or reports, and the same task-id notifies again if it does; the result below may be interim.</note>\n</task-notification>`,
+    });
+  }
+
+  function queueOpFinalByTaskIdRecord(): string {
+    return JSON.stringify({
+      type: 'queue-operation',
+      operation: 'enqueue',
+      content:
+        '<task-notification>\n<task-id>a4cb86c99458dbe55</task-id>\n<status>completed</status>\n<note>A task-notification fires each time this agent stops with no live background children of its own.</note>\n</task-notification>',
+    });
+  }
+
+  it('keeps a paused spawn (own background work still running) alive', () => {
+    const jsonlPath = seedSidecar();
+    spawnAndLaunch();
+
+    processTranscriptLine(1, queueOpPausedRecord(), agents, waitingTimers, permissionTimers);
+
+    expect(messages.some((m) => m.type === 'subagentClear')).toBe(false);
+    expect(completed).toEqual([]);
+    expect(lead.backgroundAgentToolIds.has(SPAWN_TOOL_ID)).toBe(true);
+    expect(watch.isWatching(jsonlPath)).toBe(true);
+  });
+
+  it('completes a spawn whose final notification carries only the task id', () => {
+    const jsonlPath = seedSidecar();
+    spawnAndLaunch();
+    processTranscriptLine(1, queueOpPausedRecord(), agents, waitingTimers, permissionTimers);
+
+    processTranscriptLine(1, queueOpFinalByTaskIdRecord(), agents, waitingTimers, permissionTimers);
+
+    const clear = messages.find((m) => m.type === 'subagentClear');
+    expect(clear?.parentToolId).toBe(SPAWN_TOOL_ID);
+    expect(completed).toEqual([{ leadId: 1, toolUseId: SPAWN_TOOL_ID }]);
+    expect(lead.backgroundAgentToolIds.size).toBe(0);
+    expect(watch.isWatching(jsonlPath)).toBe(false);
+  });
+
+  it('ignores a task-id-only notification with no sidecar', () => {
+    spawnAndLaunch();
+
+    processTranscriptLine(1, queueOpFinalByTaskIdRecord(), agents, waitingTimers, permissionTimers);
+
+    expect(messages.some((m) => m.type === 'subagentClear')).toBe(false);
+    expect(lead.backgroundAgentToolIds.has(SPAWN_TOOL_ID)).toBe(true);
+  });
+
   it('does not double-watch on a re-scan', () => {
     seedSidecar();
     spawnAndLaunch();

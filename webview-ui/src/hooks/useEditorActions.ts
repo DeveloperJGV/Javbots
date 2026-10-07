@@ -6,6 +6,8 @@ import {
   CARPET_DEFAULT_COLOR,
   LAYOUT_SAVE_DEBOUNCE_MS,
   ZOOM_DEFAULT_DPR_FACTOR,
+  ZOOM_FIT_SIDE_MARGIN_PX,
+  ZOOM_FIT_TOP_PAD_TILES,
   ZOOM_MAX,
   ZOOM_MIN,
 } from '../constants.js';
@@ -37,6 +39,7 @@ import {
   getRotatedType,
   getToggledType,
 } from '../office/layout/furnitureCatalog.js';
+import { fitView } from '../office/projection.js';
 import type {
   EditTool as EditToolType,
   OfficeLayout,
@@ -48,6 +51,7 @@ import { EditTool } from '../office/types.js';
 import { TileType } from '../office/types.js';
 import type { ZoneKind } from '../office/zones/taskZones.js';
 import { transport } from '../transport/index.js';
+import { setRenderScale } from '../viewScale.js';
 
 interface EditorActions {
   isEditMode: boolean;
@@ -77,6 +81,7 @@ interface EditorActions {
   handleReset: () => void;
   handleSave: () => void;
   handleZoomChange: (zoom: number) => void;
+  handleZoomFit: () => void;
   handleEditorTileAction: (col: number, row: number) => void;
   handleEditorEraseAction: (col: number, row: number) => void;
   handleEditorSelectionChange: () => void;
@@ -563,8 +568,30 @@ export function useEditorActions(
   }, []);
 
   const handleZoomChange = useCallback((newZoom: number) => {
+    setRenderScale(1); // a manual zoom leaves "fit": back to crisp whole zooms
     setZoom(Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, newZoom)));
   }, []);
+
+  /** Whole office filling the window (see fitView), centered, camera unfollowed. */
+  const handleZoomFit = useCallback(() => {
+    const dpr = window.devicePixelRatio || 1;
+    const layout = getOfficeState().getLayout();
+    const viewW = (window.innerWidth - 2 * ZOOM_FIT_SIDE_MARGIN_PX) * dpr;
+    const viewH = window.innerHeight * dpr;
+    const fit = fitView(
+      viewW,
+      viewH,
+      layout.cols,
+      layout.rows,
+      ZOOM_FIT_TOP_PAD_TILES,
+      ZOOM_MIN,
+      ZOOM_MAX,
+    );
+    setRenderScale(fit.scale);
+    setZoom(fit.zoom);
+    panRef.current = { x: 0, y: 0 };
+    getOfficeState().cameraFollowId = null;
+  }, [getOfficeState]);
 
   const handleDragMove = useCallback(
     (uid: string, newCol: number, newRow: number) => {
@@ -960,6 +987,7 @@ export function useEditorActions(
     handleReset,
     handleSave,
     handleZoomChange,
+    handleZoomFit,
     handleEditorTileAction,
     handleEditorEraseAction,
     handleEditorSelectionChange,

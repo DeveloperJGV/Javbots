@@ -49,7 +49,7 @@ export interface TestHooksWindow extends Window {
 /**
  * Dismiss the first-run tooltips ("Instant Detection Active", "Updated to vN")
  * that overlay the top toolbar and would otherwise intercept the Layout click.
- * Mirrors the helper inlined in pets.spec.ts.
+ * Call before any toolbar click.
  */
 export async function dismissFirstRunTooltips(frame: Frame): Promise<void> {
   for (const tooltipText of ['Instant Detection Active', 'Updated to v']) {

@@ -21,12 +21,18 @@ export type AgentEvent =
        *  `run_in_background` on Agent/Task). Handlers use this to suppress ghost
        *  sub-agent characters for teammate spawns. */
       runInBackground?: boolean;
+      /** Set when a sub-agent made the call, not the session's own agent (Claude's
+       *  `agent_id` hook field). Sub-agents share the parent's session_id, so without
+       *  this their tools land on the parent. */
+      subagentId?: string;
     }
   | {
       kind: 'toolEnd';
       toolId: string;
       /** The tool ran and failed (an error, not a user rejection or interrupt). */
       failed?: boolean;
+      /** See toolStart.subagentId. */
+      subagentId?: string;
     }
   /** The user sent a prompt: the agent is thinking until its first tool or turn end.
    *  Carries no prompt text. */

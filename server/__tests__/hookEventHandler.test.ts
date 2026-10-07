@@ -523,6 +523,69 @@ describe('HookEventHandler', () => {
     expect(activeMsg).toBeTruthy();
   });
 
+  // A sub-agent's hooks carry agent_id and the PARENT's session_id.
+  it("PreToolUse from a sub-agent (agent_id) leaves the parent's state alone", () => {
+    const agent = createTestAgent({ id: 1, isWaiting: true });
+    agents.set(1, agent);
+    handler.registerAgent('sess-1', 1);
+
+    handler.handleEvent('claude', {
+      hook_event_name: 'PreToolUse',
+      session_id: 'sess-1',
+      agent_id: 'ab52095178be8eab9',
+      agent_type: 'general-purpose',
+      tool_name: 'Bash',
+      tool_input: { command: 'sleep 25', run_in_background: true },
+    });
+
+    expect(mockWebview.messages.some((m) => m.type === 'agentToolStart')).toBe(false);
+    expect(mockWebview.messages.some((m) => m.type === 'agentStatus')).toBe(false);
+    expect(agent.isWaiting).toBe(true);
+    expect(agent.currentHookToolId).toBeUndefined();
+  });
+
+  it("PostToolUse from a sub-agent does not close the parent's tool", () => {
+    const agent = createTestAgent({ id: 1 });
+    agent.currentHookToolId = 'hook-lead';
+    agents.set(1, agent);
+    handler.registerAgent('sess-1', 1);
+
+    handler.handleEvent('claude', {
+      hook_event_name: 'PostToolUse',
+      session_id: 'sess-1',
+      agent_id: 'ab52095178be8eab9',
+    });
+
+    expect(mockWebview.messages.some((m) => m.type === 'agentToolDone')).toBe(false);
+    expect(agent.currentHookToolId).toBe('hook-lead');
+  });
+
+  it('SubagentStart/Stop hooks never attach to or clear a background spawn', () => {
+    const agent = createTestAgent({ id: 1 });
+    agent.activeToolNames.set('toolu_bg', 'Agent');
+    agent.activeToolIds.add('toolu_bg');
+    agent.backgroundAgentToolIds.add('toolu_bg');
+    agent.activeSubagentToolIds.set('toolu_bg', new Set(['toolu_sub']));
+    agents.set(1, agent);
+    handler.registerAgent('sess-1', 1);
+
+    handler.handleEvent('claude', {
+      hook_event_name: 'SubagentStart',
+      session_id: 'sess-1',
+      agent_id: 'a1',
+      agent_type: 'general-purpose',
+    });
+    handler.handleEvent('claude', {
+      hook_event_name: 'SubagentStop',
+      session_id: 'sess-1',
+      agent_id: 'a1',
+    });
+
+    expect(mockWebview.messages.some((m) => m.type === 'subagentToolStart')).toBe(false);
+    expect(mockWebview.messages.some((m) => m.type === 'subagentClear')).toBe(false);
+    expect(agent.activeSubagentToolIds.has('toolu_bg')).toBe(true);
+  });
+
   it('PostToolUse sends agentToolDone and clears currentHookToolId', () => {
     const agent = createTestAgent({ id: 1 });
     agent.currentHookToolId = 'hook-123';

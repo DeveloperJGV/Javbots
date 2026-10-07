@@ -334,6 +334,9 @@ export class HookEventHandler {
       case 'toolEnd':
         // Both PostToolUse and PostToolUseFailure normalize to toolEnd; a failure
         // only adds `failed` to the agentToolDone it sends (fork, Fase 3: error zone).
+        // Sub-agent tools never set currentHookToolId (see handlePreToolUse); ending
+        // one must not close the parent's own tool.
+        if (normEvent.subagentId) return;
         return this.handlePostToolUse(agent, agentId, normEvent.failed === true);
       case 'subagentStart':
         return this.provider.team ? this.handleSubagentStart(event, agent, agentId) : undefined;
@@ -414,6 +417,10 @@ export class HookEventHandler {
     agent: AgentState,
     agentId: number,
   ): void {
+    // A sub-agent's tool shares the parent's session_id. Its activity reaches the
+    // sub-character through the transcript (agent_progress / shadow watch); landing
+    // it here made the parent act out the sub's tools (fork, Fase 5).
+    if (normEvent.subagentId) return;
     const toolName = normEvent.toolName;
     const toolInput = (normEvent.input as Record<string, unknown> | undefined) ?? {};
     const status = this.provider.formatToolStatus(toolName, toolInput);
@@ -531,7 +538,10 @@ export class HookEventHandler {
     const parentTools = this.getSubagentToolSet();
     let parentToolId: string | undefined;
     for (const [toolId, toolName] of agent.activeToolNames) {
-      if (parentTools.has(toolName)) {
+      // Background spawns are tracked from the transcript (sidecar + completion
+      // notification). Their SubagentStart (also fired on every resume) can't be
+      // tied to a tool id, so picking one here hung a sub on the wrong spawn.
+      if (parentTools.has(toolName) && !agent.backgroundAgentToolIds.has(toolId)) {
         parentToolId = toolId;
         break;
       }
@@ -601,7 +611,14 @@ export class HookEventHandler {
     const subagentParentTools = this.getSubagentToolSet();
     let parentToolId: string | undefined;
     for (const [toolId, toolName] of agent.activeToolNames) {
-      if (subagentParentTools.has(toolName) && agent.activeSubagentToolIds.has(toolId)) {
+      // Background spawns end on their completion notification, not on SubagentStop:
+      // a background sub stops (and fires this) every time it pauses, and the
+      // payload can't say which spawn it was -- this cleared OTHER live subs.
+      if (
+        subagentParentTools.has(toolName) &&
+        agent.activeSubagentToolIds.has(toolId) &&
+        !agent.backgroundAgentToolIds.has(toolId)
+      ) {
         parentToolId = toolId;
         break;
       }

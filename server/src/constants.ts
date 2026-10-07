@@ -25,6 +25,14 @@ export const EXTERNAL_ACTIVE_THRESHOLD_MS = 120_000; // 2 minutes
 /** Remove external agents after this much inactivity */
 // export const EXTERNAL_STALE_TIMEOUT_MS = 300_000; // 5 minutes - deprecated
 export const EXTERNAL_STALE_CHECK_INTERVAL_MS = 30_000;
+/** An external agent whose transcript hasn't changed in this long is a ghost (a session
+ *  closed while nothing was listening): dropped by the stale check and not restored at
+ *  startup. It comes back on its own if the session writes again (fork, Fase 5). */
+export const EXTERNAL_IDLE_REMOVE_MS = 12 * 60 * 60 * 1000;
+/** An external agent whose transcript still doesn't exist after this long is dropped even
+ *  with hooks on (a session that changed folder left a copy pointing at a file that never
+ *  appears). Long enough for a freshly opened session that hasn't been typed in yet. */
+export const EXTERNAL_MISSING_FILE_GRACE_MS = 10 * 60 * 1000;
 /** Cooldown after user closes an agent via X. Must be > EXTERNAL_ACTIVE_THRESHOLD_MS
  *  so the file's mtime becomes stale before the dismissal expires. */
 export const DISMISSED_COOLDOWN_MS = 180_000; // 3 minutes
@@ -107,3 +115,8 @@ export const PALETTE_COUNT = 6;
  *  clientMessageHandler to guard saveAgentSeats payloads from a remote or
  *  hand-edited source corrupting the stored values with out-of-range values. */
 export const HUE_SHIFT_MAX_DEG = 360;
+
+/** Claude's note on a background agent's task-notification when the agent stopped
+ *  with its own background work still running: it resumes later, so the spawn is
+ *  not finished (its final notification follows). */
+export const BACKGROUND_AGENT_PAUSED_PATTERN = /background work of its own still running/i;

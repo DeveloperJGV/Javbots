@@ -56,3 +56,7 @@ arte/privado/
 
 # Python
 __pycache__/
+
+# Tráiler: cuadros y videos generados
+docs/trailer/salida/
+docs/trailer/musica/

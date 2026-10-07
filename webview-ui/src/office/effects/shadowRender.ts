@@ -1,4 +1,11 @@
-import { CHARACTER_SHADOW_WIDTH, PET_SHADOW_WIDTH, SUBAGENT_SCALE } from '../../constants.js';
+import {
+  CHARACTER_SHADOW_WIDTH,
+  FLOATING_SHADOW_ALPHA,
+  FLOATING_SHADOW_WIDTH,
+  PET_SHADOW_WIDTH,
+  SUBAGENT_SCALE,
+} from '../../constants.js';
+import { isFloating } from '../engine/posture.js';
 import { getCachedSprite } from '../sprites/spriteCache.js';
 import type { Character, FurnitureInstance, Pet, TileType as TileTypeVal } from '../types.js';
 import { TILE_SIZE, TileType } from '../types.js';
@@ -49,14 +56,17 @@ export function renderShadows(
   }
 
   // Characters: a small ellipse at the feet, scaled like the sprite itself.
+  // Floaters (Wheatley) hang above the floor: a smaller, fainter one.
   const charShadow = ellipseShadowSprite(CHARACTER_SHADOW_WIDTH);
+  const floatShadow = ellipseShadowSprite(FLOATING_SHADOW_WIDTH);
   for (const ch of characters) {
     if (!characterCastsShadow(ch)) continue;
     const charZoom = ch.isSubagent ? Math.max(1, Math.round(zoom * SUBAGENT_SCALE)) : zoom;
-    const cached = getCachedSprite(charShadow, charZoom);
+    const floating = isFloating(ch);
+    const cached = getCachedSprite(floating ? floatShadow : charShadow, charZoom);
     const x = Math.round(offsetX + ch.x * zoom - cached.width / 2);
     const y = Math.round(offsetY + ch.y * zoom - 2 * charZoom);
-    const alpha = characterAlpha(ch);
+    const alpha = characterAlpha(ch) * (floating ? FLOATING_SHADOW_ALPHA : 1);
     if (alpha === 1) {
       ctx.drawImage(cached, x, y);
     } else {

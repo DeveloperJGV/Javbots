@@ -19,9 +19,11 @@ import type { AgentState } from './types.js';
  */
 let currentPaletteCount = PALETTE_COUNT;
 
-/** Set the palette count after asset loading (standalone + VS Code). */
+/** Set the palette count after asset loading (standalone + VS Code). Capped at
+ *  PALETTE_COUNT: only the boss sheets char_0..5 are agents; higher char_N are
+ *  interns (fork, Fase 4B) and must never be handed to an agent. */
 export function setPaletteCount(count: number): void {
-  currentPaletteCount = Math.max(1, Math.floor(count));
+  currentPaletteCount = Math.min(PALETTE_COUNT, Math.max(1, Math.floor(count)));
 }
 
 /**
@@ -33,9 +35,10 @@ export function setPaletteCount(count: number): void {
  * @param store - The agent state store (used to count existing palettes)
  */
 export function assignPaletteIfNeeded(agent: AgentState, store: AgentStateStore): void {
-  if (agent.palette !== undefined) return;
-
   const count = currentPaletteCount;
+  // A remembered intern sheet (handed out before the cap above) is re-picked.
+  if (agent.palette !== undefined && agent.palette < count) return;
+
   const paletteCounts = new Array(count).fill(0);
   for (const existing of store.values()) {
     if (existing.palette !== undefined && existing.palette < count) {

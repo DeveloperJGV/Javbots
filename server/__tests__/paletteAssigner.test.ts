@@ -108,20 +108,30 @@ describe('paletteAssigner', () => {
   });
 
   describe('setPaletteCount', () => {
-    it('picks from [0, N) when set above the default 6', () => {
-      setPaletteCount(8);
-      // Six agents get 0..5; the seventh must pick from [0, 8) -- if the
-      // count were still 6, it would re-pick 0..5 and never 6 or 7.
-      for (let i = 0; i < 6; i++) {
+    // Fork (Fase 4B): char_6..14 are interns, so 15 loaded sheets still mean 6 agent palettes.
+    it('never hands out an intern sheet, however many char_N are loaded', () => {
+      setPaletteCount(15);
+      for (let i = 0; i < PALETTE_COUNT; i++) {
         store.set(100 + i, createTestAgent({ id: 100 + i, palette: i, hueShift: 0 }));
       }
-      // minCount across 0..5 is 1, and palettes 6,7 are at count 0 -- the
-      // least-used set is {6, 7}, so the pick must be 6 or 7.
       const agent = createTestAgent({ id: 999 });
       assignPaletteIfNeeded(agent, store);
-      expect(agent.palette).toBeGreaterThanOrEqual(6);
-      expect(agent.palette).toBeLessThan(8);
-      expect(agent.hueShift).toBe(0); // minCount === 0 for 6 and 7
+      expect(agent.palette).toBeGreaterThanOrEqual(0);
+      expect(agent.palette).toBeLessThan(PALETTE_COUNT);
     });
+
+    it('can still lower the count below the bosses', () => {
+      setPaletteCount(3);
+      const agent = createTestAgent({ id: 1 });
+      assignPaletteIfNeeded(agent, store);
+      expect(agent.palette).toBeLessThan(3);
+    });
+  });
+
+  it('re-picks a remembered intern sheet (e.g. 9 = Wheatley persisted by an older build)', () => {
+    setPaletteCount(15);
+    const agent = createTestAgent({ id: 1, palette: 9, hueShift: 0 });
+    assignPaletteIfNeeded(agent, store);
+    expect(agent.palette).toBeLessThan(PALETTE_COUNT);
   });
 });

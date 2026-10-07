@@ -35,6 +35,8 @@ import {
   CLEAR_IDLE_THRESHOLD_MS,
   DEFAULT_MAX_CONTEXT_TOKENS,
   EXTERNAL_ACTIVE_THRESHOLD_MS,
+  EXTERNAL_IDLE_REMOVE_MS,
+  EXTERNAL_MISSING_FILE_GRACE_MS,
   EXTERNAL_SCAN_INTERVAL_MS,
   EXTERNAL_STALE_CHECK_INTERVAL_MS,
   FILE_WATCHER_POLL_INTERVAL_MS,
@@ -1567,23 +1569,45 @@ export function startStaleExternalAgentCheck(
   knownJsonlFiles: Set<string>,
   hooksEnabledRef?: { current: boolean },
 ): ReturnType<typeof setInterval> {
+  // When each agent's transcript was first seen missing (id -> ms).
+  const missingSince = new Map<number, number>();
   return setInterval(() => {
-    // When hooks are active, SessionEnd handles agent cleanup.
-    if (hooksEnabledRef?.current) return;
     const toRemove: number[] = [];
+    const now = Date.now();
+    for (const id of missingSince.keys()) if (!agents.has(id)) missingSince.delete(id);
 
     for (const [id, agent] of agents) {
       if (!agent.isExternal) continue;
+      // Teammates leave with their lead (config polling / lead sessionEnd).
+      if (agent.leadAgentId !== undefined) continue;
 
-      // Only despawn if the JSONL file has been deleted from disk.
-      // Inactive external agents stay alive so they can resume when
-      // the session continues (e.g., claude --resume).
+      // Despawn when the JSONL file was deleted from disk (hooks off: with
+      // hooks, SessionEnd handles cleanup), or when it hasn't changed in
+      // EXTERNAL_IDLE_REMOVE_MS -- a session closed while nothing was listening
+      // never sends SessionEnd. A resumed session is re-adopted when it writes.
       try {
-        fs.statSync(agent.jsonlFile);
-        // File still exists — keep the agent alive regardless of mtime
+        const { mtimeMs } = fs.statSync(agent.jsonlFile);
+        missingSince.delete(id);
+        if (now - mtimeMs > EXTERNAL_IDLE_REMOVE_MS) toRemove.push(id);
       } catch {
-        // File deleted — remove agent
-        toRemove.push(id);
+        // No transcript. Without hooks that means deleted. With hooks: a copy of
+        // another agent's session (it changed folder) goes now; any other waits
+        // out EXTERNAL_MISSING_FILE_GRACE_MS (a new session has no file until typed in).
+        const since = missingSince.get(id) ?? now;
+        missingSince.set(id, since);
+        const duplicate = [...agents.values()].some(
+          (other) =>
+            other.id !== id &&
+            other.sessionId === agent.sessionId &&
+            fs.existsSync(other.jsonlFile),
+        );
+        if (
+          !hooksEnabledRef?.current ||
+          duplicate ||
+          now - since > EXTERNAL_MISSING_FILE_GRACE_MS
+        ) {
+          toRemove.push(id);
+        }
       }
     }
 

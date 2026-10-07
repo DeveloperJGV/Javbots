@@ -20,6 +20,7 @@ import {
   updateIdleMotion,
 } from '../effects/idleMotion.js';
 import { findPath } from '../layout/tileMap.js';
+import { atLeisureStop, leisurePose, leisureStop, settleAtLeisure } from '../leisure/leisure.js';
 import type { CharacterSprites } from '../sprites/spriteData.js';
 import { isReadingToolName } from '../toolUtils.js';
 import type { Character, Seat, SpriteData, TileType as TileTypeVal } from '../types.js';
@@ -114,6 +115,9 @@ export function createCharacter(
     zoneStaySec: ZONE_MIN_STAY_SEC,
     errorHoldSec: 0,
     errorCooldownSec: 0,
+    leisure: null,
+    idleSec: 0,
+    internRestSec: null,
     contextTokens: 0,
     maxContextTokens: DEFAULT_MAX_CONTEXT_TOKENS,
   };
@@ -138,6 +142,8 @@ export function updateCharacter(
       }
       // If no longer active, stand up and start wandering (after seatTimer expires)
       if (!ch.isActive) {
+        // Free time: stay on the couch / cushion / at the arcade until it is over
+        if (atLeisureStop(ch)) break;
         if (ch.seatTimer > 0) {
           ch.seatTimer -= dt;
           break;
@@ -180,6 +186,25 @@ export function updateCharacter(
           ch.dir = spot.dir;
           ch.frame = 0;
           ch.frameTimer = 0;
+        }
+        break;
+      }
+      // Free time (Fase 5.1): head for the activity's spot instead of wandering
+      const stop = leisureStop(ch);
+      if (stop && ch.leisure) {
+        if (ch.tileCol === stop.col && ch.tileRow === stop.row) {
+          if (!ch.leisure.arrived) settleAtLeisure(ch);
+          break;
+        }
+        const path = findPath(ch.tileCol, ch.tileRow, stop.col, stop.row, tileMap, blockedTiles);
+        if (path.length > 0) {
+          ch.path = path;
+          ch.moveProgress = 0;
+          ch.state = CharacterState.WALK;
+          ch.frame = 0;
+          ch.frameTimer = 0;
+        } else {
+          ch.leisure.failed = true; // the office picks something else
         }
         break;
       }
@@ -257,8 +282,15 @@ export function updateCharacter(
             ch.state = CharacterState.IDLE;
           }
         } else {
+          // Arrived at the free-time spot
+          const stop = leisureStop(ch);
+          if (stop && ch.tileCol === stop.col && ch.tileRow === stop.row) {
+            settleAtLeisure(ch);
+            break;
+          }
           // Check if arrived at assigned seat — sit down for a rest before wandering again
-          if (ch.seatId) {
+          // (not while on a break: the IDLE state heads to the activity instead)
+          if (ch.seatId && !ch.leisure) {
             const seat = seats.get(ch.seatId);
             if (seat && ch.tileCol === seat.seatCol && ch.tileRow === seat.seatRow) {
               ch.state = CharacterState.TYPE;
@@ -310,6 +342,27 @@ export function updateCharacter(
         ch.moveProgress = 0;
       }
 
+      // Free time started (or moved on to the next statue) mid-walk: head there instead
+      const leisureTarget = ch.isActive ? null : leisureStop(ch);
+      if (leisureTarget && ch.moveProgress === 0) {
+        const lastStep = ch.path[ch.path.length - 1];
+        const there = ch.tileCol === leisureTarget.col && ch.tileRow === leisureTarget.row;
+        if (
+          !there &&
+          (!lastStep || lastStep.col !== leisureTarget.col || lastStep.row !== leisureTarget.row)
+        ) {
+          const newPath = findPath(
+            ch.tileCol,
+            ch.tileRow,
+            leisureTarget.col,
+            leisureTarget.row,
+            tileMap,
+            blockedTiles,
+          );
+          if (newPath.length > 0) ch.path = newPath;
+        }
+      }
+
       // If became active while wandering (or the zone changed), repath to the work spot
       if (ch.isActive) {
         const spot = workSpot(ch, seats);
@@ -345,13 +398,19 @@ export function getCharacterSprite(ch: Character, sprites: CharacterSprites): Sp
 
 function getBaseCharacterSprite(ch: Character, sprites: CharacterSprites): SpriteData {
   switch (ch.state) {
-    case CharacterState.TYPE:
+    case CharacterState.TYPE: {
+      // Free time: reading, still (couch, cushion) or playing (typing frames)
+      const pose = leisurePose(ch);
+      if (pose === 'read') return sprites.reading[ch.dir][ch.frame % 2];
+      if (pose === 'still') return sprites.typing[ch.dir][0];
+      if (pose === 'type') return sprites.typing[ch.dir][ch.frame % 2];
       // Thinking: seated, hands resting on the keyboard, not typing yet.
       if (ch.bubbleType === 'thinking') return sprites.typing[ch.dir][0];
       if (isReadingTool(ch.currentTool)) {
         return sprites.reading[ch.dir][ch.frame % 2];
       }
       return sprites.typing[ch.dir][ch.frame % 2];
+    }
     case CharacterState.WALK:
       return sprites.walk[ch.dir][ch.frame % 4];
     case CharacterState.IDLE:

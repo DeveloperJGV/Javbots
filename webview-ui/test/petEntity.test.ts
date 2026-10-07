@@ -94,6 +94,9 @@ function makeChar(id: number, col: number, row: number): Character {
     zoneStaySec: 0,
     errorHoldSec: 0,
     errorCooldownSec: 0,
+    leisure: null,
+    idleSec: 0,
+    internRestSec: null,
     contextTokens: 0,
     maxContextTokens: 200_000,
   };

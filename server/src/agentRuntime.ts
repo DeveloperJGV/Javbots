@@ -14,7 +14,7 @@ import * as path from 'path';
 
 import type { HookProvider } from '../../core/src/provider.js';
 import type { AgentStateStore } from './agentStateStore.js';
-import { DEFAULT_MAX_CONTEXT_TOKENS } from './constants.js';
+import { DEFAULT_MAX_CONTEXT_TOKENS, EXTERNAL_IDLE_REMOVE_MS } from './constants.js';
 import { DismissalTracker } from './dismissalTracker.js';
 import {
   adoptExternalSessionFromHook,
@@ -473,7 +473,9 @@ export class AgentRuntime {
       // (also skips stale entries written by older builds that persisted them).
       if (p.leadAgentId !== undefined && !p.teamName) continue;
       try {
-        if (!fs.existsSync(p.jsonlFile)) continue;
+        // A ghost (no writes in EXTERNAL_IDLE_REMOVE_MS) stays down; it is
+        // re-adopted if its session ever writes again.
+        if (Date.now() - fs.statSync(p.jsonlFile).mtimeMs > EXTERNAL_IDLE_REMOVE_MS) continue;
       } catch {
         continue;
       }
@@ -500,7 +502,10 @@ export class AgentRuntime {
         // Live spawn ids survive the restart so the 1s scan can re-adopt the
         // spawns' transcripts and the completion queue-op still matches.
         backgroundAgentToolIds: new Set(p.backgroundAgentToolIds ?? []),
-        isWaiting: false,
+        // Nothing has happened since the restart: idle until it works again. Left
+        // false, no client ever got a status for it and the webview (characters
+        // start active) kept it typing at its desk forever (fork, Fase 5).
+        isWaiting: true,
         permissionSent: false,
         hadToolsInTurn: false,
         lastDataAt: 0,

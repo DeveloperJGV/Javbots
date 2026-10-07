@@ -1,8 +1,15 @@
 const debug = process.env.PIXEL_AGENTS_DEBUG !== '0';
 
+import * as fs from 'fs';
+import * as path from 'path';
+
 import type { HookProvider } from '../../core/src/provider.js';
 import type { AgentStateStore } from './agentStateStore.js';
-import { TEXT_IDLE_DELAY_MS, TOOL_DONE_DELAY_MS } from './constants.js';
+import {
+  BACKGROUND_AGENT_PAUSED_PATTERN,
+  TEXT_IDLE_DELAY_MS,
+  TOOL_DONE_DELAY_MS,
+} from './constants.js';
 import { updateContextUsage } from './contextUsage.js';
 import { hasInlineTeammates, hasPromotedBackgroundAgent } from './teamUtils.js';
 import {
@@ -413,10 +420,19 @@ export function processTranscriptLine(
       // Background agent completed — parse tool-use-id from XML content
       const content = record.content as string | undefined;
       if (content) {
-        const toolIdMatch = content.match(/<tool-use-id>(.*?)<\/tool-use-id>/);
-        if (toolIdMatch) {
-          const completedToolId = toolIdMatch[1];
-          if (agent.backgroundAgentToolIds.has(completedToolId)) {
+        const completedToolId = notificationToolUseId(agent, content);
+        if (completedToolId) {
+          if (
+            agent.backgroundAgentToolIds.has(completedToolId) &&
+            BACKGROUND_AGENT_PAUSED_PATTERN.test(content)
+          ) {
+            // The spawn stopped with its own background work still running and
+            // resumes when that work reports: not done yet. Its final notification
+            // follows (often without a tool-use-id, resolved by task id).
+            console.log(
+              `[Pixel Agents] Agent ${agentId} background agent paused: ${completedToolId}`,
+            );
+          } else if (agent.backgroundAgentToolIds.has(completedToolId)) {
             console.log(
               `[Pixel Agents] Agent ${agentId} background agent done: ${completedToolId}`,
             );
@@ -722,6 +738,31 @@ function linkTeammates(_agentId: number, agent: AgentState, agents: AgentStateSt
 
 /** Text Claude Code puts in the tool_result when the user said no to a tool. */
 const USER_REJECTION_MARKER = "doesn't want to proceed";
+
+/**
+ * Spawn tool id a background-agent task-notification refers to. Interim
+ * notifications carry `<tool-use-id>`; the final one after a resume may carry
+ * only `<task-id>`, which names the spawn's sidecar
+ * (`<session>/subagents/agent-<taskId>.meta.json`, holding `toolUseId`).
+ */
+function notificationToolUseId(agent: AgentState, content: string): string | undefined {
+  const toolIdMatch = content.match(/<tool-use-id>(.*?)<\/tool-use-id>/);
+  if (toolIdMatch) return toolIdMatch[1];
+  const taskId = content.match(/<task-id>([\w-]+)<\/task-id>/)?.[1];
+  if (!taskId || !agent.jsonlFile) return undefined;
+  const sidecar = path.join(
+    path.dirname(agent.jsonlFile),
+    path.basename(agent.jsonlFile, '.jsonl'),
+    'subagents',
+    `agent-${taskId}.meta.json`,
+  );
+  try {
+    const meta = JSON.parse(fs.readFileSync(sidecar, 'utf-8')) as { toolUseId?: unknown };
+    return typeof meta.toolUseId === 'string' ? meta.toolUseId : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 /** A tool_result that reports the tool failing (fork, Fase 3: error zone). A
  *  rejected permission is also `is_error`, but that is the user's call, not a failure. */
