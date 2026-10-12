@@ -1,4 +1,4 @@
-# Integra el plano.json de un cuarto (lo que propone el agente de arte) en la oficina.
+# Integra el plano.json de un cuarto (los muebles que se quitan, ponen o mueven) en la oficina.
 #
 #   python arte/pixellab/integrar.py <zona>      (zona = carpeta en arte/pixellab/, ej. sotano)
 #

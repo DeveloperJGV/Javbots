@@ -44,7 +44,7 @@ cambiamos el idioma, el arte, los cuartos y le agregamos cosas nuevas. La docume
 
 ![La oficina completa de noche](docs/capturas/oficina-noche.png)
 
-*De noche se prenden las lámparas, las pantallas y la luz de la luna por las ventanas.*
+_De noche se prenden las lámparas, las pantallas y la luz de la luna por las ventanas._
 
 </div>
 
@@ -53,17 +53,17 @@ cambiamos el idioma, el arte, los cuartos y le agregamos cosas nuevas. La docume
 - **Todo en español**: la interfaz, los estados ("Editando carrito.ts", "Ejecutando: npm test") y los avisos.
 - **Un cuarto por tarea**: cada personaje camina al cuarto de lo que está haciendo.
 
-  | Cuarto | Homenaje a | Qué se hace ahí |
-  | --- | --- | --- |
-  | Código | Matrix, Tron | Editar archivos |
-  | Archivo Jedi | Star Wars | Leer y buscar |
-  | Light Labs | Mega Man | Buscar en internet (con el rayo de la cápsula) |
-  | Laboratorio de Senku | Dr. Stone | Esperar tu permiso |
-  | El Anillo | El Señor de los Anillos | Hacer commits |
-  | Taller | Volver al Futuro, Akira, Initial D | Correr comandos |
-  | Aperture | Portal | Correr pruebas |
-  | Becarios | Los Simpson, Friends, arcades | Sub-agentes y descanso |
-  | Sótano | The Binding of Isaac | Cuando algo falla (llorando) |
+  | Cuarto               | Homenaje a                         | Qué se hace ahí                                |
+  | -------------------- | ---------------------------------- | ---------------------------------------------- |
+  | Código               | Matrix, Tron                       | Editar archivos                                |
+  | Archivo Jedi         | Star Wars                          | Leer y buscar                                  |
+  | Light Labs           | Mega Man                           | Buscar en internet (con el rayo de la cápsula) |
+  | Laboratorio de Senku | Dr. Stone                          | Esperar tu permiso                             |
+  | El Anillo            | El Señor de los Anillos            | Hacer commits                                  |
+  | Taller               | Volver al Futuro, Akira, Initial D | Correr comandos                                |
+  | Aperture             | Portal                             | Correr pruebas                                 |
+  | Becarios             | Los Simpson, Friends, arcades      | Sub-agentes y descanso                         |
+  | Sótano               | The Binding of Isaac               | Cuando algo falla (llorando)                   |
 
 - **Personajes nuevos**: 6 jefes y 9 becarios. Cada jefe manda a sus propios becarios (los sub-agentes),
   que llegan junto a él, trabajan en su sala y al terminar regresan con él.
@@ -114,7 +114,8 @@ npm run e2e       # Playwright (navegador)
 ### Tus propios muebles y mascotas
 
 En **Ajustes → Agregar carpeta de pixeles** puedes cargar una carpeta tuya con muebles, personajes o mascotas.
-El formato está en [docs/external-assets.md](docs/external-assets.md).
+Cómo hacerlos (tamaños, manifests, personajes, mascotas y animaciones) está en
+[docs/agregar-pixeles.md](docs/agregar-pixeles.md).
 
 ## Créditos
 
