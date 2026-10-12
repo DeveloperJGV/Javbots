@@ -5,6 +5,8 @@ import {
   BOSS_INTERNS,
   CHARACTER_HIT_HALF_WIDTH,
   CHARACTER_HIT_HEIGHT,
+  CHEER_SEC,
+  CONFETTI_RAIN_SPAWN_SEC,
   DISMISS_BUBBLE_FAST_FADE_SEC,
   FURNITURE_ANIM_INTERVAL_SEC,
   GREETER_ID,
@@ -26,6 +28,9 @@ import {
   LEISURE_WANDER_MIN_SEC,
   MAX_PET_ID_LENGTH,
   PALETTE_COUNT,
+  PARTY_GATHER_MAX_SEC,
+  PARTY_MIN_WORKERS,
+  PARTY_SEC,
   PET_HIT_HALF_WIDTH,
   PET_HIT_HEIGHT,
   SPARK_HEAD_HEIGHT_PX,
@@ -59,6 +64,8 @@ import {
   pickLeisureStops,
   shuffled,
 } from '../leisure/leisure.js';
+import type { DiscoLight, PartyBounds, PartyState } from '../party/party.js';
+import { discoLights, partyBounds } from '../party/party.js';
 import { getPetCount, getPetName } from '../sprites/petSpriteData.js';
 import { getLoadedCharacterCount } from '../sprites/spriteData.js';
 import type {
@@ -108,6 +115,13 @@ export class OfficeState {
   furnitureAnimTimer = 0;
   /** Steam, sparks and dust (fork, Fase 2). */
   particles = new ParticleSystem();
+  /** The big party under way (fork, Fase 5.5), or null. */
+  party: PartyState | null = null;
+  /** Agents (not interns) that worked since everyone was last done: 2+ means a big party. */
+  private workedSinceParty = new Set<number>();
+  /** Agents that started working since their last cheer: only those cheer at a turn end. */
+  private turnWorkers = new Set<number>();
+  private confettiTimer = 0;
   /** Agents that already set off the Light Labs teleporter since they last entered the zone. */
   private teleported = new WeakSet<Character>();
   selectedAgentId: number | null = null;
@@ -619,6 +633,8 @@ export class OfficeState {
     const ch = this.characters.get(id);
     if (!ch) return;
     if (ch.matrixEffect === 'despawn') return; // already despawning
+    this.workedSinceParty.delete(id);
+    this.turnWorkers.delete(id);
     // Free seat and clear selection immediately
     if (ch.seatId) {
       const seat = this.seats.get(ch.seatId);
@@ -755,7 +771,10 @@ export class OfficeState {
    *  out on another task, round-robin when all are busy. Same hue shift as the boss, so a
    *  repeated boss and its interns match. Bosses without interns (external characters) send a
    *  copy of themselves, as before. */
-  private pickInternPalette(parentCh: Character | undefined): { palette: number; hueShift: number } {
+  private pickInternPalette(parentCh: Character | undefined): {
+    palette: number;
+    hueShift: number;
+  } {
     if (!parentCh) return { palette: 0, hueShift: 0 };
     const interns = (BOSS_INTERNS[parentCh.palette] ?? []).filter(
       (i) => i < getLoadedCharacterCount(),
@@ -904,6 +923,13 @@ export class OfficeState {
         // Back to work: drop the free-time activity and get up from the couch
         ch.idleSec = 0;
         this.endLeisure(ch);
+        // ...and leave the party (fork, Fase 5.5)
+        ch.cheerSec = 0;
+        ch.partySpot = null;
+        if (!ch.isSubagent) {
+          this.workedSinceParty.add(id);
+          this.turnWorkers.add(id);
+        }
       }
       if (!active) {
         if (!ch.isSubagent) {
@@ -1217,6 +1243,182 @@ export class OfficeState {
     }
   }
 
+  // ── Party mode (fork, Fase 5.5) ─────────────────────────────
+
+  /** Someone still busy: an agent at work, or an intern still on its task. */
+  private anyoneWorking(): boolean {
+    for (const ch of this.characters.values()) {
+      if (!ch.isActive || ch.matrixEffect === 'despawn') continue;
+      if (ch.isSubagent && this.isInternDone(ch)) continue;
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * An agent finished its turn: a small cheer (hop + a little confetti), or, when it was the
+   * last of PARTY_MIN_WORKERS+ agents working, the big party. Call after setAgentActive(false).
+   * Returns what happened so the caller can play the sound; null for an agent that hadn't
+   * worked since its last cheer (a repeated status) or isn't a normal agent.
+   */
+  celebrateTurnEnd(id: number): 'cheer' | 'party' | null {
+    const ch = this.characters.get(id);
+    if (!ch || ch.isSubagent || ch.matrixEffect || ch.isActive) return null;
+    if (!this.turnWorkers.delete(id)) return null;
+    if (!this.anyoneWorking()) {
+      const workers = this.workedSinceParty.size;
+      this.workedSinceParty.clear();
+      if (workers >= PARTY_MIN_WORKERS && !this.party && this.startParty()) return 'party';
+    }
+    this.startCheer(ch, CHEER_SEC);
+    if (areParticlesEnabled()) {
+      this.particles.burstConfetti(ch.x, ch.y - SPARK_HEAD_HEIGHT_PX);
+    }
+    return 'cheer';
+  }
+
+  /** Hop in place for `sec` seconds, facing the room. */
+  private startCheer(ch: Character, sec: number): void {
+    ch.cheerSec = sec;
+    ch.hopTimer = 0;
+    ch.state = CharacterState.IDLE;
+    ch.path = [];
+    ch.moveProgress = 0;
+    ch.x = ch.tileCol * TILE_SIZE + TILE_SIZE / 2;
+    ch.y = ch.tileRow * TILE_SIZE + TILE_SIZE / 2;
+    ch.dir = Direction.DOWN;
+    ch.frame = 0;
+    ch.frameTimer = 0;
+  }
+
+  /** Box of the interns' room tiles in sprite px, or null without one. */
+  private internsRoomBounds(): PartyBounds | null {
+    const { cols, rows } = this.layout;
+    let minCol = Infinity;
+    let minRow = Infinity;
+    let maxCol = -Infinity;
+    let maxRow = -Infinity;
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        if (tileZoneKind(this.layout, col, row) !== Zone.INTERNS) continue;
+        minCol = Math.min(minCol, col);
+        minRow = Math.min(minRow, row);
+        maxCol = Math.max(maxCol, col);
+        maxRow = Math.max(maxRow, row);
+      }
+    }
+    if (minCol === Infinity) return null;
+    return {
+      x: minCol * TILE_SIZE,
+      y: minRow * TILE_SIZE,
+      w: (maxCol - minCol + 1) * TILE_SIZE,
+      h: (maxRow - minRow + 1) * TILE_SIZE,
+    };
+  }
+
+  /** Call everyone who is not working to the interns' room (standing spots, open floor first).
+   *  Without such a room, or a free spot, a guest dances where it is. False with no guests. */
+  private startParty(): boolean {
+    const guests = [...this.characters.values()].filter(
+      (ch) => !ch.isSubagent && !ch.isActive && !ch.matrixEffect,
+    );
+    if (guests.length === 0) return false;
+    const tiers = findZoneSpots(
+      this.layout,
+      Zone.INTERNS,
+      this.seats,
+      this.tileMap,
+      this.blockedTiles,
+    )
+      .map((tier) => tier.filter((s) => s.seatUid === null))
+      .reverse(); // open floor before "next to furniture"
+    const taken = new Set<string>();
+    for (const ch of this.characters.values()) {
+      if (!guests.includes(ch)) taken.add(`${ch.tileCol},${ch.tileRow}`);
+    }
+    const spots: Array<{ col: number; row: number }> = [];
+    for (const ch of guests) {
+      this.endLeisure(ch);
+      ch.seatTimer = 0;
+      const spot = pickZoneSpot(tiers, taken) ?? { col: ch.tileCol, row: ch.tileRow };
+      taken.add(`${spot.col},${spot.row}`);
+      ch.partySpot = { col: spot.col, row: spot.row };
+      spots.push(ch.partySpot);
+    }
+    this.party = { sec: 0, danceSec: null, bounds: this.internsRoomBounds() ?? partyBounds(spots) };
+    this.confettiTimer = 0;
+    return true;
+  }
+
+  private atPartySpot(ch: Character): boolean {
+    const spot = ch.partySpot;
+    return !!spot && ch.path.length === 0 && ch.tileCol === spot.col && ch.tileRow === spot.row;
+  }
+
+  /** Gathering, then the dance (from the first guest's arrival), then back to what they were doing. */
+  private updateParty(dt: number): void {
+    const party = this.party;
+    if (!party) return;
+    party.sec += dt;
+    const guests = [...this.characters.values()].filter((ch) => ch.partySpot);
+    if (party.danceSec === null) {
+      if (guests.some((ch) => this.atPartySpot(ch)) || party.sec >= PARTY_GATHER_MAX_SEC) {
+        party.danceSec = PARTY_SEC;
+        // Resting interns are already in the room: they join in where they are
+        for (const ch of this.characters.values()) {
+          if (ch.isSubagent && ch.internRestSec !== null) this.startCheer(ch, PARTY_SEC);
+        }
+      }
+      return;
+    }
+    party.danceSec -= dt;
+    if (areParticlesEnabled()) {
+      this.confettiTimer -= dt;
+      while (this.confettiTimer <= 0) {
+        this.confettiTimer += CONFETTI_RAIN_SPAWN_SEC;
+        const { x, y, w, h } = party.bounds;
+        this.particles.rainConfetti(x, y, w, h);
+      }
+    }
+    if (party.danceSec <= 0 || guests.length === 0) {
+      for (const ch of guests) ch.partySpot = null;
+      this.party = null;
+    }
+  }
+
+  /** A guest walks to its spot, then dances there while the party lasts. */
+  private updatePartyGuest(ch: Character, dt: number): void {
+    const party = this.party!;
+    if (this.atPartySpot(ch)) {
+      ch.state = CharacterState.IDLE;
+      if (party.danceSec !== null && party.danceSec > 0) this.startCheer(ch, party.danceSec);
+      return;
+    }
+    if (ch.state !== CharacterState.WALK) {
+      const spot = ch.partySpot!;
+      const path = this.withOwnSeatUnblocked(ch, () =>
+        findPath(ch.tileCol, ch.tileRow, spot.col, spot.row, this.tileMap, this.blockedTiles),
+      );
+      if (path.length === 0) {
+        ch.partySpot = { col: ch.tileCol, row: ch.tileRow }; // no way there: dance here
+        return;
+      }
+      ch.path = path;
+      ch.moveProgress = 0;
+      ch.state = CharacterState.WALK;
+      ch.frame = 0;
+      ch.frameTimer = 0;
+    }
+    updateCharacter(ch, dt, this.walkableTiles, this.seats, this.tileMap, this.blockedTiles);
+  }
+
+  /** Disco spots over the dance floor while the party dances at night, else null. */
+  getDisco(): { lights: DiscoLight[]; bounds: PartyBounds } | null {
+    const party = this.party;
+    if (!party || party.danceSec === null || !this.isNight()) return null;
+    return { lights: discoLights(party.sec, party.bounds), bounds: party.bounds };
+  }
+
   /** The free-time activity an idle agent is on, or null. */
   getLeisureActivity(id: number): LeisureActivity | null {
     return this.characters.get(id)?.leisure?.activity ?? null;
@@ -1514,6 +1716,8 @@ export class OfficeState {
       this.greeter = null;
     }
 
+    this.updateParty(dt);
+
     const toDelete: number[] = [];
     for (const ch of this.characters.values()) {
       const effect = advanceMatrixEffect(ch, dt);
@@ -1521,6 +1725,21 @@ export class OfficeState {
         if (effect === 'despawned') toDelete.push(ch.id);
         continue; // skip normal FSM while the effect is (or just was) active
       }
+
+      // Cheering or dancing (Fase 5.5): hop in place, nothing else moves
+      if (ch.cheerSec > 0) {
+        ch.cheerSec = Math.max(0, ch.cheerSec - dt);
+        ch.hopTimer += dt;
+        ch.breathTimer += dt;
+        this.tickBubble(ch, dt);
+        continue;
+      }
+      if (ch.partySpot && this.party) {
+        this.updatePartyGuest(ch, dt);
+        this.tickBubble(ch, dt);
+        continue;
+      }
+      ch.partySpot = null;
 
       // An intern resting before going home (Fase 5.1): no zones, just the interns' room
       if (ch.internRestSec !== null) {
@@ -1563,18 +1782,7 @@ export class OfficeState {
       );
 
       this.fireTeleporterOnArrival(ch);
-
-      // Thinking bubble counts up to drive its dot animation
-      if (ch.bubbleType === 'thinking') ch.bubbleTimer += dt;
-
-      // Tick bubble timer for waiting bubbles
-      if (ch.bubbleType === 'waiting') {
-        ch.bubbleTimer -= dt;
-        if (ch.bubbleTimer <= 0) {
-          ch.bubbleType = null;
-          ch.bubbleTimer = 0;
-        }
-      }
+      this.tickBubble(ch, dt);
     }
     // Remove characters that finished despawn
     for (const id of toDelete) {
@@ -1594,6 +1802,20 @@ export class OfficeState {
           pet.bubbleType = null;
           pet.bubbleTimer = 0;
         }
+      }
+    }
+  }
+
+  private tickBubble(ch: Character, dt: number): void {
+    // Thinking bubble counts up to drive its dot animation
+    if (ch.bubbleType === 'thinking') ch.bubbleTimer += dt;
+
+    // Tick bubble timer for waiting bubbles
+    if (ch.bubbleType === 'waiting') {
+      ch.bubbleTimer -= dt;
+      if (ch.bubbleTimer <= 0) {
+        ch.bubbleType = null;
+        ch.bubbleTimer = 0;
       }
     }
   }

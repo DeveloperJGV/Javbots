@@ -57,6 +57,7 @@ function getActivityText(
   bubbleType: Character['bubbleType'],
   waitingAwaitingInput: boolean,
   leisure: LeisureActivity | null,
+  partying: boolean,
 ): string {
   if (bubbleType === 'permission') return NEEDS_APPROVAL_TEXT;
   if (bubbleType === 'thinking') return THINKING_ACTIVITY_TEXT;
@@ -80,6 +81,8 @@ function getActivityText(
     }
   }
 
+  // Party mode (Fase 5.5): cheering a finished turn, or at the party
+  if (partying) return '¡De fiesta!';
   // Free time (Fase 5.1): say what it is doing on its break
   return leisure ? leisureLabel(leisure) : 'Descansando';
 }
@@ -195,6 +198,7 @@ export function ToolOverlay({
             ch.bubbleType,
             ch.waitingAwaitingInput ?? false,
             ch.leisure?.activity ?? null,
+            !ch.isActive && (ch.cheerSec > 0 || ch.partySpot !== null),
           );
         }
 

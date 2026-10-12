@@ -291,6 +291,14 @@ export interface Character {
   /** An intern done with its task, resting before it leaves: seconds left, else null. */
   internRestSec: number | null;
 
+  // -- Party mode (fork, Fase 5.5) --
+  /** Seconds left hopping in place (small cheer, or dancing at the party); 0 = not. */
+  cheerSec: number;
+  /** Drives the hop animation while `cheerSec` runs. */
+  hopTimer: number;
+  /** Where it dances at the big party (it walks there first); null = not a guest. */
+  partySpot: { col: number; row: number } | null;
+
   // -- Context gauge --
   /** Tokens in the agent's context as of its newest turn; 0 until reported.
    *  Sub-agents have no session of their own and stay at 0. */

@@ -28,9 +28,11 @@ function toTriple(arr: string[][][]): [SpriteData, SpriteData, SpriteData] {
 
 let loadedPets: PetSpriteFrames[] | null = null;
 let loadedPetNames: string[] = [];
+let loadedPetLightColors: string[] = [];
 
 /**
- * Receive raw frame arrays + parallel display names from the server message.
+ * Receive raw frame arrays + parallel display names (and optional night-glow
+ * colors, '' = default) from the server message.
  * Skips entries with fewer than 3 frames in any of the required directions.
  */
 export function setPetTemplates(
@@ -42,9 +44,11 @@ export function setPetTemplates(
     walkRight: string[][][];
   }>,
   petNames?: string[],
+  petLightColors?: string[],
 ): void {
   const resolved: PetSpriteFrames[] = [];
   const resolvedNames: string[] = [];
+  const resolvedLightColors: string[] = [];
   for (let i = 0; i < data.length; i++) {
     const raw = data[i];
     if (
@@ -85,9 +89,11 @@ export function setPetTemplates(
       idleLeft: idleUp,
     });
     resolvedNames.push(petNames?.[i] ?? `Pet ${i + 1}`);
+    resolvedLightColors.push(petLightColors?.[i] ?? '');
   }
   loadedPets = resolved;
   loadedPetNames = resolvedNames;
+  loadedPetLightColors = resolvedLightColors;
 }
 
 /** Returns the resolved frames for a petType, or null if not loaded or out of range. */
@@ -105,4 +111,9 @@ export function getPetCount(): number {
 /** Display name for a petType. Falls back to "Pet N" when manifest missing. */
 export function getPetName(petIndex: number): string {
   return loadedPetNames[petIndex] ?? `Pet ${petIndex + 1}`;
+}
+
+/** Night-glow color (`#rrggbb`) the pet's manifest asks for, or null for the default. */
+export function getPetLightColor(petIndex: number): string | null {
+  return loadedPetLightColors[petIndex] || null;
 }

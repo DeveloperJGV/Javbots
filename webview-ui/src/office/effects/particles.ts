@@ -1,4 +1,10 @@
 import {
+  CONFETTI_BURST_COUNT,
+  CONFETTI_BURST_SPEED_PX_PER_SEC,
+  CONFETTI_COLORS,
+  CONFETTI_GRAVITY_PX_PER_SEC2,
+  CONFETTI_LIFE_SEC,
+  CONFETTI_RAIN_FALL_PX_PER_SEC,
   DUST_COLORS,
   DUST_LIFE_SEC,
   DUST_SPAWN_SEC,
@@ -31,10 +37,13 @@ import {
   TEAR_LIFE_SEC,
   TELEPORT_BEAM_COLORS,
   TELEPORT_BEAM_COUNT,
+  TELEPORT_BEAM_DURATION_SEC,
   TELEPORT_BEAM_HALF_WIDTH_PX,
   TELEPORT_BEAM_HEIGHT_PX,
+  TELEPORT_BEAM_HOLD_FRACTION,
   TELEPORT_BEAM_LIFE_SEC,
   TELEPORT_BEAM_RISE_PX_PER_SEC,
+  TELEPORT_BEAM_SPAWN_SEC,
 } from '../../constants.js';
 import type { FurnitureInstance } from '../types.js';
 
@@ -46,7 +55,8 @@ import type { FurnitureInstance } from '../types.js';
  * lives in particleRender.ts so this module stays DOM-free (and testable).
  */
 
-export type ParticleKind = 'steam' | 'spark' | 'dust' | 'paper';
+/** `confetti` (party mode, Fase 5.5) glows like sparks and flutters like paper. */
+export type ParticleKind = 'steam' | 'spark' | 'dust' | 'paper' | 'confetti';
 
 export interface Particle {
   kind: ParticleKind;
@@ -72,7 +82,10 @@ const STEAM_SOURCES: Record<string, { x: number; y: number }> = {
 };
 const DUST_SOURCES = new Set(['BOOKSHELF', 'DOUBLE_BOOKSHELF', 'WHITEBOARD']);
 /** Portals shed sparkles off their rim: oval center and radii in sprite px, and their colors. */
-const SPARKLE_SOURCES: Record<string, { cx: number; cy: number; rx: number; ry: number; colors: readonly string[] }> = {
+const SPARKLE_SOURCES: Record<
+  string,
+  { cx: number; cy: number; rx: number; ry: number; colors: readonly string[] }
+> = {
   PORTAL_BLUE: { cx: 8, cy: 17, rx: 6, ry: 13, colors: PORTAL_BLUE_SPARKS },
   PORTAL_ORANGE: { cx: 8, cy: 17, rx: 6, ry: 13, colors: PORTAL_ORANGE_SPARKS },
 };
@@ -87,6 +100,23 @@ function pick<T>(items: readonly T[], rand: () => number): T {
   return items[Math.floor(rand() * items.length) % items.length];
 }
 
+/** A teleporter beam in progress: the steady column at (x, y), the base of the capsule glass. */
+export interface TeleportBeam {
+  x: number;
+  y: number;
+  age: number;
+  spawnTimer: number;
+}
+
+/** Strength of a beam's column: full while it holds, then down in pixel-art steps, 0 when done. */
+export function beamStrength(age: number): number {
+  const hold = TELEPORT_BEAM_DURATION_SEC * TELEPORT_BEAM_HOLD_FRACTION;
+  if (age >= TELEPORT_BEAM_DURATION_SEC) return 0;
+  if (age < hold) return 1;
+  const left = 1 - (age - hold) / (TELEPORT_BEAM_DURATION_SEC - hold);
+  return left > 0.5 ? 0.66 : 0.33;
+}
+
 /** Opacity steps a particle fades through (pixel art: no smooth fades). */
 export function steppedAlpha(age: number, life: number): number {
   const left = 1 - age / life;
@@ -97,6 +127,7 @@ export function steppedAlpha(age: number, life: number): number {
 
 export class ParticleSystem {
   particles: Particle[] = [];
+  beams: TeleportBeam[] = [];
   private steamTimers = new Map<string, number>();
   private sparkleTimers = new Map<string, number>();
   private dustTimer = DUST_SPAWN_SEC;
@@ -174,23 +205,68 @@ export class ParticleSystem {
     }
   }
 
-  /** Teleport beam (Mega Man): a column of light rising from (x, y), the base of the capsule glass. */
+  /** Teleport beam (Mega Man): a steady column of light standing on (x, y), the base of
+   *  the capsule glass, for TELEPORT_BEAM_DURATION_SEC, with sparks rising in it. A new
+   *  beam on the same capsule restarts it instead of stacking. */
   burstTeleport(x: number, y: number): void {
-    for (let i = 0; i < TELEPORT_BEAM_COUNT; i++) {
+    this.beams = this.beams.filter((b) => b.x !== x || b.y !== y);
+    this.beams.push({ x, y, age: 0, spawnTimer: TELEPORT_BEAM_SPAWN_SEC });
+    for (let i = 0; i < TELEPORT_BEAM_COUNT; i++) this.addBeamSpark(x, y);
+  }
+
+  private addBeamSpark(x: number, y: number): void {
+    this.add({
+      kind: 'spark',
+      x: x + Math.round((this.rand() * 2 - 1) * TELEPORT_BEAM_HALF_WIDTH_PX),
+      y: y - this.rand() * TELEPORT_BEAM_HEIGHT_PX,
+      vx: 0,
+      vy: -TELEPORT_BEAM_RISE_PX_PER_SEC * (0.6 + this.rand() * 0.8),
+      ay: 0,
+      age: 0,
+      life: TELEPORT_BEAM_LIFE_SEC * (0.5 + this.rand() * 0.5),
+      color: pick(TELEPORT_BEAM_COLORS, this.rand),
+      w: 1,
+      phase: 0,
+    });
+  }
+
+  /** A handful of confetti thrown up from (x, y): a finished turn's small cheer. */
+  burstConfetti(x: number, y: number, count = CONFETTI_BURST_COUNT): void {
+    for (let i = 0; i < count; i++) {
+      const angle = -Math.PI * (0.15 + this.rand() * 0.7);
+      const speed = CONFETTI_BURST_SPEED_PX_PER_SEC * (0.5 + this.rand() * 0.7);
       this.add({
-        kind: 'spark',
-        x: x + Math.round((this.rand() * 2 - 1) * TELEPORT_BEAM_HALF_WIDTH_PX),
-        y: y - this.rand() * TELEPORT_BEAM_HEIGHT_PX,
-        vx: 0,
-        vy: -TELEPORT_BEAM_RISE_PX_PER_SEC * (0.6 + this.rand() * 0.8),
-        ay: 0,
+        kind: 'confetti',
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        ay: CONFETTI_GRAVITY_PX_PER_SEC2,
         age: 0,
-        life: TELEPORT_BEAM_LIFE_SEC * (0.5 + this.rand() * 0.5),
-        color: pick(TELEPORT_BEAM_COLORS, this.rand),
-        w: 1,
-        phase: 0,
+        life: CONFETTI_LIFE_SEC * (0.7 + this.rand() * 0.5),
+        color: pick(CONFETTI_COLORS, this.rand),
+        w: this.rand() < 0.4 ? 2 : 1,
+        phase: this.rand() * Math.PI * 2,
       });
     }
+  }
+
+  /** One piece of party confetti falling from the top of a w×h dance floor to its bottom. */
+  rainConfetti(x: number, y: number, w: number, h: number): void {
+    const vy = CONFETTI_RAIN_FALL_PX_PER_SEC * (0.7 + this.rand() * 0.6);
+    this.add({
+      kind: 'confetti',
+      x: x + this.rand() * w,
+      y: y - this.rand() * 4,
+      vx: (this.rand() - 0.5) * 4,
+      vy,
+      ay: 0,
+      age: 0,
+      life: (h / vy) * (0.75 + this.rand() * 0.25),
+      color: pick(CONFETTI_COLORS, this.rand),
+      w: this.rand() < 0.4 ? 2 : 1,
+      phase: this.rand() * Math.PI * 2,
+    });
   }
 
   /** Tears (The Binding of Isaac): drops arcing out of both eyes when a tool fails. */
@@ -225,6 +301,17 @@ export class ParticleSystem {
       this.particles[write++] = p;
     }
     this.particles.length = write;
+
+    // Teleporter beams: keep the column standing and sparks rising in it
+    for (const b of this.beams) {
+      b.age += dt;
+      b.spawnTimer -= dt;
+      while (b.spawnTimer <= 0 && b.age < TELEPORT_BEAM_DURATION_SEC) {
+        b.spawnTimer += TELEPORT_BEAM_SPAWN_SEC;
+        this.addBeamSpark(b.x, b.y);
+      }
+    }
+    this.beams = this.beams.filter((b) => b.age < TELEPORT_BEAM_DURATION_SEC);
 
     if (!ambientEnabled) return;
 

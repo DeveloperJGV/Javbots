@@ -97,6 +97,9 @@ function makeChar(id: number, col: number, row: number): Character {
     leisure: null,
     idleSec: 0,
     internRestSec: null,
+    cheerSec: 0,
+    hopTimer: 0,
+    partySpot: null,
     contextTokens: 0,
     maxContextTokens: 200_000,
   };

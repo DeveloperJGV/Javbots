@@ -711,7 +711,9 @@ export async function loadPetSprites(assetsRoot: string): Promise<LoadedPetSprit
 
         const pngBuffer = fs.readFileSync(pngPath);
         pets.push(decodePetPng(pngBuffer));
-        manifests.push({ id: manifestData.id, name: manifestData.name });
+        manifests.push(
+          petManifestEntry(manifestData.id, manifestData.name, manifestData.lightColor),
+        );
       } catch (err) {
         console.warn(
           `[AssetLoader] ⚠️  Error loading pet ${dirName}: ${err instanceof Error ? err.message : err}`,
@@ -808,7 +810,9 @@ export async function loadExternalPetSprites(
 
         const pngBuffer = fs.readFileSync(pngPath);
         pets.push(decodePetPng(pngBuffer));
-        manifests.push({ id: manifestData.id, name: manifestData.name });
+        manifests.push(
+          petManifestEntry(manifestData.id, manifestData.name, manifestData.lightColor),
+        );
       } catch (err) {
         console.warn(
           `[AssetLoader] ⚠️  Error loading external pet ${dirName}: ${err instanceof Error ? err.message : err}`,
@@ -830,6 +834,15 @@ export async function loadExternalPetSprites(
   }
 }
 
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+
+/** The manifest fields we keep; a malformed `lightColor` is dropped, not fatal. */
+function petManifestEntry(id: string, name: string, lightColor: unknown): PetManifest {
+  return typeof lightColor === 'string' && HEX_COLOR_RE.test(lightColor)
+    ? { id, name, lightColor }
+    : { id, name };
+}
+
 /**
  * Send pet sprites to webview.
  *
@@ -845,6 +858,7 @@ export function sendPetSpritesToWebview(
     type: 'petSpritesLoaded',
     pets: petSprites.pets,
     petNames: petSprites.manifests.map((m) => m.name),
+    petLightColors: petSprites.manifests.map((m) => m.lightColor ?? ''),
   });
   console.log(`📤 Sent ${petSprites.pets.length} pet sprites to webview`);
 }

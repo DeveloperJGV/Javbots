@@ -118,6 +118,9 @@ export function createCharacter(
     leisure: null,
     idleSec: 0,
     internRestSec: null,
+    cheerSec: 0,
+    hopTimer: 0,
+    partySpot: null,
     contextTokens: 0,
     maxContextTokens: DEFAULT_MAX_CONTEXT_TOKENS,
   };

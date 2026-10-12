@@ -10,9 +10,11 @@ import {
   FLUX_DIM_CORE,
   FLUX_PULSE_PERIOD_SEC,
   NIGHT_TINT_ALPHA,
+  PET_LIGHT_COLOR,
   RING_GLINT,
   RING_GLINT_PERIOD_SEC,
   RING_GOLD,
+  SCREEN_LIGHT_COLOR,
   SHADOW_CORE_COLOR,
   SHADOW_EDGE_COLOR,
   SPARK_COUNT,
@@ -36,11 +38,12 @@ import {
   swaySprite,
   windowSprite,
 } from '../src/office/effects/ambientFurniture.js';
-import { ambientFor, ambientForHour } from '../src/office/effects/dayNight.js';
+import { ambientFor, ambientForHour, hexToRgb } from '../src/office/effects/dayNight.js';
 import { nextDayNightMode } from '../src/office/effects/effectsSettings.js';
 import { inhaleSprite, isInhaling, pickLookDirection } from '../src/office/effects/idleMotion.js';
 import {
   collectLights,
+  collectPetLights,
   computeLightmap,
   lightStrengthAt,
   moonlightFor,
@@ -48,7 +51,7 @@ import {
 } from '../src/office/effects/lighting.js';
 import { ParticleSystem, steppedAlpha } from '../src/office/effects/particles.js';
 import { ellipseShadowSprite, furnitureShadowFor } from '../src/office/effects/shadows.js';
-import type { FurnitureInstance, SpriteData } from '../src/office/types.js';
+import type { FurnitureInstance, Pet, SpriteData } from '../src/office/types.js';
 import { Direction } from '../src/office/types.js';
 
 // Pure sprite logic only compares pixel strings, so any token stands in for a color.
@@ -292,7 +295,10 @@ describe('pulsing furniture', () => {
     const sprite: SpriteData = [[from.toUpperCase()]];
     const inst = { type: 'BASEMENT_FIRE', sprite, x: 0, y: 0, zY: 0 } as FurnitureInstance;
     assert.equal(applyAmbientAnimation([inst], 0, new Date())[0].sprite[0][0], to);
-    assert.equal(applyAmbientAnimation([inst], FIRE_FLICKER_PERIOD_SEC * 0.9, new Date())[0].sprite, sprite);
+    assert.equal(
+      applyAmbientAnimation([inst], FIRE_FLICKER_PERIOD_SEC * 0.9, new Date())[0].sprite,
+      sprite,
+    );
   });
 
   test('the ring glints for a moment, then stays plain gold', () => {
@@ -303,7 +309,10 @@ describe('pulsing furniture', () => {
     const sprite: SpriteData = [[RING_GOLD.toUpperCase()]];
     const inst = { type: 'RING_PEDESTAL', sprite, x: 0, y: 0, zY: 0 } as FurnitureInstance;
     assert.equal(applyAmbientAnimation([inst], 0, new Date())[0].sprite[0][0], RING_GLINT);
-    assert.equal(applyAmbientAnimation([inst], RING_GLINT_PERIOD_SEC * 0.5, new Date())[0].sprite, sprite);
+    assert.equal(
+      applyAmbientAnimation([inst], RING_GLINT_PERIOD_SEC * 0.5, new Date())[0].sprite,
+      sprite,
+    );
   });
 });
 
@@ -360,6 +369,44 @@ describe('night lights', () => {
     const dusk = ambientForHour(18.75);
     assert.equal(moonlightFor(dusk), 0);
     assert.equal(collectLights([], furniture, moonlightFor(dusk)).length, 3);
+  });
+
+  test('each pet carries a glow that follows it', () => {
+    const pet = { x: 41, y: 80 } as Pet;
+    const [light] = collectPetLights([pet]);
+    assert.equal(light.x, 41);
+    assert.ok(light.y < pet.y, 'centered on the body, above the feet');
+    assert.equal(collectPetLights([{ ...pet, x: 73 }])[0].x, 73);
+  });
+
+  test("a pet's glow takes the color its manifest asks for", () => {
+    const pets = [{ x: 10, y: 20, petType: 0 } as Pet, { x: 40, y: 20, petType: 1 } as Pet];
+    const [custom, plain] = collectPetLights(pets, (t) => (t === 0 ? SCREEN_LIGHT_COLOR : null));
+    assert.deepEqual(custom.color, hexToRgb(SCREEN_LIGHT_COLOR));
+    assert.deepEqual(plain.color, hexToRgb(PET_LIGHT_COLOR));
+  });
+
+  test('a patch of the lightmap matches the same pixels of the full map', () => {
+    const lights = [
+      {
+        x: 20,
+        y: 12,
+        radius: 30,
+        intensity: 1,
+        color: [255, 200, 150] as [number, number, number],
+      },
+      ...collectPetLights([{ x: 37, y: 30 } as Pet]),
+    ];
+    const isVoid = (x: number) => x >= 60;
+    const full = computeLightmap(64, 48, -16, night, lights, isVoid);
+    const patch = computeLightmap(20, 14, -5, night, lights, isVoid, 30);
+    for (let y = 0; y < 14; y++) {
+      for (let x = 0; x < 20; x++) {
+        for (let c = 0; c < 4; c++) {
+          assert.equal(patch[(y * 20 + x) * 4 + c], full[((y + 11) * 64 + x + 30) * 4 + c]);
+        }
+      }
+    }
   });
 });
 

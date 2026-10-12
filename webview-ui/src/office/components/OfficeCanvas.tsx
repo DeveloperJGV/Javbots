@@ -297,7 +297,11 @@ export function OfficeCanvas({
           showAreas,
           activeAreaLabel,
           officeState.pets,
-          { particles: officeState.particles, lighting: !isEditMode },
+          {
+            particles: officeState.particles,
+            lighting: !isEditMode,
+            disco: officeState.getDisco(),
+          },
         );
         offsetRef.current = { x: offsetX, y: offsetY };
 

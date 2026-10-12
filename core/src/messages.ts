@@ -242,6 +242,7 @@ export interface PetSpritesLoaded {
   type: 'petSpritesLoaded';
   pets: PetSpriteFrameSet[];
   petNames: string[];
+  petLightColors?: string[];
 }
 
 export interface PetSpriteFrameSet {

@@ -55,6 +55,9 @@ import { renderParticles } from '../effects/particleRender.js';
 import type { ParticleSystem } from '../effects/particles.js';
 import { renderShadows } from '../effects/shadowRender.js';
 import { getColorizedFloorSprite, hasFloorSprites, WALL_COLOR } from '../floorTiles.js';
+import type { DiscoLight, PartyBounds } from '../party/party.js';
+import { hopOffsetPx } from '../party/party.js';
+import { renderDisco } from '../party/partyRender.js';
 import { mapOffset } from '../projection.js';
 import {
   getCarpetJunctionSprite,
@@ -416,7 +419,9 @@ export function renderScene(
     const sittingOffset = sittingDropPx(ch);
     // Anchor at bottom-center of character — round to integer device pixels
     const drawX = Math.round(offsetX + ch.x * zoom - cached.width / 2);
-    const drawY = Math.round(offsetY + (ch.y + sittingOffset) * zoom - cached.height);
+    // Cheering / dancing (Fase 5.5): the sprite hops, the shadow stays on the floor
+    const hop = hopOffsetPx(ch);
+    const drawY = Math.round(offsetY + (ch.y + sittingOffset - hop) * zoom - cached.height);
 
     // Sort characters by bottom of their tile (not center) so they render
     // in front of same-row furniture (e.g. chairs) but behind furniture
@@ -910,6 +915,8 @@ export interface EffectsRenderState {
   particles: ParticleSystem;
   /** Day/night tint and light pools. Off while editing, so colors read true. */
   lighting: boolean;
+  /** Disco spots of the party at night (Fase 5.5), or null. */
+  disco?: { lights: DiscoLight[]; bounds: PartyBounds } | null;
 }
 
 export interface SelectionRenderState {
@@ -1022,7 +1029,12 @@ export function renderFrame(
       offsetX,
       offsetY,
       zoom,
+      pets ?? [],
+      effects.particles.beams,
     );
+  }
+  if (effects?.lighting && effects.disco) {
+    renderDisco(ctx, effects.disco.lights, effects.disco.bounds, offsetX, offsetY, zoom);
   }
   if (showParticles) renderParticles(ctx, effects.particles, offsetX, offsetY, zoom, true);
 

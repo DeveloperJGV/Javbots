@@ -394,6 +394,7 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
         type: 'petSpritesLoaded',
         pets: cache.pets.pets,
         petNames: cache.pets.manifests.map((m) => m.name),
+        petLightColors: cache.pets.manifests.map((m) => m.lightColor ?? ''),
       });
     }
     if (cache.floorTiles) {

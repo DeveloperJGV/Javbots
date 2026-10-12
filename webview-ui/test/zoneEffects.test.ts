@@ -10,12 +10,15 @@ import {
   INTERN_FADE_SEC,
   INTERN_LEAVE_MAX_SEC,
   TELEPORT_BEAM_COUNT,
+  TELEPORT_BEAM_DURATION_SEC,
   TELEPORT_BEAM_HALF_WIDTH_PX,
+  TELEPORT_BEAM_HOLD_FRACTION,
   ZONE_MIN_STAY_SEC,
   ZONE_SWITCH_DELAY_SEC,
 } from '../src/constants.js';
 import { setParticlesEnabled } from '../src/office/effects/effectsSettings.js';
-import { ParticleSystem } from '../src/office/effects/particles.js';
+import { collectBeamLights } from '../src/office/effects/lighting.js';
+import { beamStrength, ParticleSystem } from '../src/office/effects/particles.js';
 import { advanceMatrixEffect, effectDurationSec } from '../src/office/engine/matrixEffectState.js';
 import { OfficeState } from '../src/office/engine/officeState.js';
 import { setCharacterTemplates } from '../src/office/sprites/spriteData.js';
@@ -105,6 +108,43 @@ test('teleport beam: a column of rising light inside the capsule', () => {
     assert.ok(Math.abs(p.x - 50) <= TELEPORT_BEAM_HALF_WIDTH_PX, 'stays inside the glass');
     assert.ok(p.vy < 0 && p.y <= 50, 'rises from the base');
   }
+});
+
+test('teleport beam: a steady column that holds, keeps sparking, then steps out', () => {
+  const ps = new ParticleSystem(() => 0.5);
+  ps.burstTeleport(50, 50);
+  assert.equal(ps.beams.length, 1);
+  const dt = 0.05;
+  for (let t = 0; t < TELEPORT_BEAM_DURATION_SEC * TELEPORT_BEAM_HOLD_FRACTION - dt; t += dt) {
+    ps.update(dt, [], false);
+    assert.equal(beamStrength(ps.beams[0].age), 1, 'full strength while it holds');
+  }
+  assert.ok(ps.particles.length > 0, 'sparks keep rising long after the first burst died out');
+  ps.update(TELEPORT_BEAM_DURATION_SEC, [], false);
+  assert.equal(ps.beams.length, 0, 'gone once its time is up');
+  const fading = [0.8, 0.9, 0.99].map((f) => beamStrength(TELEPORT_BEAM_DURATION_SEC * f));
+  assert.ok(
+    fading.every((v) => v > 0 && v < 1),
+    'fades in steps before it ends',
+  );
+});
+
+test('teleport beam: a second arrival restarts the column instead of stacking', () => {
+  const ps = new ParticleSystem(() => 0.5);
+  ps.burstTeleport(50, 50);
+  ps.update(1, [], false);
+  ps.burstTeleport(50, 50);
+  assert.equal(ps.beams.length, 1);
+  assert.equal(ps.beams[0].age, 0);
+});
+
+test('teleport beam lights the capsule at night while it lasts', () => {
+  const ps = new ParticleSystem(() => 0.5);
+  ps.burstTeleport(50, 50);
+  const [light] = collectBeamLights(ps.beams);
+  assert.ok(light && light.intensity > 0 && light.y < 50);
+  ps.update(TELEPORT_BEAM_DURATION_SEC + 0.1, [], false);
+  assert.equal(collectBeamLights(ps.beams).length, 0);
 });
 
 test('a command finishing in the DeLorean workshop hits 88 mph, elsewhere not', () => {

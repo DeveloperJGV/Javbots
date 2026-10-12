@@ -5,6 +5,10 @@ import {
   NOTIFICATION_NOTE_2_START_SEC,
   NOTIFICATION_NOTE_DURATION_SEC,
   NOTIFICATION_VOLUME,
+  PARTY_NOTE_DURATION_SEC,
+  PARTY_NOTE_GAP_SEC,
+  PARTY_NOTES_HZ,
+  PARTY_VOLUME,
   PERMISSION_NOTE_1_HZ,
   PERMISSION_NOTE_1_START_SEC,
   PERMISSION_NOTE_2_HZ,
@@ -22,7 +26,7 @@ let audioCtx: AudioContext | null = null;
  *  declared by testHooks.ts). Records BEFORE the soundEnabled gate so tests
  *  verify dispatch independent of user audio prefs. Gated on the e2e harness
  *  flag so this unbounded log never grows in a real session. */
-function recordSoundForTests(kind: 'done' | 'permission'): void {
+function recordSoundForTests(kind: 'done' | 'permission' | 'party'): void {
   if (!isE2E || typeof window === 'undefined') return;
   if (!window.__pixelAgentsTestHooks) window.__pixelAgentsTestHooks = {};
   if (!window.__pixelAgentsTestHooks.playedSounds) {
@@ -107,6 +111,32 @@ export async function playPermissionSound(): Promise<void> {
       PERMISSION_NOTE_DURATION_SEC,
       PERMISSION_VOLUME,
     );
+  } catch {
+    // Audio may not be available
+  }
+}
+
+/** Party mode (fork, Fase 5.5): a quick rising arpeggio, after the done chime has rung. */
+export async function playPartySound(): Promise<void> {
+  recordSoundForTests('party');
+  if (!soundEnabled) return;
+  try {
+    if (!audioCtx) {
+      audioCtx = new AudioContext();
+    }
+    if (audioCtx.state === 'suspended') {
+      await audioCtx.resume();
+    }
+    const start = NOTIFICATION_NOTE_2_START_SEC + NOTIFICATION_NOTE_DURATION_SEC;
+    PARTY_NOTES_HZ.forEach((hz, i) => {
+      playNote(
+        audioCtx!,
+        hz,
+        start + i * PARTY_NOTE_GAP_SEC,
+        PARTY_NOTE_DURATION_SEC,
+        PARTY_VOLUME,
+      );
+    });
   } catch {
     // Audio may not be available
   }

@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { DayNightMode, HooksConsentRequest } from '../../../core/src/messages.js';
-import { playDoneSound, playPermissionSound, setSoundEnabled } from '../notificationSound.js';
+import {
+  playDoneSound,
+  playPartySound,
+  playPermissionSound,
+  setSoundEnabled,
+} from '../notificationSound.js';
 import {
   setDayNightMode as setRendererDayNightMode,
   setParticlesEnabled as setRendererParticlesEnabled,
@@ -526,6 +531,8 @@ export function useExtensionMessages(
         if (status === 'waiting') {
           os.showWaitingBubble(id, msg.awaitingInput === true);
           playDoneSound();
+          // Party mode (Fase 5.5): a hop for every finished turn, a party when all are done
+          if (os.celebrateTurnEnd(id) === 'party') playPartySound();
         }
       } else if (msg.type === 'agentToolPermission') {
         const id = msg.id as number;
@@ -653,6 +660,7 @@ export function useExtensionMessages(
           return;
         }
         const petNames = Array.isArray(msg.petNames) ? (msg.petNames as string[]) : undefined;
+        const petLightColors = Array.isArray(msg.petLightColors) ? msg.petLightColors : undefined;
         console.log(`[Webview] Received ${pets.length} pet sprites`);
         setPetTemplates(
           pets as Array<{
@@ -663,6 +671,7 @@ export function useExtensionMessages(
             walkRight: string[][][];
           }>,
           petNames,
+          petLightColors,
         );
       } else if (msg.type === 'floorTilesLoaded') {
         const sprites = msg.sprites as string[][][];

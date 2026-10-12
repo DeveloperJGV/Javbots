@@ -525,6 +525,11 @@ components:
           description: Display names parallel-indexed to `pets` (sourced from each pet's manifest.json).
           items:
             type: string
+        petLightColors:
+          type: array
+          description: Night-glow colors (`#rrggbb`) parallel-indexed to `pets`, from each manifest's optional `lightColor`; an empty string means the default pet light.
+          items:
+            type: string
 
     PetSpriteFrameSet:
       description: One pet's frames keyed by direction + state. All arrays are 3D hex-string arrays (frames × rows × pixels).

@@ -56,4 +56,6 @@ export interface PetSpriteFrames {
 export interface PetManifest {
   id: string;
   name: string;
+  /** Color of the glow the pet carries at night (`#rrggbb`); absent = the default pet light. */
+  lightColor?: string;
 }

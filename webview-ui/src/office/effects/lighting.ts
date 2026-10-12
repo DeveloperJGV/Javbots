@@ -35,6 +35,9 @@ import {
   NEON_LIGHT_COLOR,
   NEON_LIGHT_INTENSITY,
   NEON_LIGHT_RADIUS_PX,
+  PET_LIGHT_COLOR,
+  PET_LIGHT_INTENSITY,
+  PET_LIGHT_RADIUS_PX,
   PORTAL_BLUE_LIGHT_COLOR,
   PORTAL_LIGHT_INTENSITY,
   PORTAL_LIGHT_RADIUS_PX,
@@ -45,6 +48,10 @@ import {
   SCREEN_LIGHT_COLOR,
   SCREEN_LIGHT_INTENSITY,
   SCREEN_LIGHT_RADIUS_PX,
+  TELEPORT_BEAM_HEIGHT_PX,
+  TELEPORT_LIGHT_COLOR,
+  TELEPORT_LIGHT_INTENSITY,
+  TELEPORT_LIGHT_RADIUS_PX,
   TRON_LIGHT_COLOR,
   TRON_LIGHT_INTENSITY,
   TRON_LIGHT_RADIUS_PX,
@@ -52,10 +59,13 @@ import {
   WORK_LIGHT_INTENSITY,
   WORK_LIGHT_RADIUS_PX,
 } from '../../constants.js';
-import type { Character, FurnitureInstance } from '../types.js';
+import { getPetLightColor } from '../sprites/petSpriteData.js';
+import type { Character, FurnitureInstance, Pet } from '../types.js';
 import { CharacterState, Direction } from '../types.js';
 import type { Ambient, Rgb } from './dayNight.js';
 import { ambientFor, hexToRgb } from './dayNight.js';
+import type { TeleportBeam } from './particles.js';
+import { beamStrength } from './particles.js';
 
 /**
  * Day/night tint with light pools, computed at sprite-pixel resolution and
@@ -86,9 +96,16 @@ const FIRE_RGB = hexToRgb(FIRE_LIGHT_COLOR);
 const JEDI_RGB = hexToRgb(JEDI_LIGHT_COLOR);
 const NEON_RGB = hexToRgb(NEON_LIGHT_COLOR);
 const LAVA_RGB = hexToRgb(LAVA_LIGHT_COLOR);
+const PET_RGB = hexToRgb(PET_LIGHT_COLOR);
+const TELEPORT_RGB = hexToRgb(TELEPORT_LIGHT_COLOR);
 /** Wall pieces that glow at night: light center (sprite px) plus color, radius and strength. */
 const GLOW_SPECS: Record<string, { y: number; color: Rgb; radius: number; intensity: number }> = {
-  TRON_DISC: { y: 16, color: hexToRgb(TRON_LIGHT_COLOR), radius: TRON_LIGHT_RADIUS_PX, intensity: TRON_LIGHT_INTENSITY },
+  TRON_DISC: {
+    y: 16,
+    color: hexToRgb(TRON_LIGHT_COLOR),
+    radius: TRON_LIGHT_RADIUS_PX,
+    intensity: TRON_LIGHT_INTENSITY,
+  },
   MATRIX_SCREEN: {
     y: 16,
     color: hexToRgb(MATRIX_LIGHT_COLOR),
@@ -118,7 +135,7 @@ export function lightStrengthAt(l: LightSource, wx: number, wy: number): number 
 }
 
 /** Map-space bounding box a light can reach: [x0, y0, x1, y1]. */
-function lightBounds(l: LightSource): [number, number, number, number] {
+export function lightBounds(l: LightSource): [number, number, number, number] {
   if (l.beam) {
     const endX = l.x + l.beam.length * l.beam.skew;
     const reach = Math.max(l.beam.halfTop, l.beam.halfBottom);
@@ -144,6 +161,47 @@ const FACING: Record<number, [number, number]> = {
   [Direction.LEFT]: [-1, 0],
   [Direction.RIGHT]: [1, 0],
 };
+
+/** The light of each teleporter beam in progress, centered halfway up its column.
+ *  It steps down with the column, so the lightmap is rebuilt only a few times per beam. */
+export function collectBeamLights(beams: Iterable<TeleportBeam>): LightSource[] {
+  const lights: LightSource[] = [];
+  for (const b of beams) {
+    const strength = beamStrength(b.age);
+    if (strength <= 0) continue;
+    lights.push({
+      x: Math.round(b.x),
+      y: Math.round(b.y - TELEPORT_BEAM_HEIGHT_PX / 2),
+      radius: TELEPORT_LIGHT_RADIUS_PX,
+      intensity: TELEPORT_LIGHT_INTENSITY * strength,
+      color: TELEPORT_RGB,
+    });
+  }
+  return lights;
+}
+
+/** The small glow each pet carries, so it can be seen walking around at night,
+ *  in the color its manifest's `lightColor` asks for (else PET_LIGHT_COLOR).
+ *  Kept apart from collectLights: pets move every frame, so the renderer only
+ *  recomputes a patch around them instead of the whole lightmap. */
+export function collectPetLights(
+  pets: Iterable<Pet>,
+  colorOf: (petType: number) => string | null = getPetLightColor,
+): LightSource[] {
+  const lights: LightSource[] = [];
+  for (const pet of pets) {
+    const custom = colorOf(pet.petType);
+    lights.push({
+      // Centered on the body (pet.y is the feet)
+      x: Math.round(pet.x),
+      y: Math.round(pet.y) - 6,
+      radius: PET_LIGHT_RADIUS_PX,
+      intensity: PET_LIGHT_INTENSITY,
+      color: custom ? hexToRgb(custom) : PET_RGB,
+    });
+  }
+  return lights;
+}
 
 /** Every light in the office right now: a strong screen glow in front of each
  *  agent working at its desk, a faint one on every other screen, lamps, and
@@ -249,7 +307,13 @@ export function collectLights(
     }
     const glow = GLOW_SPECS[type];
     if (glow) {
-      lights.push({ x: f.x + w / 2, y: f.y + glow.y, radius: glow.radius, intensity: glow.intensity, color: glow.color });
+      lights.push({
+        x: f.x + w / 2,
+        y: f.y + glow.y,
+        radius: glow.radius,
+        intensity: glow.intensity,
+        color: glow.color,
+      });
       continue;
     }
     if (type === 'LAVA_LAMP') {
@@ -323,8 +387,11 @@ export function quantizeLight(value: number, x: number, y: number): number {
 }
 
 /**
- * RGBA lightmap for a width×height area of the map (sprite px). `isVoid`
- * marks pixels outside the office, which stay untouched.
+ * RGBA lightmap for a width×height area of the map (sprite px) whose top-left
+ * pixel is (originX, originY). `isVoid` marks pixels outside the office, which
+ * stay untouched. Any sub-rectangle comes out identical to the same pixels of
+ * the full map (the dither is anchored to map coordinates), so a patch can be
+ * pasted over a cached full map.
  */
 export function computeLightmap(
   width: number,
@@ -333,6 +400,7 @@ export function computeLightmap(
   ambient: Ambient,
   lights: LightSource[],
   isVoid: (x: number, y: number) => boolean,
+  originX = 0,
 ): Uint8ClampedArray<ArrayBuffer> {
   const n = width * height;
   const light = new Float32Array(n);
@@ -344,13 +412,13 @@ export function computeLightmap(
   if (ambient.lights > 0) {
     for (const l of lights) {
       const [bx0, by0, bx1, by1] = lightBounds(l);
-      const x0 = Math.max(0, Math.floor(bx0));
-      const x1 = Math.min(width - 1, Math.ceil(bx1));
+      const x0 = Math.max(0, Math.floor(bx0 - originX));
+      const x1 = Math.min(width - 1, Math.ceil(bx1 - originX));
       const y0 = Math.max(0, Math.floor(by0 - originY));
       const y1 = Math.min(height - 1, Math.ceil(by1 - originY));
       for (let py = y0; py <= y1; py++) {
         for (let px = x0; px <= x1; px++) {
-          const f = lightStrengthAt(l, px + 0.5, py + originY + 0.5);
+          const f = lightStrengthAt(l, px + originX + 0.5, py + originY + 0.5);
           if (f <= 0) continue;
           const i = py * width + px;
           // Screen-blend overlapping pools so they never exceed full light
@@ -369,9 +437,9 @@ export function computeLightmap(
   for (let py = 0; py < height; py++) {
     for (let px = 0; px < width; px++) {
       const i = py * width + px;
-      if (isVoid(px, py + originY)) continue;
+      if (isVoid(px + originX, py + originY)) continue;
       const raw = light[i];
-      const lit = raw > 0 ? quantizeLight(raw, px, py) * ambient.lights : 0;
+      const lit = raw > 0 ? quantizeLight(raw, px + originX, py + originY) * ambient.lights : 0;
       const dark = ambient.alpha * (1 - lit);
       const tint = lit * LIGHT_TINT_ALPHA;
       const total = dark + tint;

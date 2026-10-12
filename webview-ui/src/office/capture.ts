@@ -34,7 +34,7 @@ export function captureOffice(os: OfficeState, zoom = CAPTURE_ZOOM): Promise<Blo
     false,
     null,
     os.pets,
-    { particles: os.particles, lighting: true },
+    { particles: os.particles, lighting: true, disco: os.getDisco() },
   );
   // renderFrame clears to transparent: put the office on the panel background.
   ctx.globalCompositeOperation = 'destination-over';

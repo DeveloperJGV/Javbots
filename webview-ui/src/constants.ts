@@ -457,11 +457,15 @@ export const MOON_BEAM_HALF_WIDTH_BOTTOM_PX = 11;
 /** Sideways drift of the beam per pixel it travels down (the moon sits off to one side). */
 export const MOON_BEAM_SKEW = 0.35;
 export const MOON_BEAM_INTENSITY = 0.75;
+/** Pets carry a small warm glow at night so they can be seen walking around. */
+export const PET_LIGHT_COLOR = '#ffe3a8';
+export const PET_LIGHT_RADIUS_PX = 22;
+export const PET_LIGHT_INTENSITY = 0.8;
 /** How strongly a light tints the pixels it reaches (0 = only removes darkness). */
 export const LIGHT_TINT_ALPHA = 0.16;
 
 // Particles
-export const MAX_PARTICLES = 220;
+export const MAX_PARTICLES = 400;
 export const STEAM_COLOR = '#e8ecf2';
 export const STEAM_SPAWN_SEC = 0.55;
 export const STEAM_LIFE_SEC = 1.8;
@@ -513,6 +517,52 @@ export const LEISURE_TOUR_STOPS_MAX = 4;
 export const LEISURE_SEAT_REACH_TILES = 1;
 /** Stargazing only when lamps are at least this lit (`Ambient.lights`: 0 day, 1 night). */
 export const LEISURE_NIGHT_LIGHTS_MIN = 0.5;
+
+// ── Party mode (fork, Fase 5.5) ─────────────────────────────
+// Every finished turn gets a small cheer (a hop and a little confetti); when everyone is
+// done after 2+ agents worked, they gather in the interns' room and party.
+/** Small cheer: how long the agent hops in place after its turn. */
+export const CHEER_SEC = 3;
+/** Big party: how long the dance lasts once the first guest arrives. */
+export const PARTY_SEC = 8;
+/** The dance starts anyway after this long if nobody has arrived yet (far, blocked room). */
+export const PARTY_GATHER_MAX_SEC = 15;
+/** Agents that must have worked since the last party for the big one. */
+export const PARTY_MIN_WORKERS = 2;
+/** Hop height (sprite px) and length of one hop. */
+export const HOP_HEIGHT_PX = 4;
+export const HOP_PERIOD_SEC = 0.42;
+export const CONFETTI_COLORS = [
+  '#ff5d73',
+  '#ffd34d',
+  '#5fd38d',
+  '#5fb7ff',
+  '#c38dff',
+  '#ffffff',
+] as const;
+export const CONFETTI_BURST_COUNT = 12;
+export const CONFETTI_BURST_SPEED_PX_PER_SEC = 32;
+export const CONFETTI_GRAVITY_PX_PER_SEC2 = 45;
+export const CONFETTI_LIFE_SEC = 1.6;
+/** Party rain: pieces falling over the dance floor, each lasting until it reaches the floor. */
+export const CONFETTI_RAIN_SPAWN_SEC = 0.05;
+export const CONFETTI_RAIN_FALL_PX_PER_SEC = 24;
+/** Disco lights at night: colored spots sweeping the dance floor. */
+export const DISCO_COLORS = [
+  'rgba(255, 70, 120, 0.32)',
+  'rgba(80, 200, 255, 0.32)',
+  'rgba(255, 220, 70, 0.32)',
+  'rgba(120, 255, 140, 0.32)',
+] as const;
+export const DISCO_RADIUS_PX = 13;
+/** Sprite px per block the spots are drawn with (pixel-art circles). */
+export const DISCO_BLOCK_PX = 2;
+export const DISCO_SPEED = 1.3;
+/** Party jingle: a quick rising arpeggio (C5 E5 G5 C6) plus a last high note. */
+export const PARTY_NOTES_HZ = [523.25, 659.25, 783.99, 1046.5, 1318.51] as const;
+export const PARTY_NOTE_GAP_SEC = 0.09;
+export const PARTY_NOTE_DURATION_SEC = 0.22;
+export const PARTY_VOLUME = 0.12;
 
 /** Interns of each boss (char_N index → interns' char_N), from arte/pixellab/personajes/elenco.json.
  *  0 Doc → Marty · 1 Senku → Chrome, Kohaku · 2 Chell → Wheatley · 3 Neo → Trinity ·
@@ -584,13 +634,26 @@ export const ZONE_ERROR_COOLDOWN_SEC = 30;
 export const TEAR_COLORS = ['#8fd3ff', '#5fb7ff', '#d8f1ff'] as const;
 export const TEAR_COUNT = 6;
 export const TEAR_LIFE_SEC = 0.8;
-/** Light Labs teleporter (Mega Man): a beam rises inside the capsule when an agent arrives in the zone. */
+/** Light Labs teleporter (Mega Man): a beam rises inside the capsule when an agent arrives in the zone.
+ *  A steady column of light (core → rim colors) holds for TELEPORT_BEAM_DURATION_SEC while sparks keep rising in it. */
 export const TELEPORT_BEAM_COLORS = ['#ffffff', '#bff6ff', '#6fd8ff'] as const;
 export const TELEPORT_BEAM_COUNT = 30;
 export const TELEPORT_BEAM_HALF_WIDTH_PX = 5;
 export const TELEPORT_BEAM_HEIGHT_PX = 22;
 export const TELEPORT_BEAM_RISE_PX_PER_SEC = 34;
 export const TELEPORT_BEAM_LIFE_SEC = 0.7;
+export const TELEPORT_BEAM_DURATION_SEC = 2.5;
+/** The column holds full strength until this fraction of its duration, then fades out in steps. */
+export const TELEPORT_BEAM_HOLD_FRACTION = 0.75;
+/** Half-widths (sprite px) of the column's bands, core first, paired with TELEPORT_BEAM_COLORS. */
+export const TELEPORT_COLUMN_HALF_WIDTHS_PX = [1, 3, 5] as const;
+export const TELEPORT_COLUMN_ALPHAS = [1, 0.75, 0.45] as const;
+/** New sparks rising in the column while it lasts. */
+export const TELEPORT_BEAM_SPAWN_SEC = 0.04;
+/** At night the column lights the floor around the capsule. */
+export const TELEPORT_LIGHT_COLOR = '#9fe8ff';
+export const TELEPORT_LIGHT_RADIUS_PX = 40;
+export const TELEPORT_LIGHT_INTENSITY = 1;
 /** Glass base of the TELEPORTER sprite: where the beam starts (sprite px from its top-left). */
 export const TELEPORT_BEAM_ORIGIN_X = 16;
 export const TELEPORT_BEAM_ORIGIN_Y = 31;
