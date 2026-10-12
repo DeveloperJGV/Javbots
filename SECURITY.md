@@ -1,24 +1,17 @@
-# Security Policy
+# Política de seguridad
 
-## Supported Versions
+## Cómo reportar una vulnerabilidad
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 1.x.x   | :white_check_mark: |
+Repórtala por los [reportes privados de GitHub](https://github.com/DeveloperJGV/Javbots/security/advisories/new).
 
-## Reporting a Vulnerability
+**No abras un issue público para fallas de seguridad.**
 
-Please report security vulnerabilities through [GitHub's private vulnerability reporting](https://github.com/pixel-agents-hq/pixel-agents/security/advisories/new).
+Si la falla también existe en el proyecto original, avísale también a su autor en
+[Pixel Agents](https://github.com/pixel-agents-hq/pixel-agents/security/advisories/new).
 
-**Do not open a public issue for security vulnerabilities.**
+## Qué cuenta como falla de seguridad
 
-We will acknowledge your report within 7 days and aim to release a fix within 30 days of confirmation.
-
-## Scope
-
-Security issues relevant to this project include:
-
-- Command injection via terminal spawning or JSONL parsing
-- Arbitrary file read/write beyond intended paths
-- Cross-site scripting (XSS) in the webview
-- Sensitive data exposure (e.g., leaking terminal output or session content)
+- Inyección de comandos al abrir terminales o al leer los archivos JSONL de las sesiones.
+- Leer o escribir archivos fuera de las rutas que el programa debe tocar.
+- Cross-site scripting (XSS) en la página de la oficina.
+- Exponer datos sensibles (por ejemplo, la salida de la terminal o el contenido de las sesiones).
