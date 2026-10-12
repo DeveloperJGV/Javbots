@@ -23,6 +23,14 @@ que es quien hizo la base (el servidor, los hooks, la oficina, el editor de plan
 cambiamos el idioma, el arte, los cuartos y le agregamos cosas nuevas. La documentación original está en
 [docs/README-original.md](docs/README-original.md).
 
+## Novedades
+
+- **12 de octubre de 2026**: pizarrón de actividad (clic en el pizarrón del pasillo para ver lo que hizo cada
+  agente), ícono propio, guía para agregar pixeles y librerías al día.
+- **11 de octubre de 2026**: luz para las mascotas de noche y rayo de la cápsula de Light Labs más brillante.
+
+Todo lo nuevo, por fecha, en [NOVEDADES.md](NOVEDADES.md).
+
 ## Capturas
 
 <table>
@@ -79,6 +87,8 @@ _De noche se prenden las lámparas, las pantallas y la luz de la luna por las ve
   terminan, hay fiesta en la sala de becarios.
 - **Mascotas con luz**: puedes cargar tus propias mascotas y, de noche, cada una trae su lucecita del color
   que quieras (`"lightColor": "#8fd3ff"` en su `manifest.json`).
+- **Pizarrón de actividad**: un pizarrón en el pasillo con una rayita por agente. Al darle clic (o con su botón)
+  muestra lo que hizo cada uno desde que abriste la página: archivos, comandos, commits, pruebas, becarios y fallas.
 - **Botones nuevos**: foto de toda la oficina en PNG y "ver toda la oficina" para que quepa en la ventana.
 - Arreglos: pruebas aisladas en Windows (ya no tocan tu configuración real), agentes fantasma que se quedaban
   sentados, sub-agentes en segundo plano que se iban antes de tiempo, y más.
