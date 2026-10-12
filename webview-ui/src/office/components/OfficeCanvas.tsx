@@ -46,6 +46,8 @@ interface OfficeCanvasProps {
   showAreas: boolean;
   /** Currently-selected area label in the editor (alpha-bumped overlay). null otherwise. */
   activeAreaLabel: string | null;
+  /** Clicked the activity whiteboard: open its panel. */
+  onOpenBoard: () => void;
 }
 
 export function OfficeCanvas({
@@ -65,6 +67,7 @@ export function OfficeCanvas({
   panRef,
   showAreas,
   activeAreaLabel,
+  onOpenBoard,
 }: OfficeCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -520,6 +523,8 @@ export function OfficeCanvas({
         canvas.style.cursor = computeNormalModeCursor({
           hitId,
           petId,
+          boardHit:
+            hitId === null && petId === null && officeState.isBoardAt(pos.worldX, pos.worldY),
           selectedAgentId: officeState.selectedAgentId,
           tile,
           getSeatAtTile: (col, row) => officeState.getSeatAtTile(col, row),
@@ -760,6 +765,12 @@ export function OfficeCanvas({
         return;
       }
 
+      // Activity whiteboard: open its panel.
+      if (officeState.isBoardAt(pos.worldX, pos.worldY)) {
+        onOpenBoard();
+        return;
+      }
+
       // No agent hit — check seat click while agent is selected
       if (officeState.selectedAgentId !== null) {
         const selectedCh = officeState.characters.get(officeState.selectedAgentId);
@@ -797,7 +808,7 @@ export function OfficeCanvas({
         officeState.cameraFollowId = null;
       }
     },
-    [officeState, onClick, screenToWorld, screenToTile, isEditMode],
+    [officeState, onClick, onOpenBoard, screenToWorld, screenToTile, isEditMode],
   );
 
   const handleMouseLeave = useCallback(() => {

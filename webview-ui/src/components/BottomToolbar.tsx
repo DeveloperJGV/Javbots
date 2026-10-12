@@ -17,6 +17,8 @@ interface BottomToolbarProps {
   dayNightMode: DayNightMode;
   onCycleDayNight: () => void;
   onCapture: () => void;
+  isBoardOpen: boolean;
+  onToggleBoard: () => void;
 }
 
 /** 8×8 pixel icons, one rect per row run, drawn in the button's text color. */
@@ -111,6 +113,18 @@ const OFFICE_ICON = iconFromArt([
   '########',
 ]);
 
+/** Whiteboard on its stand, with marker lines (opens the activity board). */
+const BOARD_ICON = iconFromArt([
+  '########',
+  '#......#',
+  '#.###..#',
+  '#......#',
+  '#.####.#',
+  '#......#',
+  '########',
+  '.#....#.',
+]);
+
 const SETTINGS_ICON = iconFromArt([
   '...##...',
   '.#.##.#.',
@@ -152,7 +166,6 @@ function PixelIcon({ rows }: { rows: Array<[number, number, number]> }) {
   );
 }
 
-
 export function BottomToolbar({
   isEditMode,
   onOpenClaude,
@@ -163,6 +176,8 @@ export function BottomToolbar({
   dayNightMode,
   onCycleDayNight,
   onCapture,
+  isBoardOpen,
+  onToggleBoard,
 }: BottomToolbarProps) {
   const [isFolderPickerOpen, setIsFolderPickerOpen] = useState(false);
   const [isBypassMenuOpen, setIsBypassMenuOpen] = useState(false);
@@ -283,6 +298,15 @@ export function BottomToolbar({
         className={toolClass(false)}
       >
         <PixelIcon rows={DAY_NIGHT_ICONS[dayNightMode]} />
+      </Button>
+      <Button
+        variant={isBoardOpen ? 'active' : 'default'}
+        size="icon_lg"
+        onClick={onToggleBoard}
+        title="Pizarrón: lo que hizo cada agente"
+        className={toolClass(isBoardOpen)}
+      >
+        <PixelIcon rows={BOARD_ICON} />
       </Button>
       <Button
         size="icon_lg"

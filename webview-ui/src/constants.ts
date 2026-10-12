@@ -660,6 +660,29 @@ export const TELEPORT_BEAM_ORIGIN_Y = 31;
 /** Eyes sit this far above the character's feet. */
 export const TEAR_EYE_HEIGHT_PX = 18;
 
+// ── Activity board (fork): the hallway whiteboard + panel with what each agent did ──
+/** Furniture type that shows the activity marks and opens the panel on click. */
+export const BOARD_FURNITURE_TYPE = 'WHITEBOARD';
+/** Writing area of the WHITEBOARD sprite (inclusive, sprite px): cleared to the board white for the marks. */
+export const BOARD_AREA = { x0: 5, y0: 12, x1: 26, y1: 20 } as const;
+export const BOARD_WHITE = '#efebe8';
+/** One marker line per agent, on these sprite rows (the most recently active agents). */
+export const BOARD_MARK_ROWS = [13, 15, 17, 19] as const;
+/** Marker colors, one per agent in the order they first did something (wraps around). */
+export const BOARD_MARK_COLORS = [
+  '#746fff',
+  '#89d185',
+  '#ff8d14',
+  '#3794ff',
+  '#d14249',
+  '#cca700',
+] as const;
+/** The line starts after the agent's color dot and grows with its tool count, up to this length. */
+export const BOARD_MARK_START_X = 8;
+export const BOARD_MARK_MAX_LEN = 18;
+/** File and command names listed per agent in the panel ("a.ts, b.ts y 3 más"). */
+export const BOARD_MAX_NAMES = 4;
+
 // ── Office photo (fork, Fase 5): "Captura" button in the bottom toolbar ──
 /** Device pixels per sprite pixel in the downloaded PNG (whole office, no UI). */
 export const CAPTURE_ZOOM = 4;

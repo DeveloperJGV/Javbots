@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { toMajorMinor } from './changelogData.js';
+import { ActivityBoardModal } from './components/ActivityBoardModal.js';
 import { BottomToolbar } from './components/BottomToolbar.js';
 import { ChangelogModal } from './components/ChangelogModal.js';
 import { ConnectionIndicator } from './components/ConnectionIndicator.js';
@@ -113,6 +114,7 @@ function App() {
 
   const [isChangelogOpen, setIsChangelogOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isBoardOpen, setIsBoardOpen] = useState(false);
   const [isHooksInfoOpen, setIsHooksInfoOpen] = useState(false);
   const [hooksTooltipDismissed, setHooksTooltipDismissed] = useState(false);
   const [isDebugMode, setIsDebugMode] = useState(false);
@@ -383,6 +385,7 @@ function App() {
         panRef={editor.panRef}
         showAreas={effectiveShowAreas}
         activeAreaLabel={activeAreaLabel}
+        onOpenBoard={() => setIsBoardOpen(true)}
       />
 
       {!isDebugMode ? (
@@ -559,6 +562,8 @@ function App() {
         dayNightMode={dayNightMode}
         onCycleDayNight={handleCycleDayNight}
         onCapture={handleCapture}
+        isBoardOpen={isBoardOpen}
+        onToggleBoard={() => setIsBoardOpen((v) => !v)}
       />
 
       <VersionIndicator
@@ -569,6 +574,12 @@ function App() {
       />
 
       <ConnectionIndicator />
+
+      <ActivityBoardModal
+        isOpen={isBoardOpen}
+        onClose={() => setIsBoardOpen(false)}
+        activity={officeState.activity}
+      />
 
       <ChangelogModal
         isOpen={isChangelogOpen}

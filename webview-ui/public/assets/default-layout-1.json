@@ -13185,6 +13185,12 @@
       "type": "BABY_GROOT",
       "col": 25,
       "row": 3
+    },
+    {
+      "uid": "pasillo-pizarron",
+      "type": "WHITEBOARD",
+      "col": 14,
+      "row": 10
     }
   ],
   "pets": [],

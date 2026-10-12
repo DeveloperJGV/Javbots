@@ -1,7 +1,7 @@
 // webview-ui/src/office/components/officeCanvasCursor.ts
 //
 // Pure cursor resolver for the OfficeCanvas in normal (non-edit) mode.
-// Decision cascade: character hit → pet hit → seat-reassign hit → default.
+// Decision cascade: character hit → pet hit → activity board → seat-reassign hit → default.
 // All callers pass closures over the OfficeState — no direct coupling.
 
 export interface OfficeCursorTile {
@@ -20,6 +20,8 @@ export interface OfficeCursorCharacter {
 export interface OfficeCursorState {
   hitId: number | null;
   petId: string | null;
+  /** Over the activity whiteboard (clicking it opens the board panel). */
+  boardHit?: boolean;
   selectedAgentId: number | null;
   tile: OfficeCursorTile | null;
   getSeatAtTile: (col: number, row: number) => string | null;
@@ -40,7 +42,12 @@ export function computeNormalModeCursor(state: OfficeCursorState): OfficeCursor 
     return 'pointer';
   }
 
-  // 3. Seat-reassignment hover — when a character is selected and the hovered
+  // 3. Activity whiteboard → pointer (a click opens its panel).
+  if (state.boardHit) {
+    return 'pointer';
+  }
+
+  // 4. Seat-reassignment hover — when a character is selected and the hovered
   //    tile is either an unassigned seat OR the selected character's own seat.
   if (state.selectedAgentId !== null && state.tile) {
     const seatId = state.getSeatAtTile(state.tile.col, state.tile.row);

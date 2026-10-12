@@ -129,6 +129,12 @@ interface ExtensionMessageState {
   setDayNightMode: (m: DayNightMode) => void;
 }
 
+/** How the activity board names an agent: like its label (teammate name, else its folder). */
+function boardName(os: OfficeState, id: number): string {
+  const ch = os.characters.get(id);
+  return ch?.agentName || ch?.folderName || `Agente ${id}`;
+}
+
 function saveAgentSeats(os: OfficeState): void {
   transport.send({ type: 'saveAgentSeats', seats: os.getPersistableSeats() });
 }
@@ -326,6 +332,7 @@ export function useExtensionMessages(
         saveAgentSeats(os);
       } else if (msg.type === 'agentClosed') {
         const id = msg.id as number;
+        os.activity.close(id);
         setAgents((prev) => prev.filter((a) => a !== id));
         setSelectedAgent((prev) => (prev === id ? null : prev));
         setAgentTools((prev) => {
@@ -405,6 +412,7 @@ export function useExtensionMessages(
           };
         });
         const toolName = (msg.toolName as string | undefined) ?? extractToolName(status);
+        os.activity.toolStart(id, boardName(os, id), toolId, status);
         os.setAgentTool(id, toolName);
         os.setAgentActivity(id, status);
         os.setAgentActive(id, true);
@@ -447,6 +455,7 @@ export function useExtensionMessages(
         const toolId = msg.toolId as string;
         os.onToolDone(id);
         if (msg.failed === true) os.onToolFailed(id);
+        os.activity.toolDone(id, toolId, msg.failed === true);
         setAgentTools((prev) => {
           const list = prev[id];
           if (!list) return prev;
@@ -521,6 +530,7 @@ export function useExtensionMessages(
           }
           return { ...prev, [id]: status };
         });
+        os.activity.setStatus(id, status, msg.awaitingInput === true);
         // Thinking counts as active so the character heads to its desk.
         os.setAgentActive(id, status === 'active' || status === 'thinking');
         if (status === 'thinking') {
@@ -605,6 +615,8 @@ export function useExtensionMessages(
           const set = (backgroundParentToolIdsRef.current[id] ??= new Set());
           set.add(parentToolId);
         }
+        // An intern's work counts for its boss on the activity board
+        os.activity.toolStart(id, boardName(os, id), toolId, status);
         const subToolName = extractToolName(status);
         os.setAgentTool(subId, subToolName);
         os.setAgentActive(subId, true);
@@ -641,6 +653,7 @@ export function useExtensionMessages(
           }
           return { ...prev, [id]: next };
         });
+        os.activity.subtaskDone(id);
         // Remove sub-agent character
         os.removeSubagent(id, parentToolId);
         setSubagentCharacters((prev) =>

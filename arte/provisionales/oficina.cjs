@@ -378,6 +378,8 @@ putFijo('codigo-rubik', 'RUBIK_CUBE', 20, 7);
 putFijo('codigo-pokebola', 'POKEBALL', 17, 3);
 putFijo('codigo-gameboy', 'GAMEBOY', 21, 3);
 putFijo('codigo-groot', 'BABY_GROOT', 25, 3);
+// Pizarrón de actividad (al darle clic abre el panel con lo que hizo cada agente), en el pasillo, bajo Código
+putFijo('pasillo-pizarron', 'WHITEBOARD', 14, 10);
 
 // ── Zones ─────────────────────────────────────────────────
 const areas = [

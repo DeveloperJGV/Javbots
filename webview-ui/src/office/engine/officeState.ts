@@ -2,6 +2,7 @@ import { pickDiversePalette } from '../../../../core/src/paletteUtils.js';
 import {
   AUTO_ON_FACING_DEPTH,
   AUTO_ON_SIDE_DEPTH,
+  BOARD_FURNITURE_TYPE,
   BOSS_INTERNS,
   CHARACTER_HIT_HALF_WIDTH,
   CHARACTER_HIT_HEIGHT,
@@ -41,6 +42,8 @@ import {
   ZONE_ERROR_COOLDOWN_SEC,
   ZONE_ERROR_HOLD_SEC,
 } from '../../constants.js';
+import { ActivityLog } from '../board/activityLog.js';
+import { boardSprite } from '../board/boardSprite.js';
 import { applyAmbientAnimation } from '../effects/ambientFurniture.js';
 import { areParticlesEnabled, getDayNightMode } from '../effects/effectsSettings.js';
 import { currentAmbient } from '../effects/lighting.js';
@@ -95,6 +98,11 @@ import { sittingDropPx } from './posture.js';
 import { anchorTile, closestFreeSeat } from './seatPlacement.js';
 
 /** Internal helper: facing-tile coords for a seat. Returns null for invalid direction. */
+/** The activity whiteboard (any rotation/state variant of its type). */
+function isBoard(f: FurnitureInstance): boolean {
+  return f.type?.split(':')[0] === BOARD_FURNITURE_TYPE;
+}
+
 function seatFacingOffset(direction: Direction): { dCol: number; dRow: number } {
   if (direction === Direction.RIGHT) return { dCol: 1, dRow: 0 };
   if (direction === Direction.LEFT) return { dCol: -1, dRow: 0 };
@@ -115,6 +123,8 @@ export class OfficeState {
   furnitureAnimTimer = 0;
   /** Steam, sparks and dust (fork, Fase 2). */
   particles = new ParticleSystem();
+  /** What each agent did since the page opened: the hallway whiteboard and its panel. */
+  activity = new ActivityLog();
   /** The big party under way (fork, Fase 5.5), or null. */
   party: PartyState | null = null;
   /** Agents (not interns) that worked since everyone was last done: 2+ means a big party. */
@@ -1020,12 +1030,28 @@ export class OfficeState {
   }
 
   private withAmbientAnimation(instances: FurnitureInstance[]): FurnitureInstance[] {
-    return applyAmbientAnimation(
+    const animated = applyAmbientAnimation(
       instances,
       this.furnitureAnimTimer,
       new Date(),
       currentAmbient(getDayNightMode()),
     );
+    // The whiteboard shows a marker line per agent that has been working
+    const marks = this.activity.marks();
+    if (marks.length === 0) return animated;
+    return animated.map((f) => (isBoard(f) ? { ...f, sprite: boardSprite(f.sprite, marks) } : f));
+  }
+
+  /** Whether a world point lands on a painted pixel of the activity whiteboard. */
+  isBoardAt(worldX: number, worldY: number): boolean {
+    return this.furniture.some((f) => {
+      if (!isBoard(f)) return false;
+      const px = Math.floor(worldX - f.x);
+      const py = Math.floor(worldY - f.y);
+      const row = f.sprite[py];
+      if (!row || px < 0 || px >= row.length) return false;
+      return row[f.mirrored ? row.length - 1 - px : px] !== '';
+    });
   }
 
   /** Record the zone of the tool an agent just started (fork, Fase 3). */
