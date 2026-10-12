@@ -1,5 +1,5 @@
-﻿# Abre la oficina de Pixel Agents en el navegador; la arranca primero si no está corriendo.
-# Uso: el acceso directo "Pixel Agents" (scripts/crear-acceso-directo.ps1), o
+﻿# Abre la oficina de Javbots en el navegador; la arranca primero si no está corriendo.
+# Uso: el acceso directo "Javbots" (scripts/crear-acceso-directo.ps1), o
 #   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/abrir-oficina.ps1 [-Port 3100]
 # La oficina corre en una consola minimizada: ciérrala para apagarla.
 
@@ -29,7 +29,20 @@ if (-not (Test-Office)) {
   if (-not (Test-Path $cli)) {
     throw "No encuentro $cli. Corre 'npm run compile' en el proyecto."
   }
-  Start-Process -FilePath 'node' -ArgumentList "`"$cli`"", '--port', $Port -WindowStyle Minimized
+  # Through a shortcut to the classic console (conhost): the window shows the Javbots icon and name in the
+  # taskbar. A plain 'node' window (or Windows Terminal, the default on Windows 11) shows its own icon instead.
+  $node = (Get-Command node).Source
+  $cliFull = (Resolve-Path $cli).Path
+  $lnkDir = Join-Path $env:LOCALAPPDATA 'Javbots'
+  New-Item -ItemType Directory -Force $lnkDir | Out-Null
+  $lnk = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $lnkDir 'Javbots.lnk'))
+  $lnk.TargetPath = Join-Path $env:SystemRoot 'System32\conhost.exe'
+  $lnk.Arguments = "`"$node`" `"$cliFull`" --port $Port"
+  $lnk.WorkingDirectory = Split-Path $cliFull
+  $lnk.IconLocation = (Resolve-Path (Join-Path $PSScriptRoot 'javbots.ico')).Path
+  $lnk.WindowStyle = 7  # minimized
+  $lnk.Save()
+  Start-Process $lnk.FullName
   $deadline = (Get-Date).AddSeconds(30)
   while (-not (Test-Office)) {
     if ((Get-Date) -gt $deadline) { throw "La oficina no respondió en el puerto $Port." }
