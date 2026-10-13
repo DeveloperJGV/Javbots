@@ -8,7 +8,7 @@ import {
   ZOOM_MIN,
   ZOOM_SCROLL_THRESHOLD,
 } from '../../constants.js';
-import { unlockAudio } from '../../notificationSound.js';
+import { playIsaacDanceSound, unlockAudio } from '../../notificationSound.js';
 import { transport } from '../../transport/index.js';
 import { onRenderScaleChange, renderDpr } from '../../viewScale.js';
 import { getColorizedSprite } from '../colorize.js';
@@ -768,6 +768,12 @@ export function OfficeCanvas({
       // Activity whiteboard: open its panel.
       if (officeState.isBoardAt(pos.worldX, pos.worldY)) {
         onOpenBoard();
+        return;
+      }
+
+      // Easter egg: Isaac dances after enough clicks in a row (no cursor hint: it is a secret).
+      if (officeState.isIsaacAt(pos.worldX, pos.worldY)) {
+        if (officeState.pokeIsaac() === 'dance') void playIsaacDanceSound();
         return;
       }
 

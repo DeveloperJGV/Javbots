@@ -1,4 +1,12 @@
 import {
+  ISAAC_DANCE_AUDIO_URLS,
+  ISAAC_DANCE_AUDIO_VOLUME,
+  ISAAC_DANCE_BASS,
+  ISAAC_DANCE_BASS_VOLUME,
+  ISAAC_DANCE_EIGHTH_SEC,
+  ISAAC_DANCE_MELODY,
+  ISAAC_DANCE_MELODY_VOLUME,
+  ISAAC_DANCE_SEC,
   NOTIFICATION_NOTE_1_HZ,
   NOTIFICATION_NOTE_1_START_SEC,
   NOTIFICATION_NOTE_2_HZ,
@@ -26,7 +34,7 @@ let audioCtx: AudioContext | null = null;
  *  declared by testHooks.ts). Records BEFORE the soundEnabled gate so tests
  *  verify dispatch independent of user audio prefs. Gated on the e2e harness
  *  flag so this unbounded log never grows in a real session. */
-function recordSoundForTests(kind: 'done' | 'permission' | 'party'): void {
+function recordSoundForTests(kind: 'done' | 'permission' | 'party' | 'isaac'): void {
   if (!isE2E || typeof window === 'undefined') return;
   if (!window.__pixelAgentsTestHooks) window.__pixelAgentsTestHooks = {};
   if (!window.__pixelAgentsTestHooks.playedSounds) {
@@ -49,12 +57,13 @@ function playNote(
   startOffset: number,
   duration: number = NOTIFICATION_NOTE_DURATION_SEC,
   volume: number = NOTIFICATION_VOLUME,
+  wave: OscillatorType = 'sine',
 ): void {
   const t = ctx.currentTime + startOffset;
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
 
-  osc.type = 'sine';
+  osc.type = wave;
   osc.frequency.setValueAtTime(freq, t);
 
   gain.gain.setValueAtTime(volume, t);
@@ -137,6 +146,60 @@ export async function playPartySound(): Promise<void> {
         PARTY_VOLUME,
       );
     });
+  } catch {
+    // Audio may not be available
+  }
+}
+
+let isaacAudio: HTMLAudioElement | null = null;
+
+/** The 8-bit tune Isaac dances to: square-wave melody over a triangle bass. */
+async function playIsaacChiptune(): Promise<void> {
+  if (!audioCtx) {
+    audioCtx = new AudioContext();
+  }
+  if (audioCtx.state === 'suspended') {
+    await audioCtx.resume();
+  }
+  const ctx = audioCtx;
+  const eighth = ISAAC_DANCE_EIGHTH_SEC;
+  for (const [hz, start, len] of ISAAC_DANCE_MELODY) {
+    playNote(ctx, hz, start * eighth, len * eighth * 0.9, ISAAC_DANCE_MELODY_VOLUME, 'square');
+  }
+  for (const [hz, start, len] of ISAAC_DANCE_BASS) {
+    playNote(ctx, hz, start * eighth, len * eighth * 0.9, ISAAC_DANCE_BASS_VOLUME, 'triangle');
+  }
+}
+
+/** Try the user's own track (a file under the public `privado/` folder, never committed);
+ *  resolves false when none plays, so the caller falls back to the chiptune. */
+function playIsaacTrack(urls: readonly string[]): Promise<boolean> {
+  const [url, ...rest] = urls;
+  if (!url || typeof Audio === 'undefined') return Promise.resolve(false);
+  const audio = new Audio(url);
+  audio.volume = ISAAC_DANCE_AUDIO_VOLUME;
+  return audio
+    .play()
+    .then(() => {
+      isaacAudio = audio;
+      window.setTimeout(() => {
+        if (isaacAudio === audio) {
+          audio.pause();
+          isaacAudio = null;
+        }
+      }, ISAAC_DANCE_SEC * 1000);
+      return true;
+    })
+    .catch(() => playIsaacTrack(rest));
+}
+
+/** Easter egg (fork): Isaac's dance music. */
+export async function playIsaacDanceSound(): Promise<void> {
+  recordSoundForTests('isaac');
+  if (!soundEnabled) return;
+  try {
+    if (await playIsaacTrack(ISAAC_DANCE_AUDIO_URLS)) return;
+    await playIsaacChiptune();
   } catch {
     // Audio may not be available
   }

@@ -255,7 +255,7 @@ export function collectLights(
       });
       continue;
     }
-    if (type === 'JEDI_BRAZIER' || type === 'HOLO_TABLE') {
+    if (type === 'JEDI_BRAZIER' || type === 'HOLO_TABLE' || type === 'HOLO_BUST') {
       lights.push({
         x: f.x + w / 2,
         y: f.y + 6,

@@ -17,6 +17,11 @@ Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
 - **Guía para agregar pixeles** ([docs/agregar-pixeles.md](docs/agregar-pixeles.md)): muebles, animaciones, luces,
   personajes y mascotas.
 - **Librerías al día** con sus arreglos de seguridad (Fastify, React, Vite, entre otras).
+- **Huevo de pascua en el Sótano.** Algo le pasa a Isaac si lo molestas lo suficiente (pista: once). Baila con una
+  musiquita de 8 bits propia; si dejas un archivo `webview-ui/public/privado/isaac-dance.ogg` (esa carpeta no se
+  sube), suena ese en su lugar.
+- **Holograma animado.** Un mueble de tipo `HOLO_BUST` (ponlo con tu propio arte en una carpeta externa de pixeles)
+  parpadea como los fantasmas Jedi y de noche alumbra a su alrededor.
 
 ## 11 de octubre de 2026
 

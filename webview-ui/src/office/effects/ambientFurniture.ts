@@ -8,6 +8,12 @@ import {
   FLUX_DIM_GLOW,
   FLUX_GLOW,
   FLUX_PULSE_PERIOD_SEC,
+  HOLO_BUST_BRIGHT,
+  HOLO_BUST_BRIGHT_DIM,
+  HOLO_BUST_FLICKER_FRACTION,
+  HOLO_BUST_FLICKER_PERIOD_SEC,
+  HOLO_BUST_LIGHT,
+  HOLO_BUST_LIGHT_DIM,
   LAVA_BANDS,
   LAVA_CYCLE_STEP_SEC,
   MATRIX_BANDS,
@@ -136,6 +142,16 @@ const AMBIENT_SPECS: Record<string, AmbientSpec> = {
     ],
     periodSec: RING_GLINT_PERIOD_SEC,
     swapFraction: RING_GLINT_FRACTION,
+  },
+  // Hologram bust: steady glow with a short flicker now and then
+  HOLO_BUST: {
+    kind: 'pulse',
+    swaps: [
+      [HOLO_BUST_BRIGHT, HOLO_BUST_BRIGHT_DIM],
+      [HOLO_BUST_LIGHT, HOLO_BUST_LIGHT_DIM],
+    ],
+    periodSec: HOLO_BUST_FLICKER_PERIOD_SEC,
+    swapFraction: HOLO_BUST_FLICKER_FRACTION,
   },
   // Neon "88": on as drawn, a short flicker off now and then
   NEON_88: {

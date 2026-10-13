@@ -381,6 +381,13 @@ export const RING_GLINT = '#fff6b8';
 export const RING_GLINT_SOFT = '#ffe680';
 export const RING_GLINT_PERIOD_SEC = 3.2;
 export const RING_GLINT_FRACTION = 0.18;
+// Hologram bust (projector disc): the two brightest translucent tones flicker down for a moment
+export const HOLO_BUST_BRIGHT = '#e6faffb4';
+export const HOLO_BUST_BRIGHT_DIM = '#5fbeffb4';
+export const HOLO_BUST_LIGHT = '#a5e6ffb4';
+export const HOLO_BUST_LIGHT_DIM = '#3287fab4';
+export const HOLO_BUST_FLICKER_PERIOD_SEC = 2.7;
+export const HOLO_BUST_FLICKER_FRACTION = 0.12;
 /** Portals (Fase 4, Aperture): the swirl bands as drawn in PORTAL_BLUE/ORANGE.png; they rotate one band per step. */
 export const PORTAL_BLUE_BANDS = ['#1f6fd1', '#3f9cf0', '#7cccff', '#2f86e0'] as const;
 export const PORTAL_ORANGE_BANDS = ['#e0520c', '#ff8a1e', '#ffbb55', '#f26e14'] as const;
@@ -563,6 +570,85 @@ export const PARTY_NOTES_HZ = [523.25, 659.25, 783.99, 1046.5, 1318.51] as const
 export const PARTY_NOTE_GAP_SEC = 0.09;
 export const PARTY_NOTE_DURATION_SEC = 0.22;
 export const PARTY_VOLUME = 0.12;
+
+// ── Easter egg: Isaac dances (fork) ──────────────────────────
+// Click the crying Isaac in the basement this many times in a row and he puts on a
+// pink afro and dances to a little 8-bit tune (or to `privado/isaac-dance.ogg|mp3`
+// under the webview's public folder, never committed, when such a file exists).
+export const ISAAC_FURNITURE_TYPE = 'ISAAC';
+export const ISAAC_CLICKS_TO_DANCE = 11;
+/** A pause longer than this between clicks starts the count over. */
+export const ISAAC_CLICK_RESET_SEC = 2.5;
+export const ISAAC_DANCE_SEC = 9;
+/** One dance step (hop / turn) lasts this long. */
+export const ISAAC_DANCE_STEP_SEC = 0.18;
+/** A puff of confetti every this many steps. */
+export const ISAAC_CONFETTI_EVERY_STEPS = 8;
+/** Rows the sprite grows upward, and columns it grows on each side, to fit the afro. */
+export const ISAAC_AFRO_ROWS = 6;
+export const ISAAC_AFRO_SIDE = 2;
+/** The face shows through below this row of the crying sprite; above it the afro covers the skull. */
+export const ISAAC_HAIRLINE_ROW = 2;
+export const ISAAC_AFRO_DARK = '#7a1446';
+export const ISAAC_AFRO_PINK = '#f05aaa';
+export const ISAAC_AFRO_LIGHT = '#ff9ad2';
+export const ISAAC_GLASSES_COLOR = '#2a2232';
+export const ISAAC_GLASSES_GLINT = '#5f556e';
+/** Lens columns [x0, x1] and rows [y0, y1] in the 16x16 crying sprite (over the eyes). */
+export const ISAAC_GLASSES_LENSES = [
+  [3, 6],
+  [9, 12],
+] as const;
+export const ISAAC_GLASSES_ROWS = [6, 7] as const;
+export const ISAAC_DANCE_AUDIO_URLS = [
+  'privado/isaac-dance.ogg',
+  'privado/isaac-dance.mp3',
+] as const;
+export const ISAAC_DANCE_AUDIO_VOLUME = 0.5;
+/** 8-bit tune: [hz, start, length] in eighth notes (ISAAC_DANCE_EIGHTH_SEC each). Original, C major. */
+export const ISAAC_DANCE_EIGHTH_SEC = 0.1875;
+export const ISAAC_DANCE_MELODY: ReadonlyArray<readonly [number, number, number]> = [
+  [523.25, 0, 1],
+  [659.25, 2, 1],
+  [783.99, 4, 1],
+  [659.25, 6, 1],
+  [440, 8, 1],
+  [523.25, 10, 1],
+  [659.25, 12, 2],
+  [349.23, 16, 1],
+  [440, 18, 1],
+  [523.25, 20, 1],
+  [440, 22, 1],
+  [392, 24, 1],
+  [493.88, 26, 1],
+  [587.33, 28, 2],
+  [523.25, 32, 1],
+  [659.25, 33, 1],
+  [783.99, 34, 1],
+  [1046.5, 36, 2],
+  [987.77, 40, 1],
+  [880, 41, 1],
+  [783.99, 42, 1],
+  [659.25, 44, 1],
+  [587.33, 46, 1],
+  [523.25, 47, 1],
+];
+export const ISAAC_DANCE_BASS: ReadonlyArray<readonly [number, number, number]> = [
+  [130.81, 0, 2],
+  [130.81, 4, 2],
+  [110, 8, 2],
+  [110, 12, 2],
+  [87.31, 16, 2],
+  [87.31, 20, 2],
+  [98, 24, 2],
+  [98, 28, 2],
+  [130.81, 32, 2],
+  [130.81, 36, 2],
+  [98, 40, 2],
+  [130.81, 44, 4],
+];
+export const ISAAC_DANCE_MELODY_VOLUME = 0.07;
+export const ISAAC_DANCE_BASS_VOLUME = 0.05;
 
 /** Interns of each boss (char_N index → interns' char_N), from arte/pixellab/personajes/elenco.json.
  *  0 Doc → Marty · 1 Senku → Chrome, Kohaku · 2 Chell → Wheatley · 3 Neo → Trinity ·

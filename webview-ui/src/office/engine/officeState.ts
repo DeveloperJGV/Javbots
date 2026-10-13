@@ -17,6 +17,10 @@ import {
   INTERN_LEAVE_MAX_SEC,
   INTERN_REST_MAX_SEC,
   INTERN_REST_MIN_SEC,
+  ISAAC_AFRO_ROWS,
+  ISAAC_AFRO_SIDE,
+  ISAAC_CONFETTI_EVERY_STEPS,
+  ISAAC_FURNITURE_TYPE,
   LEISURE_ACTIVITY_MAX_SEC,
   LEISURE_ACTIVITY_MIN_SEC,
   LEISURE_NIGHT_LIGHTS_MIN,
@@ -48,6 +52,14 @@ import { applyAmbientAnimation } from '../effects/ambientFurniture.js';
 import { areParticlesEnabled, getDayNightMode } from '../effects/effectsSettings.js';
 import { currentAmbient } from '../effects/lighting.js';
 import { ParticleSystem } from '../effects/particles.js';
+import {
+  createIsaacDance,
+  isaacDanceFrame,
+  isaacDancePose,
+  isaacDanceSprite,
+  type IsaacPoke,
+  pokeIsaac,
+} from '../isaac/isaacDance.js';
 import { getAnimationFrames, getCatalogEntry, getOnStateType } from '../layout/furnitureCatalog.js';
 import {
   createDefaultLayout,
@@ -103,6 +115,20 @@ function isBoard(f: FurnitureInstance): boolean {
   return f.type?.split(':')[0] === BOARD_FURNITURE_TYPE;
 }
 
+/** The crying Isaac of the basement (easter egg: click him eleven times). */
+function isIsaac(f: FurnitureInstance): boolean {
+  return f.type?.split(':')[0] === ISAAC_FURNITURE_TYPE;
+}
+
+/** Whether a world point lands on a painted pixel of the instance. */
+function hitsPaintedPixel(f: FurnitureInstance, worldX: number, worldY: number): boolean {
+  const px = Math.floor(worldX - f.x);
+  const py = Math.floor(worldY - f.y);
+  const row = f.sprite[py];
+  if (!row || px < 0 || px >= row.length) return false;
+  return row[f.mirrored ? row.length - 1 - px : px] !== '';
+}
+
 function seatFacingOffset(direction: Direction): { dCol: number; dRow: number } {
   if (direction === Direction.RIGHT) return { dCol: 1, dRow: 0 };
   if (direction === Direction.LEFT) return { dCol: -1, dRow: 0 };
@@ -123,6 +149,9 @@ export class OfficeState {
   furnitureAnimTimer = 0;
   /** Steam, sparks and dust (fork, Fase 2). */
   particles = new ParticleSystem();
+  /** Easter egg: Isaac's click streak and dance (clock = furnitureAnimTimer). */
+  isaacDance = createIsaacDance();
+  private isaacStep: number | null = null;
   /** What each agent did since the page opened: the hallway whiteboard and its panel. */
   activity = new ActivityLog();
   /** The big party under way (fork, Fase 5.5), or null. */
@@ -1038,20 +1067,47 @@ export class OfficeState {
     );
     // The whiteboard shows a marker line per agent that has been working
     const marks = this.activity.marks();
-    if (marks.length === 0) return animated;
-    return animated.map((f) => (isBoard(f) ? { ...f, sprite: boardSprite(f.sprite, marks) } : f));
+    const marked =
+      marks.length === 0
+        ? animated
+        : animated.map((f) => (isBoard(f) ? { ...f, sprite: boardSprite(f.sprite, marks) } : f));
+    // Isaac, while his dance lasts: afro, glasses, a hop and a turn per step
+    const step = isaacDanceFrame(this.isaacDance, this.furnitureAnimTimer);
+    if (step === null) return marked;
+    const pose = isaacDancePose(step);
+    return marked.map((f) =>
+      isIsaac(f)
+        ? {
+            ...f,
+            sprite: isaacDanceSprite(f.sprite, step),
+            x: f.x - ISAAC_AFRO_SIDE,
+            y: f.y - ISAAC_AFRO_ROWS + pose.dy,
+            mirrored: pose.mirrored,
+          }
+        : f,
+    );
   }
 
   /** Whether a world point lands on a painted pixel of the activity whiteboard. */
   isBoardAt(worldX: number, worldY: number): boolean {
-    return this.furniture.some((f) => {
-      if (!isBoard(f)) return false;
-      const px = Math.floor(worldX - f.x);
-      const py = Math.floor(worldY - f.y);
-      const row = f.sprite[py];
-      if (!row || px < 0 || px >= row.length) return false;
-      return row[f.mirrored ? row.length - 1 - px : px] !== '';
-    });
+    return this.furniture.some((f) => isBoard(f) && hitsPaintedPixel(f, worldX, worldY));
+  }
+
+  /** Whether a world point lands on Isaac (the basement easter egg). */
+  isIsaacAt(worldX: number, worldY: number): boolean {
+    return this.furniture.some((f) => isIsaac(f) && hitsPaintedPixel(f, worldX, worldY));
+  }
+
+  /** One click on Isaac. The eleventh in a row starts his dance (with confetti). */
+  pokeIsaac(): IsaacPoke {
+    const result = pokeIsaac(this.isaacDance, this.furnitureAnimTimer);
+    if (result === 'dance') this.isaacConfetti();
+    return result;
+  }
+
+  private isaacConfetti(): void {
+    const isaac = this.furniture.find(isIsaac);
+    if (isaac) this.particles.burstConfetti(isaac.x + isaac.sprite[0].length / 2, isaac.y);
   }
 
   /** Record the zone of the tool an agent just started (fork, Fase 3). */
@@ -1734,6 +1790,15 @@ export class OfficeState {
     const newFrame = Math.floor(this.furnitureAnimTimer / FURNITURE_ANIM_INTERVAL_SEC);
     if (newFrame !== prevFrame) {
       this.rebuildFurnitureInstances();
+    }
+    // Isaac's dance steps faster than the furniture clock: rebuild on each step (and once when it ends)
+    const isaacStep = isaacDanceFrame(this.isaacDance, this.furnitureAnimTimer);
+    if (isaacStep !== this.isaacStep) {
+      this.isaacStep = isaacStep;
+      this.rebuildFurnitureInstances();
+      if (isaacStep !== null && isaacStep > 0 && isaacStep % ISAAC_CONFETTI_EVERY_STEPS === 0) {
+        this.isaacConfetti();
+      }
     }
 
     // The greeter materializes and dematerializes like anyone else, but runs

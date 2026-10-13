@@ -32,6 +32,7 @@ allure-report/
 !.env.example
 
 # Project-specific
+webview-ui/public/privado/
 .claude
 .mcp.json
 /sprites-export
