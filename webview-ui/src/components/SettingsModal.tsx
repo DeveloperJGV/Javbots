@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useRef, useState } from 'react';
 
 import { isSoundEnabled, setSoundEnabled } from '../notificationSound.js';
@@ -42,6 +43,8 @@ interface SettingsModalProps {
   onExportLayout: () => void;
   /** Browser-native layout import from a chosen file (standalone only). */
   onImportLayout: (file: File) => void;
+  /** Sections from optional features (e.g. features/musica), rendered at the end. */
+  extraSections?: ReactNode;
 }
 
 export function SettingsModal({
@@ -67,6 +70,7 @@ export function SettingsModal({
   onToggleParticles,
   onExportLayout,
   onImportLayout,
+  extraSections,
 }: SettingsModalProps) {
   const [soundLocal, setSoundLocal] = useState(isSoundEnabled);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -223,6 +227,7 @@ export function SettingsModal({
         onChange={onToggleParticles}
       />
       <Checkbox label="Vista de depuración" checked={isDebugMode} onChange={onToggleDebugMode} />
+      {extraSections}
     </Modal>
   );
 }

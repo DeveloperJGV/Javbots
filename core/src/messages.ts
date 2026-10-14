@@ -38,7 +38,9 @@ export type ServerMessage =
   | ExternalAssetDirectoriesUpdated
   | AreaMappingsLoaded
   | WorkspaceFolders
-  | AgentDiagnostics;
+  | AgentDiagnostics
+  | MusicNowPlaying
+  | MusicStatus;
 
 export type ClientMessage =
   | WebviewReady
@@ -65,7 +67,9 @@ export type ClientMessage =
   | RemoveExternalAssetDirectory
   | SaveAreaMappings
   | SetShowAreas
-  | RequestDiagnostics;
+  | RequestDiagnostics
+  | SetMusicEnabled
+  | InstallMusicExtension;
 
 export interface ProviderCapabilities {
   type: 'providerCapabilities';
@@ -325,6 +329,31 @@ export interface AgentDiagnostics {
   agents: Record<string, any>[];
 }
 
+export interface MusicNowPlaying {
+  type: 'musicNowPlaying';
+  track?: MusicTrack;
+}
+
+export interface MusicTrack {
+  title: string;
+  artist: string;
+  album?: string;
+  cover?: string;
+  isPaused: boolean;
+  positionMs: number;
+  durationMs: number;
+  device?: string;
+}
+
+export interface MusicStatus {
+  type: 'musicStatus';
+  enabled: boolean;
+  spicetifyFound: boolean;
+  extensionInstalled: boolean;
+  token?: string;
+  message?: string;
+}
+
 export interface WebviewReady {
   type: 'webviewReady';
 }
@@ -453,4 +482,13 @@ export interface SetShowAreas {
 
 export interface RequestDiagnostics {
   type: 'requestDiagnostics';
+}
+
+export interface SetMusicEnabled {
+  type: 'setMusicEnabled';
+  enabled: boolean;
+}
+
+export interface InstallMusicExtension {
+  type: 'installMusicExtension';
 }

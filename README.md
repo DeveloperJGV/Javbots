@@ -25,10 +25,11 @@ cambiamos el idioma, el arte, los cuartos y le agregamos cosas nuevas. La docume
 
 ## Novedades
 
+- **14 de octubre de 2026**: música de Spotify en la oficina (columna con la carátula, tocadiscos y cuadro en
+  Becarios; opcional, con Spicetify).
 - **12 de octubre de 2026**: pizarrón de actividad (clic en el pizarrón del pasillo para ver lo que hizo cada
   agente), ícono propio, holograma animado, un huevo de pascua en el Sótano, guía para agregar pixeles y
   librerías al día.
-- **11 de octubre de 2026**: luz para las mascotas de noche y rayo de la cápsula de Light Labs más brillante.
 
 Todo lo nuevo, por fecha, en [NOVEDADES.md](NOVEDADES.md).
 

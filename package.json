@@ -103,7 +103,7 @@
     "asyncapi:validate": "node scripts/validate-asyncapi.mjs",
     "check-types": "tsc --noEmit && tsc --noEmit -p server/tsconfig.test.json",
     "prepare": "husky",
-    "lint": "eslint adapters/vscode server core && cd webview-ui && eslint .",
+    "lint": "eslint adapters/vscode server core features/musica/server && cd webview-ui && eslint . && cd ../features/musica/webview && eslint . -c ../../../webview-ui/eslint.config.js",
     "lint:fix": "eslint adapters/vscode server core --fix && cd webview-ui && eslint . --fix",
     "import-tileset": "tsx scripts/import-tileset-cli.ts",
     "format": "prettier --write \"adapters/vscode/**/*.ts\" \"server/**/*.ts\" \"core/src/**/*.ts\" \"webview-ui/src/**/*.{ts,tsx,css}\" \"*.{js,mjs}\" \"webview-ui/*.{js,ts}\"",
@@ -150,6 +150,8 @@
   "lint-staged": {
     "adapters/vscode/**/*.ts": "eslint --fix",
     "server/**/*.ts": "eslint --fix",
+    "features/*/server/**/*.ts": "eslint --fix",
+    "features/*/webview/**/*.{ts,tsx}": "eslint --fix -c webview-ui/eslint.config.js",
     "core/src/**/*.ts": "eslint --fix",
     "webview-ui/src/**/*.{ts,tsx}": "eslint --fix",
     "scripts/**/*.{js,mjs}": "prettier --write",

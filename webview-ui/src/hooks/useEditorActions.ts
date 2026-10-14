@@ -576,8 +576,10 @@ export function useEditorActions(
   const handleZoomFit = useCallback(() => {
     const dpr = window.devicePixelRatio || 1;
     const layout = getOfficeState().getLayout();
-    const viewW = (window.innerWidth - 2 * ZOOM_FIT_SIDE_MARGIN_PX) * dpr;
-    const viewH = window.innerHeight * dpr;
+    // The office area, not the window: optional side panels (the music column) take their own space
+    const area = document.querySelector<HTMLElement>('[data-office-area]');
+    const viewW = ((area?.clientWidth ?? window.innerWidth) - 2 * ZOOM_FIT_SIDE_MARGIN_PX) * dpr;
+    const viewH = (area?.clientHeight ?? window.innerHeight) * dpr;
     const fit = fitView(
       viewW,
       viewH,

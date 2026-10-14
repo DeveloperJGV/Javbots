@@ -17,7 +17,8 @@
 	"include": [
 		"adapters/vscode",
 		"server/src",
-		"core/src"
+		"core/src",
+		"features/musica/server"
 	],
 	"exclude": [
 		"node_modules",

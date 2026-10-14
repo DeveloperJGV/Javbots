@@ -13055,8 +13055,8 @@
       "row": 27
     },
     {
-      "uid": "becarios-velero",
-      "type": "BOAT_PAINTING",
+      "uid": "becarios-caratula",
+      "type": "ALBUM_FRAME",
       "col": 27,
       "row": 16
     },
@@ -13191,6 +13191,12 @@
       "type": "WHITEBOARD",
       "col": 14,
       "row": 10
+    },
+    {
+      "uid": "becarios-tocadiscos",
+      "type": "TURNTABLE",
+      "col": 28,
+      "row": 18
     }
   ],
   "pets": [],

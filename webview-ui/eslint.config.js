@@ -42,7 +42,15 @@ export default defineConfig([
     },
   },
   {
-    files: ['src/constants.ts', 'src/fonts/**', 'src/office/sprites/**'],
+    files: [
+      'src/constants.ts',
+      'src/fonts/**',
+      'src/office/sprites/**',
+      // features/<name>/webview/constants.ts, linted from its own folder (see package.json lint)
+      'constants.ts',
+      // ...and the same file when lint-staged lints it from the repo root
+      'features/*/webview/constants.ts',
+    ],
     rules: {
       'pixel-agents/no-inline-colors': 'off',
       'pixel-agents/pixel-shadow': 'off',

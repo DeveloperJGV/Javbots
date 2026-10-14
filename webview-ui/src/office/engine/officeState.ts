@@ -1,5 +1,10 @@
 import { pickDiversePalette } from '../../../../core/src/paletteUtils.js';
 import {
+  applyMusicFurniture,
+  MusicNotes,
+} from '../../../../features/musica/webview/musicFurniture.js';
+import { musicStore } from '../../../../features/musica/webview/musicStore.js';
+import {
   AUTO_ON_FACING_DEPTH,
   AUTO_ON_SIDE_DEPTH,
   BOARD_FURNITURE_TYPE,
@@ -149,6 +154,8 @@ export class OfficeState {
   furnitureAnimTimer = 0;
   /** Steam, sparks and dust (fork, Fase 2). */
   particles = new ParticleSystem();
+  /** Notes off the turntable while music plays (features/musica). */
+  private musicNotes = new MusicNotes();
   /** Easter egg: Isaac's click streak and dance (clock = furnitureAnimTimer). */
   isaacDance = createIsaacDance();
   private isaacStep: number | null = null;
@@ -1059,6 +1066,15 @@ export class OfficeState {
   }
 
   private withAmbientAnimation(instances: FurnitureInstance[]): FurnitureInstance[] {
+    // Optional feature (features/musica): spinning turntable, album cover in its frame
+    return applyMusicFurniture(
+      this.withOfficeAnimation(instances),
+      this.furnitureAnimTimer,
+      musicStore.get(),
+    );
+  }
+
+  private withOfficeAnimation(instances: FurnitureInstance[]): FurnitureInstance[] {
     const animated = applyAmbientAnimation(
       instances,
       this.furnitureAnimTimer,
@@ -1881,6 +1897,9 @@ export class OfficeState {
     }
 
     this.particles.update(dt, this.furniture, areParticlesEnabled());
+    if (areParticlesEnabled()) {
+      this.musicNotes.update(dt, this.furniture, musicStore.get(), this.particles);
+    }
 
     // ── Pet FSM ────────────────────────────────────────────────
     for (const pet of this.pets) {

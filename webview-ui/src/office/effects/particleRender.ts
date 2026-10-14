@@ -42,14 +42,22 @@ export function renderParticles(
 ): void {
   if (glow) for (const b of system.beams) renderBeamColumn(ctx, b, offsetX, offsetY, zoom);
   for (const p of system.particles) {
-    if ((p.kind === 'spark' || p.kind === 'confetti') !== glow) continue;
+    if ((p.kind === 'spark' || p.kind === 'confetti' || p.kind === 'note') !== glow) continue;
     let x = p.x;
     if (p.kind === 'steam') x += Math.round(Math.sin(p.phase + p.age * 4));
-    else if (p.kind === 'paper' || p.kind === 'dust' || p.kind === 'confetti')
+    else if (p.kind === 'paper' || p.kind === 'dust' || p.kind === 'confetti' || p.kind === 'note')
       x += Math.sin(p.phase + p.age * 2) * 1.5;
     const alpha = steppedAlpha(p.age, p.life);
     ctx.globalAlpha = p.kind === 'dust' ? alpha * 0.7 : alpha;
     ctx.fillStyle = p.color;
+    if (p.pattern) {
+      const px = Math.round(x);
+      const py = Math.round(p.y);
+      for (const [dx, dy] of p.pattern) {
+        ctx.fillRect(offsetX + (px + dx) * zoom, offsetY + (py + dy) * zoom, zoom, zoom);
+      }
+      continue;
+    }
     ctx.fillRect(
       offsetX + Math.round(x) * zoom,
       offsetY + Math.round(p.y) * zoom,

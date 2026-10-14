@@ -10,6 +10,7 @@
 
 import * as path from 'path';
 
+import { createMusicFeature } from '../../features/musica/server/musicFeature.js';
 import { AgentRuntime } from './agentRuntime.js';
 import { AgentStateStore } from './agentStateStore.js';
 import {
@@ -228,6 +229,12 @@ async function main(): Promise<void> {
       console.log('[Pixel Agents] Assets reloaded (external directory change)');
     };
 
+    // Optional feature: music from Spotify via a Spicetify extension (features/musica).
+    const music = createMusicFeature({
+      templatePath: path.join(distRoot, 'musica', 'spicetify', 'javbots-musica.js'),
+      serverUrl: () => (currentConfig ? `http://127.0.0.1:${currentConfig.port}` : null),
+    });
+
     const config = await server.start({
       store,
       runtime,
@@ -238,6 +245,7 @@ async function main(): Promise<void> {
       assetCache,
       onSetHooksEnabled,
       onReloadAssets,
+      features: [music],
     });
     currentConfig = { port: config.port, token: config.token };
 

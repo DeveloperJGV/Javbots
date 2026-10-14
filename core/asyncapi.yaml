@@ -118,6 +118,9 @@ components:
         - $ref: '#/components/schemas/WorkspaceFolders'
         # Diagnostics
         - $ref: '#/components/schemas/AgentDiagnostics'
+        # Music (feature: features/musica)
+        - $ref: '#/components/schemas/MusicNowPlaying'
+        - $ref: '#/components/schemas/MusicStatus'
       discriminator: type
 
     ClientMessage:
@@ -147,6 +150,9 @@ components:
         - $ref: '#/components/schemas/SaveAreaMappings'
         - $ref: '#/components/schemas/SetShowAreas'
         - $ref: '#/components/schemas/RequestDiagnostics'
+        # Music (feature: features/musica)
+        - $ref: '#/components/schemas/SetMusicEnabled'
+        - $ref: '#/components/schemas/InstallMusicExtension'
       discriminator: type
 
     # ── Server message variants ────────────────────────────────────
@@ -963,6 +969,93 @@ components:
           const: setDayNightMode
         mode:
           $ref: '#/components/schemas/DayNightMode'
+
+    # ── Music (feature: features/musica) ─────────────────────────
+
+    MusicNowPlaying:
+      description: >-
+        What the music player reports as playing (fed by a Spicetify extension
+        through POST /api/music). Without `track`, nothing is playing. Never
+        persisted.
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: musicNowPlaying
+        track:
+          $ref: '#/components/schemas/MusicTrack'
+
+    MusicTrack:
+      type: object
+      additionalProperties: false
+      required: [title, artist, isPaused, positionMs, durationMs]
+      properties:
+        title:
+          type: string
+        artist:
+          type: string
+        album:
+          type: string
+        cover:
+          description: Album cover as a data URL (downloaded by the server, so the canvas stays untainted).
+          type: string
+        isPaused:
+          type: boolean
+        positionMs:
+          type: number
+        durationMs:
+          type: number
+        device:
+          description: >-
+            Spotify Connect device it is playing on when that is not this
+            computer (e.g. a smart speaker), if the player reports it.
+          type: string
+
+    MusicStatus:
+      description: >-
+        Music feature settings and Spicetify extension state. `token` (the
+        music-only bearer token the extension sends) and the install outcome
+        reach privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, enabled, spicetifyFound, extensionInstalled]
+      properties:
+        type:
+          const: musicStatus
+        enabled:
+          type: boolean
+        spicetifyFound:
+          type: boolean
+        extensionInstalled:
+          type: boolean
+        token:
+          type: string
+        message:
+          description: Outcome of the last install attempt, to show the user.
+          type: string
+
+    SetMusicEnabled:
+      description: Show or hide the music column and the turntable animation.
+      type: object
+      additionalProperties: false
+      required: [type, enabled]
+      properties:
+        type:
+          const: setMusicEnabled
+        enabled:
+          type: boolean
+
+    InstallMusicExtension:
+      description: >-
+        Write the Spicetify extension (with the music token baked in) into the
+        Spicetify extensions folder and enable it. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: installMusicExtension
 
     SetHooksEnabled:
       type: object

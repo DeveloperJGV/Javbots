@@ -32,6 +32,30 @@ function copyAssets() {
   } else {
     console.log('ℹ️  assets/ folder not found (optional)');
   }
+  copyFeatureFiles();
+}
+
+/**
+ * Optional features (features/<name>/) bring their own furniture and support
+ * files: furniture joins dist/assets/furniture (the server loads it like any
+ * other), support files go to dist/<name>/.
+ */
+function copyFeatureFiles() {
+  const featuresDir = path.join(__dirname, 'features');
+  if (!fs.existsSync(featuresDir)) return;
+  for (const name of fs.readdirSync(featuresDir)) {
+    const furniture = path.join(featuresDir, name, 'assets', 'furniture');
+    if (fs.existsSync(furniture)) {
+      fs.cpSync(furniture, path.join(__dirname, 'dist', 'assets', 'furniture'), {
+        recursive: true,
+      });
+    }
+    const spicetify = path.join(featuresDir, name, 'spicetify');
+    if (fs.existsSync(spicetify)) {
+      fs.cpSync(spicetify, path.join(__dirname, 'dist', name, 'spicetify'), { recursive: true });
+    }
+    console.log(`✓ Copied features/${name}/ → dist/`);
+  }
 }
 
 /**

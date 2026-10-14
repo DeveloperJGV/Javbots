@@ -19,6 +19,7 @@ import {
   WS_CLOSE_FORBIDDEN_ORIGIN,
   WS_CLOSE_UNAUTHORIZED,
 } from './constants.js';
+import type { FeatureClient, ServerFeature } from './serverFeature.js';
 import type { AgentState } from './types.js';
 
 /** Options for creating the HTTP + WebSocket server. */
@@ -45,6 +46,8 @@ export interface HttpServerOptions {
   onSetHooksEnabled?: SetHooksEnabledSideEffect;
   /** Invoked when an external asset directory is added/removed. Standalone reloads + re-broadcasts assets here. */
   onReloadAssets?: ReloadAssetsSideEffect;
+  /** Optional self-contained features (routes + their own client messages). */
+  features?: ServerFeature[];
 }
 
 /** Result of createHttpServer(). */
@@ -87,6 +90,7 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
   registerHealthRoute(app);
   registerHookRoute(app, options);
   registerWebSocketRoute(app, options);
+  for (const feature of options.features ?? []) feature.registerRoutes?.(app);
 
   // ── Listen ──────────────────────────────────────────────────
 
@@ -197,6 +201,10 @@ function registerWebSocketRoute(app: FastifyInstance, options: HttpServerOptions
     store.on('agentRemoved', onAgentRemoved);
     store.on('broadcast', onBroadcast);
 
+    const features = options.features ?? [];
+    const client: FeatureClient = { send: (m) => safeSend(socket, m), privileged };
+    const disconnectFeatures = features.map((f) => f.connect?.(client));
+
     // Handle incoming client messages
     socket.on('message', (data: Buffer | string) => {
       try {
@@ -204,6 +212,7 @@ function registerWebSocketRoute(app: FastifyInstance, options: HttpServerOptions
         if (!options.embedded && msg.type) {
           console.log('[Pixel Agents] WS client message:', msg.type);
         }
+        if (features.some((f) => f.handleClientMessage?.(msg, client))) return;
         handleClientMessage(msg, (m) => safeSend(socket, m), {
           store,
           runtime: options.runtime,
@@ -221,6 +230,7 @@ function registerWebSocketRoute(app: FastifyInstance, options: HttpServerOptions
       store.off('agentAdded', onAgentAdded);
       store.off('agentRemoved', onAgentRemoved);
       store.off('broadcast', onBroadcast);
+      for (const disconnect of disconnectFeatures) disconnect?.();
     });
   });
 }

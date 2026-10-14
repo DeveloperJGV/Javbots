@@ -56,7 +56,7 @@ import type { FurnitureInstance } from '../types.js';
  */
 
 /** `confetti` (party mode, Fase 5.5) glows like sparks and flutters like paper. */
-export type ParticleKind = 'steam' | 'spark' | 'dust' | 'paper' | 'confetti';
+export type ParticleKind = 'steam' | 'spark' | 'dust' | 'paper' | 'confetti' | 'note';
 
 export interface Particle {
   kind: ParticleKind;
@@ -73,6 +73,8 @@ export interface Particle {
   w: number;
   /** Side-to-side wobble phase. */
   phase: number;
+  /** Pixels drawn instead of a single dot, offsets from (x, y) (music notes). */
+  pattern?: readonly (readonly [number, number])[];
 }
 
 /** Where furniture emits from, in sprite px from its top-left. */
@@ -137,7 +139,8 @@ export class ParticleSystem {
     this.rand = rand;
   }
 
-  private add(p: Particle): void {
+  /** Add a particle (also used by optional features, e.g. features/musica's notes). */
+  add(p: Particle): void {
     if (this.particles.length >= MAX_PARTICLES) this.particles.shift();
     this.particles.push(p);
   }

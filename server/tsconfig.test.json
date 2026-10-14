@@ -6,5 +6,5 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["__tests__/**/*.ts", "src/**/*.ts"]
+  "include": ["__tests__/**/*.ts", "src/**/*.ts", "../features/musica/server/**/*.ts", "../features/musica/test/server/**/*.ts"]
 }

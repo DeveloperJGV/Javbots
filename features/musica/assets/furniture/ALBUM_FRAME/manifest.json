@@ -1,0 +1,13 @@
+{
+  "id": "ALBUM_FRAME",
+  "name": "Cuadro de la car\u00e1tula",
+  "category": "wall",
+  "type": "asset",
+  "canPlaceOnWalls": true,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 0,
+  "width": 32,
+  "height": 32,
+  "footprintW": 2,
+  "footprintH": 2
+}
