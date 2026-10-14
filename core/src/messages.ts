@@ -40,7 +40,8 @@ export type ServerMessage =
   | WorkspaceFolders
   | AgentDiagnostics
   | MusicNowPlaying
-  | MusicStatus;
+  | MusicStatus
+  | MusicLyrics;
 
 export type ClientMessage =
   | WebviewReady
@@ -352,6 +353,23 @@ export interface MusicStatus {
   extensionInstalled: boolean;
   token?: string;
   message?: string;
+}
+
+export interface MusicLyrics {
+  type: 'musicLyrics';
+  title?: string;
+  artist?: string;
+  loading?: boolean;
+  synced?: boolean;
+  source?: AnonymousSchema_217;
+  lines?: MusicLyricLine[];
+}
+
+export type AnonymousSchema_217 = 'spotify' | 'lrclib';
+
+export interface MusicLyricLine {
+  text: string;
+  timeMs?: number;
 }
 
 export interface WebviewReady {

@@ -10,6 +10,9 @@ Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
   un tocadiscos que gira y suelta notitas mientras suena, y arriba un cuadro con la carátula en pixel art. Se
   instala desde Ajustes. Un clic en el tocadiscos esconde o muestra la columna. Detalles en
   [features/musica](features/musica/README.md).
+- **Letras de las canciones**: karaoke en la columna (la línea que se canta, resaltada) y un globito arriba del
+  tocadiscos. Salen de Spotify y, si no hay, de [LRCLIB](https://lrclib.net). Mientras se buscan, Hunter y Tango
+  corren por la columna.
 
 ## 12 de octubre de 2026
 

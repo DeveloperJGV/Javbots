@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { LyricBubble } from '../../features/musica/webview/LyricBubble.js';
 import { MusicColumn } from '../../features/musica/webview/MusicColumn.js';
 import { MusicSettings } from '../../features/musica/webview/MusicSettings.js';
 import { useMusic } from '../../features/musica/webview/useMusic.js';
@@ -488,6 +489,13 @@ function App() {
               panRef={editor.panRef}
               onCloseAgent={handleCloseAgent}
               alwaysShowOverlay={alwaysShowOverlay}
+            />
+            <LyricBubble
+              music={music}
+              officeState={officeState}
+              containerRef={containerRef}
+              zoom={editor.zoom}
+              panRef={editor.panRef}
             />
           </>
         ) : (

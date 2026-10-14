@@ -21,7 +21,7 @@
   }
   const Player = globalThis.Spicetify.Player;
 
-  /** Spotify Connect: name of the device it plays on when it isn't this computer (no typed API: best effort). */
+  /** Spotify Connect: nombre del dispositivo donde suena cuando no es esta computadora (API sin documentar). */
   function remoteDevice() {
     try {
       const device = globalThis.Spicetify.Platform.ConnectAPI.state.activeDevice;
@@ -53,13 +53,64 @@
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + TOKEN },
       body: JSON.stringify({ track: current() }),
+    })
+      .then(function (res) {
+        return res.json();
+      })
+      .then(function (answer) {
+        // La oficina no tiene la letra de esta canción (se reinició a media canción): se manda otra vez.
+        if (answer && answer.needLyrics) {
+          lyricsSentFor = '';
+          sendLyrics();
+        }
+      })
+      .catch(function () {
+        // La oficina está cerrada: se reintenta en el siguiente latido.
+      });
+  }
+
+  /** La letra de Spotify (la misma que enseña la app), línea por línea. Se manda una vez por canción. */
+  let lyricsSentFor = '';
+  async function sendLyrics() {
+    const item = Player.data && Player.data.item;
+    const now = current();
+    if (!item || !item.uri || !now || item.uri === lyricsSentFor) return;
+    lyricsSentFor = item.uri;
+    let synced = false;
+    let lines = null;
+    try {
+      const id = item.uri.split(':')[2];
+      const body = await globalThis.Spicetify.CosmosAsync.get(
+        'https://spclient.wg.spotify.com/color-lyrics/v2/track/' +
+          id +
+          '?format=json&vocalRemoval=false&market=from_token',
+      );
+      const lyrics = body && body.lyrics;
+      if (lyrics && lyrics.lines && lyrics.lines.length) {
+        synced = lyrics.syncType === 'LINE_SYNCED';
+        lines = lyrics.lines.map(function (l) {
+          return { timeMs: Number(l.startTimeMs), text: String(l.words || '') };
+        });
+      }
+    } catch (e) {
+      // Spotify no tiene letra para esta canción (o cambió su dirección): la oficina le pregunta a LRCLIB.
+    }
+    fetch(SERVER + '/api/music/lyrics', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + TOKEN },
+      body: JSON.stringify({ title: now.title, artist: now.artist, synced: synced, lines: lines }),
     }).catch(function () {
-      // La oficina está cerrada: se reintenta en el siguiente latido.
+      lyricsSentFor = ''; // la oficina está cerrada: se reintenta en el siguiente latido
     });
   }
 
   Player.addEventListener('songchange', send);
+  Player.addEventListener('songchange', sendLyrics);
   Player.addEventListener('onplaypause', send);
-  setInterval(send, HEARTBEAT_MS);
+  setInterval(function () {
+    send();
+    sendLyrics();
+  }, HEARTBEAT_MS);
   send();
+  sendLyrics();
 })();

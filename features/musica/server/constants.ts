@@ -30,3 +30,17 @@ export const SPICETIFY_BIN = 'spicetify';
 export const SPICETIFY_TIMEOUT_MS = 120_000;
 
 export const LOG_PREFIX = '[Musica]';
+
+/** Route the extension POSTs Spotify's lyrics of the current track to. */
+export const MUSIC_LYRICS_API_PATH = '/api/music/lyrics';
+/** If the extension hasn't sent lyrics this long after a song starts, ask LRCLIB. */
+export const LYRICS_FALLBACK_MS = 4_000;
+export const LRCLIB_URL = 'https://lrclib.net/api/get';
+export const LRCLIB_USER_AGENT = 'Javbots (https://github.com/DeveloperJGV/Javbots)';
+export const LYRICS_FETCH_TIMEOUT_MS = 8_000;
+export const LYRICS_MAX_LINES = 400;
+export const LYRICS_MAX_LINE_LENGTH = 300;
+/** Less text than this (without spaces or ♪) is a placeholder, not lyrics. */
+export const LYRICS_MIN_TEXT_LENGTH = 30;
+/** Lyrics that arrived before their track report, kept by song. */
+export const LYRICS_PENDING_SIZE = 4;

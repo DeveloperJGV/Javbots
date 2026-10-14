@@ -1,11 +1,19 @@
 /** Width of the music column at the right of the office (CSS px). */
 export const MUSIC_COLUMN_WIDTH_PX = 256;
+/** Cover size in the column (CSS px): small enough to leave room for the lyrics. */
+export const MUSIC_COVER_DISPLAY_PX = 128;
 /** A paused track keeps its column this long, then the office gets the space back. */
 export const MUSIC_PAUSE_HIDE_SEC = 10;
 /** How often the progress bar and times refresh while the column is open. */
-export const MUSIC_PROGRESS_TICK_MS = 500;
+export const MUSIC_PROGRESS_TICK_MS = 250;
 /** Browser storage key remembering that the viewer hid the column (click on the turntable). */
 export const MUSIC_COLUMN_HIDDEN_KEY = 'javbots.musica.columnaOculta';
+
+/** A lyric line shows this much before its time (the eye reads ahead of the voice). */
+export const LYRIC_LEAD_MS = 250;
+/** The bubble over the turntable: max width (CSS px) and how far above the sprite it floats (world px). */
+export const LYRIC_BUBBLE_MAX_WIDTH_PX = 280;
+export const LYRIC_BUBBLE_GAP_PX = 6;
 
 export const TURNTABLE_TYPE = 'TURNTABLE';
 export const ALBUM_FRAME_TYPE = 'ALBUM_FRAME';

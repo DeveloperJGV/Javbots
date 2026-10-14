@@ -1,5 +1,5 @@
-import type { MusicStatus, MusicTrack } from '../../../core/src/messages.js';
-import { MUSIC_COLUMN_HIDDEN_KEY, MUSIC_PAUSE_HIDE_SEC } from './constants.js';
+import type { MusicLyrics, MusicStatus, MusicTrack } from '../../../core/src/messages.js';
+import { LYRIC_LEAD_MS, MUSIC_COLUMN_HIDDEN_KEY, MUSIC_PAUSE_HIDE_SEC } from './constants.js';
 
 type SpriteData = string[][];
 
@@ -14,6 +14,8 @@ export interface MusicState {
   coverSprite: SpriteData | null;
   /** The viewer hid the column with a click on the turntable (remembered in this browser). */
   columnHidden: boolean;
+  /** Lyrics of the current track (none until they arrive, or when there aren't any). */
+  lyrics?: MusicLyrics;
 }
 
 function readColumnHidden(): boolean {
@@ -61,6 +63,11 @@ class MusicStore {
     this.set({ columnHidden });
   }
 
+  /** Kept even without lines: "still looking" and "there are none" matter too (loader / message). */
+  setLyrics(lyrics: MusicLyrics): void {
+    this.set({ lyrics: lyrics.title !== undefined ? lyrics : undefined });
+  }
+
   setStatus(status: MusicStatus): void {
     this.set({ status });
   }
@@ -105,6 +112,43 @@ export function playbackPositionMs(state: MusicState, nowMs = Date.now()): numbe
   if (!t) return 0;
   const pos = t.isPaused ? t.positionMs : t.positionMs + (nowMs - state.receivedAt);
   return t.durationMs > 0 ? Math.min(pos, t.durationMs) : pos;
+}
+
+/** Lyrics that belong to the track on screen (a late message from the previous song never shows). */
+export function currentLyrics(state: MusicState): MusicLyrics | undefined {
+  const { lyrics, track } = state;
+  if (!lyrics?.lines?.length || !track) return undefined;
+  return lyrics.title === track.title && lyrics.artist === track.artist ? lyrics : undefined;
+}
+
+/** Where the lyrics of the track on screen stand: on their way, here, or nowhere to be found. */
+export function lyricsStatus(state: MusicState): 'loading' | 'ready' | 'none' | undefined {
+  const { lyrics, track } = state;
+  if (!track) return undefined;
+  // Nothing yet about THIS song (a new one just started): they're on their way.
+  if (!lyrics || lyrics.title !== track.title || lyrics.artist !== track.artist) return 'loading';
+  if (lyrics.lines?.length) return 'ready';
+  return lyrics.loading ? 'loading' : 'none';
+}
+
+/** Index of the synced line being sung now (-1 before the first one, or when not synced). */
+export function currentLyricIndex(state: MusicState, nowMs = Date.now()): number {
+  const lyrics = currentLyrics(state);
+  if (!lyrics?.synced || !lyrics.lines) return -1;
+  const pos = playbackPositionMs(state, nowMs) + LYRIC_LEAD_MS;
+  let lo = 0;
+  let hi = lyrics.lines.length - 1;
+  let found = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if ((lyrics.lines[mid].timeMs ?? 0) <= pos) {
+      found = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return found;
 }
 
 export function formatTime(ms: number): string {

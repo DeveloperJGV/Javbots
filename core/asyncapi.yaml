@@ -121,6 +121,7 @@ components:
         # Music (feature: features/musica)
         - $ref: '#/components/schemas/MusicNowPlaying'
         - $ref: '#/components/schemas/MusicStatus'
+        - $ref: '#/components/schemas/MusicLyrics'
       discriminator: type
 
     ClientMessage:
@@ -1011,6 +1012,45 @@ components:
             Spotify Connect device it is playing on when that is not this
             computer (e.g. a smart speaker), if the player reports it.
           type: string
+
+    MusicLyrics:
+      description: >-
+        Lyrics of the current track (Spotify's own through the extension, or
+        LRCLIB as a fallback). Without `lines`, there are none. Shown to the
+        viewer only; never persisted.
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: musicLyrics
+        title:
+          type: string
+        artist:
+          type: string
+        loading:
+          description: Still looking for this song's lyrics (Spotify, then LRCLIB).
+          type: boolean
+        synced:
+          description: Lines carry `timeMs` (the moment each one starts).
+          type: boolean
+        source:
+          type: string
+          enum: [spotify, lrclib]
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/MusicLyricLine'
+
+    MusicLyricLine:
+      type: object
+      additionalProperties: false
+      required: [text]
+      properties:
+        text:
+          type: string
+        timeMs:
+          type: number
 
     MusicStatus:
       description: >-

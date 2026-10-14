@@ -5,6 +5,13 @@ artista, el álbum y el tiempo; un **tocadiscos** en Becarios que gira y suelta 
 **cuadro** arriba de él con la carátula en pixel art. Sin música, todo se queda quieto y la columna se quita.
 **Un clic en el tocadiscos** esconde o muestra la columna (el navegador lo recuerda).
 
+**Letras:** karaoke en la columna (línea anterior, la que se canta y la siguiente) y la línea actual en un globito
+arriba del tocadiscos. La extensión manda la letra de Spotify (la misma de la app, endpoint no oficial que puede
+cambiar); si Spotify no tiene, o no contesta en 4 s, el servidor la busca en [LRCLIB](https://lrclib.net)
+(comunitaria: se descartan las que traen casi nada). Solo se muestran; no se guardan. Mientras se buscan, Hunter y
+Tango (los perros del autor) cruzan la columna corriendo; si no aparece, sale "No encontré la letra". La tira de los
+perros se arma con `arte/perros.py`.
+
 Necesita [Spicetify](https://spicetify.app) (Spotify de escritorio con extensiones). Sin Spicetify, Javbots
 funciona igual.
 
@@ -22,6 +29,7 @@ A mano: copia `spicetify/javbots-musica.js`, llena `SERVER` y `TOKEN` (Ajustes �
 
 ```
 Spotify + Spicetify ── javbots-musica.js ──POST /api/music──▶ servidor ──musicNowPlaying──▶ página
+                                         ──POST /api/music/lyrics──▶   ──musicLyrics────▶
                      (cambio de canción,       (token de música)   (baja la carátula   (columna, tocadiscos,
                       pausa, latido 15 s)                           de Spotify)          cuadro)
 ```

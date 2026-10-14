@@ -10,6 +10,7 @@ export function useMusic(transport: MessageTransport): MusicState {
       transport.onMessage((msg) => {
         if (msg.type === 'musicNowPlaying') musicStore.setTrack(msg.track);
         else if (msg.type === 'musicStatus') musicStore.setStatus(msg);
+        else if (msg.type === 'musicLyrics') musicStore.setLyrics(msg);
       }),
     [transport],
   );

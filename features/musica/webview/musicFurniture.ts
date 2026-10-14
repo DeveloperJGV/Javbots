@@ -102,6 +102,28 @@ export function framedCover(frame: SpriteData, cover: SpriteData): SpriteData {
   return out;
 }
 
+/** Whether a furniture instance is the album frame. */
+export function isAlbumFrame(f: FurnitureInstance): boolean {
+  return baseType(f.type) === ALBUM_FRAME_TYPE;
+}
+
+/**
+ * Top of the turntable, or of the album frame hanging right above it, so the
+ * lyric bubble floats over both instead of covering the cover (world px).
+ */
+export function lyricAnchorY(turntable: FurnitureInstance, furniture: FurnitureInstance[]): number {
+  const width = turntable.sprite[0]?.length ?? 0;
+  let top = turntable.y;
+  for (const f of furniture) {
+    if (!isAlbumFrame(f)) continue;
+    const fw = f.sprite[0]?.length ?? 0;
+    const overlaps = f.x < turntable.x + width && f.x + fw > turntable.x;
+    const justAbove = f.y < turntable.y && turntable.y - (f.y + f.sprite.length) <= width;
+    if (overlaps && justAbove) top = Math.min(top, f.y);
+  }
+  return top;
+}
+
 /** Whether a furniture instance is the turntable (a click on it shows / hides the music column). */
 export function isTurntable(f: FurnitureInstance): boolean {
   return baseType(f.type) === TURNTABLE_TYPE;

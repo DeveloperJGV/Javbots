@@ -6,13 +6,17 @@ import {
   applyMusicFurniture,
   framedCover,
   glintPoint,
+  lyricAnchorY,
   MusicNotes,
   spinSprite,
 } from '../../webview/musicFurniture.js';
 import {
+  currentLyricIndex,
+  currentLyrics,
   formatTime,
   isColumnVisible,
   isMusicPlaying,
+  lyricsStatus,
   type MusicState,
   playbackPositionMs,
 } from '../../webview/musicStore.js';
@@ -91,6 +95,16 @@ describe('album frame', () => {
   });
 });
 
+describe('lyric bubble', () => {
+  it('floats above the album frame hanging over the turntable', () => {
+    const table = { ...furniture('TURNTABLE'), x: 448, y: 288 };
+    const frame = { ...furniture('ALBUM_FRAME'), x: 432, y: 246 };
+    const far = { ...furniture('ALBUM_FRAME'), x: 100, y: 100 };
+    expect(lyricAnchorY(table, [table])).toBe(288);
+    expect(lyricAnchorY(table, [table, frame, far])).toBe(246);
+  });
+});
+
 describe('notes', () => {
   it('rise off the turntable only while playing', () => {
     const added: unknown[] = [];
@@ -130,6 +144,48 @@ describe('music state', () => {
     expect(formatTime(0)).toBe('0:00');
     expect(formatTime(61_500)).toBe('1:01');
     expect(formatTime(221_000)).toBe('3:41');
+  });
+});
+
+describe('lyrics', () => {
+  const lyrics = {
+    type: 'musicLyrics' as const,
+    title: 't',
+    artist: 'a',
+    synced: true,
+    lines: [
+      { timeMs: 10_000, text: 'uno' },
+      { timeMs: 20_000, text: 'dos' },
+    ],
+  };
+
+  it('finds the line being sung', () => {
+    expect(currentLyricIndex(state({ positionMs: 5_000 }, { lyrics }), 1_000)).toBe(-1);
+    expect(currentLyricIndex(state({ positionMs: 15_000 }, { lyrics }), 1_000)).toBe(0);
+    expect(currentLyricIndex(state({ positionMs: 25_000 }, { lyrics }), 1_000)).toBe(1);
+    // Just before a line starts it already shows (the eye reads ahead of the voice)
+    expect(currentLyricIndex(state({ positionMs: 19_900 }, { lyrics }), 1_000)).toBe(1);
+  });
+
+  it('knows when lyrics are loading, here, or missing', () => {
+    expect(lyricsStatus(state(undefined))).toBeUndefined();
+    expect(lyricsStatus(state({}))).toBe('loading');
+    expect(
+      lyricsStatus(
+        state({}, { lyrics: { type: 'musicLyrics', title: 't', artist: 'a', loading: true } }),
+      ),
+    ).toBe('loading');
+    expect(
+      lyricsStatus(state({}, { lyrics: { type: 'musicLyrics', title: 't', artist: 'a' } })),
+    ).toBe('none');
+    expect(lyricsStatus(state({}, { lyrics }))).toBe('ready');
+    // Lyrics of the previous song: this one's are still on their way
+    expect(lyricsStatus(state({ title: 'otra' }, { lyrics }))).toBe('loading');
+  });
+
+  it('never shows the lyrics of another song', () => {
+    expect(currentLyrics(state({ title: 'otra' }, { lyrics }))).toBeUndefined();
+    expect(currentLyrics(state({}, { lyrics }))).toBe(lyrics);
   });
 });
 
