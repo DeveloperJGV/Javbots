@@ -102,6 +102,11 @@ export function framedCover(frame: SpriteData, cover: SpriteData): SpriteData {
   return out;
 }
 
+/** Whether a furniture instance is the turntable (a click on it shows / hides the music column). */
+export function isTurntable(f: FurnitureInstance): boolean {
+  return baseType(f.type) === TURNTABLE_TYPE;
+}
+
 /** Turntable spinning while music plays; album frame showing the current cover. */
 export function applyMusicFurniture(
   instances: FurnitureInstance[],

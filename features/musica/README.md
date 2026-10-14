@@ -3,6 +3,7 @@
 La oficina muestra lo que suena en **Spotify**: una columna a la derecha con la carátula, la canción, el
 artista, el álbum y el tiempo; un **tocadiscos** en Becarios que gira y suelta notitas mientras suena, y un
 **cuadro** arriba de él con la carátula en pixel art. Sin música, todo se queda quieto y la columna se quita.
+**Un clic en el tocadiscos** esconde o muestra la columna (el navegador lo recuerda).
 
 Necesita [Spicetify](https://spicetify.app) (Spotify de escritorio con extensiones). Sin Spicetify, Javbots
 funciona igual.

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 
+import { musicStore } from '../../../../features/musica/webview/musicStore.js';
 import {
   CAMERA_FOLLOW_LERP,
   CAMERA_FOLLOW_SNAP_THRESHOLD,
@@ -524,7 +525,10 @@ export function OfficeCanvas({
           hitId,
           petId,
           boardHit:
-            hitId === null && petId === null && officeState.isBoardAt(pos.worldX, pos.worldY),
+            hitId === null &&
+            petId === null &&
+            (officeState.isBoardAt(pos.worldX, pos.worldY) ||
+              officeState.isTurntableAt(pos.worldX, pos.worldY)),
           selectedAgentId: officeState.selectedAgentId,
           tile,
           getSeatAtTile: (col, row) => officeState.getSeatAtTile(col, row),
@@ -762,6 +766,12 @@ export function OfficeCanvas({
         } else {
           officeState.showPetBubble(petId);
         }
+        return;
+      }
+
+      // Turntable (features/musica): show / hide the music column.
+      if (officeState.isTurntableAt(pos.worldX, pos.worldY)) {
+        musicStore.toggleColumn();
         return;
       }
 

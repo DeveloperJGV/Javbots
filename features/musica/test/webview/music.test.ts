@@ -121,6 +121,11 @@ describe('music state', () => {
     expect(isMusicPlaying(paused)).toBe(false);
   });
 
+  it('hides the column when the viewer clicked the turntable', () => {
+    expect(isColumnVisible(state({}, { columnHidden: true }), 0)).toBe(false);
+    expect(isColumnVisible(state({}, { columnHidden: false }), 0)).toBe(true);
+  });
+
   it('formats times like a player', () => {
     expect(formatTime(0)).toBe('0:00');
     expect(formatTime(61_500)).toBe('1:01');

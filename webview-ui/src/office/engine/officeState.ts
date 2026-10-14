@@ -1,6 +1,7 @@
 import { pickDiversePalette } from '../../../../core/src/paletteUtils.js';
 import {
   applyMusicFurniture,
+  isTurntable,
   MusicNotes,
 } from '../../../../features/musica/webview/musicFurniture.js';
 import { musicStore } from '../../../../features/musica/webview/musicStore.js';
@@ -1107,6 +1108,11 @@ export class OfficeState {
   /** Whether a world point lands on a painted pixel of the activity whiteboard. */
   isBoardAt(worldX: number, worldY: number): boolean {
     return this.furniture.some((f) => isBoard(f) && hitsPaintedPixel(f, worldX, worldY));
+  }
+
+  /** Whether a world point lands on the turntable (features/musica: a click shows / hides the music column). */
+  isTurntableAt(worldX: number, worldY: number): boolean {
+    return this.furniture.some((f) => isTurntable(f) && hitsPaintedPixel(f, worldX, worldY));
   }
 
   /** Whether a world point lands on Isaac (the basement easter egg). */

@@ -20,7 +20,8 @@ export interface OfficeCursorCharacter {
 export interface OfficeCursorState {
   hitId: number | null;
   petId: string | null;
-  /** Over the activity whiteboard (clicking it opens the board panel). */
+  /** Over clickable furniture: the activity whiteboard (opens its panel) or the turntable (shows / hides the
+   *  music column, features/musica). */
   boardHit?: boolean;
   selectedAgentId: number | null;
   tile: OfficeCursorTile | null;

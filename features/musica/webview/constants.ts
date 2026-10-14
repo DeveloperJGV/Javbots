@@ -4,6 +4,8 @@ export const MUSIC_COLUMN_WIDTH_PX = 256;
 export const MUSIC_PAUSE_HIDE_SEC = 10;
 /** How often the progress bar and times refresh while the column is open. */
 export const MUSIC_PROGRESS_TICK_MS = 500;
+/** Browser storage key remembering that the viewer hid the column (click on the turntable). */
+export const MUSIC_COLUMN_HIDDEN_KEY = 'javbots.musica.columnaOculta';
 
 export const TURNTABLE_TYPE = 'TURNTABLE';
 export const ALBUM_FRAME_TYPE = 'ALBUM_FRAME';

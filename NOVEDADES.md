@@ -8,7 +8,8 @@ Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
 - **Música de Spotify en la oficina** (opcional, con [Spicetify](https://spicetify.app)). Una columna a la
   derecha muestra la carátula, la canción, el artista y el tiempo, sin tapar nada de la oficina. En Becarios hay
   un tocadiscos que gira y suelta notitas mientras suena, y arriba un cuadro con la carátula en pixel art. Se
-  instala desde Ajustes. Detalles en [features/musica](features/musica/README.md).
+  instala desde Ajustes. Un clic en el tocadiscos esconde o muestra la columna. Detalles en
+  [features/musica](features/musica/README.md).
 
 ## 12 de octubre de 2026
 

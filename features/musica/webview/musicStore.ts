@@ -1,5 +1,5 @@
 import type { MusicStatus, MusicTrack } from '../../../core/src/messages.js';
-import { MUSIC_PAUSE_HIDE_SEC } from './constants.js';
+import { MUSIC_COLUMN_HIDDEN_KEY, MUSIC_PAUSE_HIDE_SEC } from './constants.js';
 
 type SpriteData = string[][];
 
@@ -12,6 +12,16 @@ export interface MusicState {
   pausedSince?: number;
   /** The cover reduced to pixel art for the office's ALBUM_FRAME (null while decoding / none). */
   coverSprite: SpriteData | null;
+  /** The viewer hid the column with a click on the turntable (remembered in this browser). */
+  columnHidden: boolean;
+}
+
+function readColumnHidden(): boolean {
+  try {
+    return globalThis.localStorage?.getItem(MUSIC_COLUMN_HIDDEN_KEY) === '1';
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -19,7 +29,11 @@ export interface MusicState {
  * useSyncExternalStore and OfficeState reads it every furniture tick.
  */
 class MusicStore {
-  private state: MusicState = { receivedAt: 0, coverSprite: null };
+  private state: MusicState = {
+    receivedAt: 0,
+    coverSprite: null,
+    columnHidden: readColumnHidden(),
+  };
   private listeners = new Set<() => void>();
   private coverOf: string | undefined;
 
@@ -33,6 +47,18 @@ class MusicStore {
   private set(next: Partial<MusicState>): void {
     this.state = { ...this.state, ...next };
     for (const l of this.listeners) l();
+  }
+
+  /** Show / hide the column (a click on the turntable). */
+  toggleColumn(): void {
+    const columnHidden = !this.state.columnHidden;
+    try {
+      if (columnHidden) globalThis.localStorage?.setItem(MUSIC_COLUMN_HIDDEN_KEY, '1');
+      else globalThis.localStorage?.removeItem(MUSIC_COLUMN_HIDDEN_KEY);
+    } catch {
+      // no storage (private window, tests): it just isn't remembered
+    }
+    this.set({ columnHidden });
   }
 
   setStatus(status: MusicStatus): void {
@@ -68,7 +94,7 @@ export function isMusicPlaying(state: MusicState): boolean {
 
 /** The column shows while something plays, and for a little while after a pause. */
 export function isColumnVisible(state: MusicState, nowMs = Date.now()): boolean {
-  if (!state.track || state.status?.enabled === false) return false;
+  if (!state.track || state.status?.enabled === false || state.columnHidden) return false;
   if (!state.track.isPaused) return true;
   return nowMs - (state.pausedSince ?? nowMs) < MUSIC_PAUSE_HIDE_SEC * 1000;
 }
