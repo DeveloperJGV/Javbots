@@ -13,6 +13,7 @@
   const SERVER = '__JAVBOTS_URL__';
   const TOKEN = '__JAVBOTS_TOKEN__';
   const HEARTBEAT_MS = 15000;
+  const CONTROL_RETRY_MS = 5000;
 
   // Spicetify carga las extensiones antes de que el reproductor esté listo.
   if (!globalThis.Spicetify?.Player?.addEventListener || !globalThis.Spicetify?.Player?.data) {
@@ -103,6 +104,45 @@
       lyricsSentFor = ''; // la oficina está cerrada: se reintenta en el siguiente latido
     });
   }
+
+  /** Botones de la oficina (anterior / play-pausa / siguiente): llegan por un WebSocket que se reabre solo. */
+  const ACTIONS = {
+    previous: function () {
+      Player.back();
+    },
+    togglePlay: function () {
+      Player.togglePlay();
+    },
+    next: function () {
+      Player.next();
+    },
+  };
+  function connectControl() {
+    let socket;
+    try {
+      socket = new WebSocket(
+        SERVER.replace(/^http/, 'ws') + '/api/music/control?token=' + encodeURIComponent(TOKEN),
+      );
+    } catch (e) {
+      setTimeout(connectControl, CONTROL_RETRY_MS);
+      return;
+    }
+    socket.onmessage = function (event) {
+      let command;
+      try {
+        command = JSON.parse(event.data);
+      } catch (e) {
+        return;
+      }
+      if (command && Object.prototype.hasOwnProperty.call(ACTIONS, command.action)) {
+        ACTIONS[command.action]();
+      }
+    };
+    socket.onclose = function () {
+      setTimeout(connectControl, CONTROL_RETRY_MS);
+    };
+  }
+  connectControl();
 
   Player.addEventListener('songchange', send);
   Player.addEventListener('songchange', sendLyrics);

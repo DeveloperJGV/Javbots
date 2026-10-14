@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { FeatureClient } from '../../../../server/src/serverFeature.js';
 import { CoverCache } from '../../server/cover.js';
 import { createMusicFeature } from '../../server/musicFeature.js';
-import { readMusicConfig } from '../../server/musicConfig.js';
+import { readMusicConfig, writeMusicConfig } from '../../server/musicConfig.js';
 import {
   enabledExtensions,
   installExtension,
@@ -111,7 +111,8 @@ describe('music config', () => {
     const b = readMusicConfig();
     expect(a.token.length).toBeGreaterThanOrEqual(16);
     expect(b.token).toBe(a.token);
-    expect(a.enabled).toBe(true);
+    // No explicit choice yet: automatic (on only where Spicetify is installed)
+    expect(a.enabled).toBeUndefined();
     expect(fs.existsSync(path.join(os.homedir(), '.pixel-agents', 'music.json'))).toBe(true);
   });
 });
@@ -216,6 +217,57 @@ describe('music feature', () => {
     feature.handleClientMessage?.({ type: 'installMusicExtension' }, guest.c);
     await flush();
     expect(spicetify.calls.some((c) => c[0] === 'apply')).toBe(false);
+    feature.dispose?.();
+  });
+});
+
+describe('automatic on/off and playback control', () => {
+  it('is off where Spicetify is missing, unless the user turns it on', async () => {
+    // Forget any explicit choice an earlier test saved
+    writeMusicConfig({ token: readMusicConfig().token });
+    const feature = createMusicFeature({
+      templatePath: TEMPLATE,
+      serverUrl: () => null,
+      run: fakeSpicetify(null).run,
+      covers: fakeCovers(),
+    });
+    const viewer = client(true);
+    feature.connect?.(viewer.c);
+    await flush();
+    feature.handleClientMessage?.({ type: 'webviewReady' }, viewer.c);
+    expect((viewer.last('musicStatus') as { enabled: boolean }).enabled).toBe(false);
+    feature.handleClientMessage?.({ type: 'setMusicEnabled', enabled: true }, viewer.c);
+    expect((viewer.last('musicStatus') as { enabled: boolean }).enabled).toBe(true);
+    feature.dispose?.();
+  });
+
+  it('relays playback commands from the owner only, to the connected extension', () => {
+    const feature = createMusicFeature({
+      templatePath: TEMPLATE,
+      serverUrl: () => null,
+      run: fakeSpicetify(null).run,
+      covers: fakeCovers(),
+    });
+    const owner = client(true);
+    const guest = client(false);
+    feature.connect?.(owner.c);
+    feature.connect?.(guest.c);
+    const sent: string[] = [];
+    let onClose = () => {};
+    feature.attachControl({
+      send: (d) => sent.push(d),
+      close: () => {},
+      on: (_e, l) => {
+        onClose = l;
+      },
+    });
+    expect((owner.last('musicStatus') as { controls?: boolean }).controls).toBe(true);
+    feature.handleClientMessage?.({ type: 'musicControl', action: 'next' }, guest.c);
+    feature.handleClientMessage?.({ type: 'musicControl', action: 'rm -rf' }, owner.c);
+    feature.handleClientMessage?.({ type: 'musicControl', action: 'togglePlay' }, owner.c);
+    expect(sent).toEqual(['{"action":"togglePlay"}']);
+    onClose();
+    expect((owner.last('musicStatus') as { controls?: boolean }).controls).toBe(false);
     feature.dispose?.();
   });
 });

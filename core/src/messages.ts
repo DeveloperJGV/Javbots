@@ -70,7 +70,8 @@ export type ClientMessage =
   | SetShowAreas
   | RequestDiagnostics
   | SetMusicEnabled
-  | InstallMusicExtension;
+  | InstallMusicExtension
+  | MusicControl;
 
 export interface ProviderCapabilities {
   type: 'providerCapabilities';
@@ -351,6 +352,7 @@ export interface MusicStatus {
   enabled: boolean;
   spicetifyFound: boolean;
   extensionInstalled: boolean;
+  controls?: boolean;
   token?: string;
   message?: string;
 }
@@ -361,11 +363,11 @@ export interface MusicLyrics {
   artist?: string;
   loading?: boolean;
   synced?: boolean;
-  source?: AnonymousSchema_217;
+  source?: AnonymousSchema_218;
   lines?: MusicLyricLine[];
 }
 
-export type AnonymousSchema_217 = 'spotify' | 'lrclib';
+export type AnonymousSchema_218 = 'spotify' | 'lrclib';
 
 export interface MusicLyricLine {
   text: string;
@@ -510,3 +512,10 @@ export interface SetMusicEnabled {
 export interface InstallMusicExtension {
   type: 'installMusicExtension';
 }
+
+export interface MusicControl {
+  type: 'musicControl';
+  action: AnonymousSchema_276;
+}
+
+export type AnonymousSchema_276 = 'previous' | 'togglePlay' | 'next';

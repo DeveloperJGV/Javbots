@@ -677,7 +677,7 @@ function App() {
           />
         )}
       </div>
-      <MusicColumn music={music} />
+      <MusicColumn music={music} transport={transport} />
     </div>
   );
 }

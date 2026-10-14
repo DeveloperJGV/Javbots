@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 
+import type { MusicControl } from '../../../core/src/messages.js';
+import type { MessageTransport } from '../../../core/src/transport.js';
 import perrosUrl from './assets/perros-corriendo.png';
 import {
   MUSIC_COLUMN_WIDTH_PX,
@@ -116,6 +118,54 @@ function LyricsLoader() {
   );
 }
 
+/** Previous / play-pause / next, pixel icons on a 7x7 grid. */
+const PREVIOUS_ICON =
+  'M0 0h1v7H0zM5 0h1v1H5zM4 1h2v1H4zM3 2h3v1H3zM2 3h4v1H2zM3 4h3v1H3zM4 5h2v1H4zM5 6h1v1H5z';
+const NEXT_ICON =
+  'M6 0h1v7H6zM1 0h1v1H1zM1 1h2v1H1zM1 2h3v1H1zM1 3h4v1H1zM1 4h3v1H1zM1 5h2v1H1zM1 6h1v1H1z';
+const PLAY_ICON = 'M1 0h1v7H1zM2 1h1v5H2zM3 2h1v3H3zM4 3h1v1H4z';
+const PAUSE_ICON = 'M1 0h2v7H1zM4 0h2v7H4z';
+
+function ControlButton({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: string;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={label}
+      aria-label={label}
+      className="w-40 h-32 flex items-center justify-center bg-btn-bg hover:bg-btn-hover border-2 border-transparent hover:border-accent text-text rounded-none cursor-pointer p-0"
+    >
+      <svg width="14" height="14" viewBox="0 0 7 7" shapeRendering="crispEdges" aria-hidden="true">
+        <path d={icon} fill="currentColor" />
+      </svg>
+    </button>
+  );
+}
+
+/** The basic player menu; commands travel to the Spotify extension through the server. */
+function Controls({ paused, transport }: { paused: boolean; transport: MessageTransport }) {
+  const send = (action: MusicControl['action']) => transport.send({ type: 'musicControl', action });
+  return (
+    <div className="flex justify-center gap-8">
+      <ControlButton icon={PREVIOUS_ICON} label="Anterior" onClick={() => send('previous')} />
+      <ControlButton
+        icon={paused ? PLAY_ICON : PAUSE_ICON}
+        label={paused ? 'Reproducir' : 'Pausar'}
+        onClick={() => send('togglePlay')}
+      />
+      <ControlButton icon={NEXT_ICON} label="Siguiente" onClick={() => send('next')} />
+    </div>
+  );
+}
+
 const LYRICS_SOURCE_LABEL = { spotify: 'Letra: Spotify', lrclib: 'Letra: LRCLIB' } as const;
 
 /** Karaoke: the line being sung, bright, between the previous and the next. Unsynced lyrics just scroll. */
@@ -170,7 +220,13 @@ function Lyrics({ music, now }: { music: MusicState; now: number }) {
  * The music column at the right of the office. It takes its own space (the
  * office is laid out in what is left), so it never covers any of the office.
  */
-export function MusicColumn({ music }: { music: MusicState }) {
+export function MusicColumn({
+  music,
+  transport,
+}: {
+  music: MusicState;
+  transport: MessageTransport;
+}) {
   const [now, setNow] = useState(() => Date.now());
   const visible = isColumnVisible(music, now);
   useEffect(() => {
@@ -236,6 +292,10 @@ export function MusicColumn({ music }: { music: MusicState }) {
             <span>{formatTime(t.durationMs)}</span>
           </div>
         </div>
+      )}
+      {/* Only for the owner (privileged: has the token) and while the extension is listening */}
+      {music.status?.controls && music.status.token && (
+        <Controls paused={t.isPaused} transport={transport} />
       )}
       <Lyrics music={music} now={now} />
     </aside>

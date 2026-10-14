@@ -7,8 +7,10 @@ import {
   LYRICS_FALLBACK_MS,
   LYRICS_PENDING_SIZE,
   MUSIC_API_PATH,
+  MUSIC_CONTROL_PATH,
   MUSIC_LYRICS_API_PATH,
   MUSIC_STALE_MS,
+  WS_CLOSE_POLICY,
 } from './constants.js';
 import { CoverCache } from './cover.js';
 import { cleanLines, fetchLrclib, type Lyrics, songKey } from './lyrics.js';
@@ -35,6 +37,15 @@ export interface MusicFeatureOptions {
   fetchLyrics?: typeof fetchLrclib;
 }
 
+/** The bit of a WebSocket the control channel uses (a fake in tests). */
+export interface ControlSocket {
+  send(data: string): void;
+  close(code?: number, reason?: string): void;
+  on(event: 'close', listener: () => void): void;
+}
+
+const CONTROL_ACTIONS = new Set(['previous', 'togglePlay', 'next']);
+
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   let diff = 0;
@@ -52,6 +63,8 @@ function timingSafeEqual(a: string, b: string): boolean {
 export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
   /** For tests: what clients currently see. */
   current(): MusicTrack | undefined;
+  /** The extension's control channel opened (exposed for tests; the WebSocket route calls it). */
+  attachControl(socket: ControlSocket): void;
   currentLyrics(): Lyrics | undefined;
 } {
   const run = opts.run ?? runSpicetify;
@@ -66,6 +79,10 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
   let spicetify = { found: false, installed: false };
   let lastMessage: string | undefined;
   const clients = new Set<FeatureClient>();
+  /** Spotify extensions connected for playback control (normally one). */
+  const controlSockets = new Set<ControlSocket>();
+  /** Off by default where Spicetify isn't installed: nobody without it sees an empty music corner. */
+  const isEnabled = () => config.enabled ?? spicetify.found;
   const fetchLyrics = opts.fetchLyrics ?? fetchLrclib;
   /** Song the current lyrics belong to (title|artist), and the lyrics themselves. */
   let songNow: string | undefined;
@@ -79,18 +96,19 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
 
   const nowPlaying = (): Record<string, unknown> => ({
     type: 'musicNowPlaying',
-    ...(config.enabled && track ? { track } : {}),
+    ...(isEnabled() && track ? { track } : {}),
   });
   const status = (client: FeatureClient): MusicStatus => ({
     type: 'musicStatus',
-    enabled: config.enabled,
+    enabled: isEnabled(),
+    controls: controlSockets.size > 0,
     spicetifyFound: spicetify.found,
     extensionInstalled: spicetify.installed,
     ...(client.privileged ? { token: config.token } : {}),
     ...(client.privileged && lastMessage ? { message: lastMessage } : {}),
   });
   const lyricsMessage = (): Record<string, unknown> => {
-    if (!config.enabled || !track) return { type: 'musicLyrics' };
+    if (!isEnabled() || !track) return { type: 'musicLyrics' };
     const song = { type: 'musicLyrics', title: track.title, artist: track.artist };
     if (lyrics) return { ...song, ...lyrics };
     // No lines: still looking (loader), or looked everywhere and there are none.
@@ -240,6 +258,15 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
     return true;
   }
 
+  function attachControl(socket: ControlSocket): void {
+    controlSockets.add(socket);
+    broadcastStatus();
+    socket.on('close', () => {
+      controlSockets.delete(socket);
+      broadcastStatus();
+    });
+  }
+
   return {
     name: 'musica',
 
@@ -262,6 +289,15 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
         // No lyrics for this song yet (e.g. the office restarted mid-song): ask the extension to resend them.
         const needLyrics = Boolean(songNow && !lyrics && !pendingLyrics.has(songNow));
         return reply.send({ ok: true, needLyrics });
+      });
+      // Playback control: the extension keeps this socket open and runs what arrives on it.
+      app.get(MUSIC_CONTROL_PATH, { websocket: true }, (socket, request) => {
+        const token = new URL(request.url, 'http://localhost').searchParams.get('token') ?? '';
+        if (!timingSafeEqual(token, config.token)) {
+          socket.close(WS_CLOSE_POLICY, 'unauthorized');
+          return;
+        }
+        attachControl(socket);
       });
       app.post(MUSIC_LYRICS_API_PATH, async (request, reply) => {
         const auth = request.headers.authorization ?? '';
@@ -295,6 +331,13 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
           broadcastNowPlaying();
           broadcastLyrics();
           return true;
+        case 'musicControl': {
+          // Skipping songs is the owner's call: privileged clients only.
+          if (!client.privileged || !CONTROL_ACTIONS.has(String(msg.action))) return true;
+          const command = JSON.stringify({ action: msg.action });
+          for (const s of controlSockets) s.send(command);
+          return true;
+        }
         case 'installMusicExtension': {
           if (!client.privileged) return true;
           const serverUrl = opts.serverUrl();
@@ -324,6 +367,7 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
     },
 
     current: () => track,
+    attachControl,
     currentLyrics: () => lyrics,
   };
 }

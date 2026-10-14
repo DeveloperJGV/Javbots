@@ -12,6 +12,11 @@ cambiar); si Spotify no tiene, o no contesta en 4 s, el servidor la busca en [LR
 Tango (los perros del autor) cruzan la columna corriendo; si no aparece, sale "No encontré la letra". La tira de los
 perros se arma con `arte/perros.py`.
 
+**Botones:** anterior, pausa/play y siguiente. Viajan por un WebSocket que la extensión mantiene abierto
+(`/api/music/control`, con el token de música); solo los manda quien abrió la oficina con su token.
+
+**Apagada sin Spicetify:** mientras nadie elija en Ajustes, la música se prende sola solo donde Spicetify está instalado.
+
 Necesita [Spicetify](https://spicetify.app) (Spotify de escritorio con extensiones). Sin Spicetify, Javbots
 funciona igual.
 

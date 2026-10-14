@@ -33,6 +33,10 @@ export const LOG_PREFIX = '[Musica]';
 
 /** Route the extension POSTs Spotify's lyrics of the current track to. */
 export const MUSIC_LYRICS_API_PATH = '/api/music/lyrics';
+/** WebSocket the extension keeps open to receive playback commands (previous / play-pause / next). */
+export const MUSIC_CONTROL_PATH = '/api/music/control';
+/** Closing code when the control channel's token is wrong (policy violation). */
+export const WS_CLOSE_POLICY = 1008;
 /** If the extension hasn't sent lyrics this long after a song starts, ask LRCLIB. */
 export const LYRICS_FALLBACK_MS = 4_000;
 export const LRCLIB_URL = 'https://lrclib.net/api/get';

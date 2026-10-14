@@ -154,6 +154,7 @@ components:
         # Music (feature: features/musica)
         - $ref: '#/components/schemas/SetMusicEnabled'
         - $ref: '#/components/schemas/InstallMusicExtension'
+        - $ref: '#/components/schemas/MusicControl'
       discriminator: type
 
     # ── Server message variants ────────────────────────────────────
@@ -1069,6 +1070,9 @@ components:
           type: boolean
         extensionInstalled:
           type: boolean
+        controls:
+          description: The extension is connected for playback control (previous / play-pause / next).
+          type: boolean
         token:
           type: string
         message:
@@ -1085,6 +1089,20 @@ components:
           const: setMusicEnabled
         enabled:
           type: boolean
+
+    MusicControl:
+      description: >-
+        Playback control relayed to the Spotify extension. Privileged
+        connections only.
+      type: object
+      additionalProperties: false
+      required: [type, action]
+      properties:
+        type:
+          const: musicControl
+        action:
+          type: string
+          enum: [previous, togglePlay, next]
 
     InstallMusicExtension:
       description: >-

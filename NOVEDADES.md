@@ -13,6 +13,8 @@ Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
 - **Letras de las canciones**: karaoke en la columna (la línea que se canta, resaltada) y un globito arriba del
   tocadiscos. Salen de Spotify y, si no hay, de [LRCLIB](https://lrclib.net). Mientras se buscan, Hunter y Tango
   corren por la columna.
+- **Botones de reproducción** en la columna: anterior, pausa/play y siguiente. La música viene apagada en las
+  computadoras sin Spicetify (se puede prender en Ajustes).
 
 ## 12 de octubre de 2026
 

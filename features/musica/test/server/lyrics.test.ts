@@ -84,6 +84,8 @@ describe('lyrics in the music feature', () => {
     const sent: Record<string, unknown>[] = [];
     const client: FeatureClient = { send: (m) => sent.push(m), privileged: false };
     feature.connect?.(client);
+    // No Spicetify in tests: turn the feature on explicitly (it is automatic otherwise)
+    feature.handleClientMessage?.({ type: 'setMusicEnabled', enabled: true }, client);
     return { feature, sent, fetchLyrics };
   }
 

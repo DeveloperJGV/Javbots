@@ -7,8 +7,8 @@ import { LOG_PREFIX, MUSIC_CONFIG_FILE } from './constants.js';
 
 /** ~/.pixel-agents/music.json */
 export interface MusicConfig {
-  /** Show the music column and animate the turntable. */
-  enabled: boolean;
+  /** Show the music column and animate the turntable. Absent = automatic: on only where Spicetify is installed. */
+  enabled?: boolean;
   /** Music-only bearer token: it can post the current track and nothing else. */
   token: string;
 }
@@ -26,7 +26,7 @@ export function readMusicConfig(): MusicConfig {
     // missing or unreadable: defaults below
   }
   const config: MusicConfig = {
-    enabled: typeof raw.enabled === 'boolean' ? raw.enabled : true,
+    ...(typeof raw.enabled === 'boolean' ? { enabled: raw.enabled } : {}),
     token:
       typeof raw.token === 'string' && raw.token.length >= 16 ? raw.token : crypto.randomUUID(),
   };
