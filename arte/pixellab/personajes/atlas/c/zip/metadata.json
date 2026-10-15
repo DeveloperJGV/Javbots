@@ -1,0 +1,32 @@
+{
+  "group_id": "890e46db-6497-4a44-9fea-9ca15d098336",
+  "states": [
+    {
+      "character": {
+        "id": "e20c41e6-d3c1-4dad-be95-9b8690f9a739",
+        "name": "Idle",
+        "prompt": "cute robot shaped like a big white sphere standing on short black robot legs, a single big glowing blue eye on the front of the sphere, white cap on top, thin black robot arms, no head, full body, simple retro game sprite",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 4,
+        "view": "low top-down",
+        "created_at": "2026-10-15T20:59:31.845798+00:00"
+      },
+      "folder": "Idle",
+      "frames": {
+        "rotations": {
+          "south": "Idle/rotations/south.png",
+          "west": "Idle/rotations/west.png",
+          "east": "Idle/rotations/east.png",
+          "north": "Idle/rotations/north.png"
+        },
+        "animations": {}
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-10-15T21:01:23.856191"
+}

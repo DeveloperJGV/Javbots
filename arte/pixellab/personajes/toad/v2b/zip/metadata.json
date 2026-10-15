@@ -1,0 +1,32 @@
+{
+  "group_id": "fac8eb40-d7eb-4330-aa1a-2418363380e7",
+  "states": [
+    {
+      "character": {
+        "id": "f71e1c7e-58cc-4661-878b-705640bb1728",
+        "name": "Idle",
+        "prompt": "tiny mushroom retainer character, giant round white mushroom cap with red polka dots instead of hair, bald round face with big black vertical oval eyes, blue open vest with gold trim, white diaper-like puffy pants, brown shoes, chubby short body, full body",
+        "size": {
+          "width": 40,
+          "height": 40
+        },
+        "template_id": "mannequin",
+        "directions": 4,
+        "view": "low top-down",
+        "created_at": "2026-10-15T21:07:11.237472+00:00"
+      },
+      "folder": "Idle",
+      "frames": {
+        "rotations": {
+          "south": "Idle/rotations/south.png",
+          "west": "Idle/rotations/west.png",
+          "east": "Idle/rotations/east.png",
+          "north": "Idle/rotations/north.png"
+        },
+        "animations": {}
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-10-15T21:22:43.391836"
+}

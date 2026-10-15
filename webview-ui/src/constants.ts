@@ -330,8 +330,8 @@ export const SHADOW_EDGE_COLOR = '#00000026';
 export const CHARACTER_SHADOW_WIDTH = 12;
 export const PET_SHADOW_WIDTH = 8;
 /** Characters that hover instead of walking (char_N sheets, arte/pixellab/personajes/elenco.json
- *  "flotantes"): 9 = Wheatley. Smaller, fainter shadow, and they don't drop into a chair. */
-export const FLOATING_CHARACTERS: ReadonlySet<number> = new Set([9]);
+ *  "flotantes"): 9 = Wheatley, 18 = Moogle. Smaller, fainter shadow, and they don't drop into a chair. */
+export const FLOATING_CHARACTERS: ReadonlySet<number> = new Set([9, 18]);
 export const FLOATING_SHADOW_WIDTH = 8;
 export const FLOATING_SHADOW_ALPHA = 0.6;
 /** Rows of a furniture sprite's base scanned to size its contact shadow. */
@@ -651,16 +651,20 @@ export const ISAAC_DANCE_MELODY_VOLUME = 0.07;
 export const ISAAC_DANCE_BASS_VOLUME = 0.05;
 
 /** Interns of each boss (char_N index → interns' char_N), from arte/pixellab/personajes/elenco.json.
- *  0 Doc → Marty · 1 Senku → Chrome, Kohaku · 2 Chell → Wheatley · 3 Neo → Trinity ·
+ *  0 Doc → Marty · 1 Senku → Chrome, Kohaku · 2 Chell → Wheatley, P-body, Atlas · 3 Neo → Trinity ·
  *  4 Gandalf → Frodo, Sam · 5 Kakashi → Naruto, Sakura. */
 export const BOSS_INTERNS: Readonly<Record<number, readonly number[]>> = {
   0: [6],
   1: [7, 8],
-  2: [9],
+  2: [9, 15, 16],
   3: [10],
   4: [11, 12],
   5: [13, 14],
 };
+/** Wildcard interns (elenco.json "comodines"): any boss sends one when all of its own interns are
+ *  out, instead of repeating one. 17 Toad · 18 Moogle · 19 Stormtrooper · 20 Squid Game guard.
+ *  They keep their own colors (no boss hue shift). */
+export const WILDCARD_INTERNS: readonly number[] = [17, 18, 19, 20];
 
 // 88 mph: a command finished in the DeLorean workshop -> flux sparks + two fire trails
 export const FLUX_SPARK_COLORS = ['#ffffff', '#9ff0ff', '#5fb7ff'] as const;

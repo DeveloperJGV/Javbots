@@ -3,6 +3,13 @@
 Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
 (Pixel Agents) está en [CHANGELOG.md](CHANGELOG.md).
 
+## 15 de octubre de 2026
+
+- **Seis becarios nuevos.** Chell ahora también manda a **P-body y Atlas**, los robots del cooperativo de Portal 2
+  (además de Wheatley). Y hay **comodines** que le sirven a cualquier jefe: **Toad**, un **Moogle** que flota y
+  aletea, un **Stormtrooper** y un **guardia del Juego del Calamar**. Salen cuando el jefe ya mandó a todos sus
+  becarios propios, en vez de repetir uno, y conservan sus colores.
+
 ## 14 de octubre de 2026
 
 - **Música de Spotify en la oficina** (opcional, con [Spicetify](https://spicetify.app)). Una columna a la

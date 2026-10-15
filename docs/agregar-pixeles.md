@@ -67,8 +67,10 @@ Los muebles no se animan desde el manifest: se animan por código, según su `id
 
 ## Personajes
 
-Hay 15 hojas en `webview-ui/public/assets/characters/`: `char_0.png` a `char_5.png` son los **jefes** (los agentes)
-y `char_6.png` a `char_14.png` son los **becarios** (los sub-agentes).
+Hay 21 hojas en `webview-ui/public/assets/characters/`: `char_0.png` a `char_5.png` son los **jefes** (los agentes),
+`char_6.png` a `char_16.png` son los **becarios** de cada jefe y `char_17.png` a `char_20.png` son los **comodines**
+(becarios que cualquier jefe manda cuando ya no tiene libres los suyos). El servidor carga las hojas seguidas desde
+`char_0`: no dejes huecos en la numeración.
 
 Cada hoja mide **192 × 132**:
 
@@ -76,10 +78,11 @@ Cada hoja mide **192 × 132**:
 - 8 cuadros de 24 px por fila: caminar ×4, teclear ×2, leer ×2.
 - Los pies van abajo y centrados en su cuadro; el personaje debe dejar aire arriba para que quepa el globo.
 
-Qué becarios manda cada jefe está en `BOSS_INTERNS` (`webview-ui/src/constants.ts`). Para cambiar un personaje,
+Qué becarios manda cada jefe está en `BOSS_INTERNS` y los comodines en `WILDCARD_INTERNS` (los dos en
+`webview-ui/src/constants.ts`); los que flotan en vez de caminar, en `FLOATING_CHARACTERS`. Para cambiar un personaje,
 reemplaza su PNG con uno del mismo tamaño y recompila.
 
-> Las hojas de personajes de una carpeta externa se agregan después de las 15 del proyecto y hoy ningún jefe las
+> Las hojas de personajes de una carpeta externa se agregan después de las 21 del proyecto y hoy ningún jefe las
 > usa: para cambiar personajes hay que reemplazar los del proyecto.
 
 ## Mascotas

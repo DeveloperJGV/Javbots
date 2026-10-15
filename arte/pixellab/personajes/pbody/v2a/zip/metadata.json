@@ -1,0 +1,32 @@
+{
+  "group_id": "a4499b2d-c4d4-4f29-abb1-f1a451ff343d",
+  "states": [
+    {
+      "character": {
+        "id": "f6382fc4-06c3-4d6c-8f44-bb1ed2f4298f",
+        "name": "Idle",
+        "prompt": "headless robot: its whole upper body is one tall white egg-shaped pod, narrow pointed top and wider bottom, with a single big round glowing orange eye in the middle of the pod, no head, no face, very thin black mechanical arms hanging from the top sides of the pod, long very thin black mechanical legs with white shin plates, small white feet, full body, retro game robot",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 4,
+        "view": "low top-down",
+        "created_at": "2026-10-15T20:57:41.511066+00:00"
+      },
+      "folder": "Idle",
+      "frames": {
+        "rotations": {
+          "south": "Idle/rotations/south.png",
+          "west": "Idle/rotations/west.png",
+          "east": "Idle/rotations/east.png",
+          "north": "Idle/rotations/north.png"
+        },
+        "animations": {}
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-10-15T21:00:27.970516"
+}

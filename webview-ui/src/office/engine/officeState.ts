@@ -49,6 +49,7 @@ import {
   TELEPORT_BEAM_ORIGIN_X,
   TELEPORT_BEAM_ORIGIN_Y,
   WAITING_BUBBLE_DURATION_SEC,
+  WILDCARD_INTERNS,
   ZONE_ERROR_COOLDOWN_SEC,
   ZONE_ERROR_HOLD_SEC,
 } from '../../constants.js';
@@ -815,26 +816,33 @@ export class OfficeState {
   }
 
   /** Which intern a boss sends (Fase 4B): the first of its interns (BOSS_INTERNS) not already
-   *  out on another task, round-robin when all are busy. Same hue shift as the boss, so a
-   *  repeated boss and its interns match. Bosses without interns (external characters) send a
-   *  copy of themselves, as before. */
+   *  out on another task, with the boss's hue shift so a repeated boss and its interns match.
+   *  When all of them are out, a wildcard (WILDCARD_INTERNS) no boss has out right now, in its
+   *  own colors; only when those are all out too does it repeat its own interns, round-robin.
+   *  Bosses without interns (external characters) send a copy of themselves, as before. */
   private pickInternPalette(parentCh: Character | undefined): {
     palette: number;
     hueShift: number;
   } {
     if (!parentCh) return { palette: 0, hueShift: 0 };
-    const interns = (BOSS_INTERNS[parentCh.palette] ?? []).filter(
-      (i) => i < getLoadedCharacterCount(),
-    );
+    const loaded = getLoadedCharacterCount();
+    const interns = (BOSS_INTERNS[parentCh.palette] ?? []).filter((i) => i < loaded);
     if (interns.length === 0) return { palette: parentCh.palette, hueShift: parentCh.hueShift };
     const busy: number[] = [];
+    const wildcardsOut = new Set<number>();
     for (const ch of this.characters.values()) {
-      if (ch.isSubagent && ch.parentAgentId === parentCh.id && ch.leavingSec === null) {
-        if (ch.matrixEffect !== 'despawn') busy.push(ch.palette);
-      }
+      if (!ch.isSubagent || ch.leavingSec !== null || ch.matrixEffect === 'despawn') continue;
+      if (ch.parentAgentId === parentCh.id) busy.push(ch.palette);
+      if (WILDCARD_INTERNS.includes(ch.palette)) wildcardsOut.add(ch.palette);
     }
     const free = interns.find((i) => !busy.includes(i));
-    return { palette: free ?? interns[busy.length % interns.length], hueShift: parentCh.hueShift };
+    if (free !== undefined) return { palette: free, hueShift: parentCh.hueShift };
+    const wildcards = WILDCARD_INTERNS.filter((i) => i < loaded && !wildcardsOut.has(i));
+    if (wildcards.length > 0) {
+      return { palette: wildcards[Math.floor(Math.random() * wildcards.length)], hueShift: 0 };
+    }
+    const own = busy.filter((i) => interns.includes(i)).length;
+    return { palette: interns[own % interns.length], hueShift: parentCh.hueShift };
   }
 
   /** An intern done with its task walks back to its boss and fades out there (Fase 4B). With no

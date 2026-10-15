@@ -1,0 +1,32 @@
+{
+  "group_id": "7fa65a8a-1e8a-446a-ab7c-295b97402519",
+  "states": [
+    {
+      "character": {
+        "id": "9c0f54cb-0690-4b02-b4a6-7ddee881bed6",
+        "name": "Idle",
+        "prompt": "small cute mushroom person: very big round white mushroom cap head with large red round spots, round peach face under the cap with big black oval eyes, short blue vest with yellow trim over a bare chest, white puffy short pants, brown shoes, short stubby arms and legs, full body",
+        "size": {
+          "width": 40,
+          "height": 40
+        },
+        "template_id": "mannequin",
+        "directions": 4,
+        "view": "low top-down",
+        "created_at": "2026-10-15T21:03:27.660924+00:00"
+      },
+      "folder": "Idle",
+      "frames": {
+        "rotations": {
+          "south": "Idle/rotations/south.png",
+          "west": "Idle/rotations/west.png",
+          "east": "Idle/rotations/east.png",
+          "north": "Idle/rotations/north.png"
+        },
+        "animations": {}
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-10-15T21:06:06.521866"
+}

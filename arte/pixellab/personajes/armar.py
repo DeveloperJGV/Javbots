@@ -241,6 +241,291 @@ def lentes_oscuros(im, direccion, piel):
 #   manos_hasta: opcional, {dirección: fila}: no buscar manos desde esa fila (rodilleras, calcetas del mismo color)
 #   estirar:  opcional, {dirección: (fila0, fila1, n)}: repite n filas entre fila0 y fila1 para que el pelo crezca
 #             hacia arriba (el de Senku). Las demás filas de la ficha se escriben SIN contar ese estirón.
+def quitar_sombra(im, colores):
+    """Borra la sombra de piso que a veces pinta la plantilla: en las últimas filas, los píxeles de esos colores que
+    tocan el fondo y lo que se les une (relleno por inundación). Los mismos grises dentro del cuerpo están rodeados de
+    contorno y no se tocan."""
+    out = im.copy()
+    px = out.load()
+    abajo = ultima_fila(im)
+
+    def toca_fondo(x, y):
+        return any(not (0 <= xx < im.width and 0 <= yy < im.height) or not px[xx, yy][3]
+                   for xx, yy in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)))
+
+    pila = [(x, y) for y in range(abajo - 6, abajo + 1) for x in range(im.width)
+            if px[x, y][3] and px[x, y][:3] in colores and toca_fondo(x, y)]
+    while pila:
+        x, y = pila.pop()
+        if not (0 <= x < im.width and 0 <= y < im.height) or px[x, y][:3] not in colores or not px[x, y][3]:
+            continue
+        px[x, y] = (0, 0, 0, 0)
+        pila += [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
+    return out
+
+
+# Robots del cooperativo de Portal 2 (becarios de Chell). La plantilla de PixelLab siempre dibuja cabeza y torso de
+# persona; el cuerpo de verdad es una sola cápsula blanca con un ojo, así que se dibuja encima por código.
+CAPSULA_BORDE = (44, 26, 34, 255)
+CAPSULA_BLANCO = (240, 240, 244, 255)
+CAPSULA_LUZ = (253, 253, 255, 255)
+CAPSULA_SOMBRA = (190, 190, 200, 255)
+CAPSULA_RAYA = (141, 138, 143, 255)
+SOMBRA_PISO_PBODY = {(154, 152, 157), (141, 138, 143), (209, 205, 210)}
+CAPSULA_COLORES = {CAPSULA_BORDE, CAPSULA_BLANCO, CAPSULA_LUZ, CAPSULA_SOMBRA, CAPSULA_RAYA}
+
+
+def capsula(im, cx, y0, alto, medio_ancho, centro_rel, ojo, ojo_colores, direccion, antena=True, raya=0.78,
+            redondez=2.6, ojo_grande=False):
+    """Dibuja una cápsula (huevo) blanca con contorno: filas y0..y0+alto-1, centrada entre las columnas cx-1 y cx
+    (ancho par), lo más ancho en `centro_rel` (0 = arriba, 1 = abajo). El ojo va a `ojo` (fracción de alto) de frente,
+    pegado a la orilla de enfrente de lado y no se ve de espaldas."""
+    import math
+    px = im.load()
+    c = centro_rel * (alto - 1)
+    filas = []
+    for t in range(alto):
+        r = c + 1.6 if t <= c else (alto - 1 - c) + 0.8  # +: la primera y la última fila ya tienen ancho (punta roma)
+        u = abs(t - c) / r if r else 0
+        p = redondez if t <= c else 2  # arriba más lleno (huevo), abajo elipse
+        h = medio_ancho * max(0.0, 1 - u ** p) ** (1 / p)
+        filas.append(max(1, round(h)))
+    for t, h in enumerate(filas):
+        y = y0 + t
+        for x in range(cx - h, cx + h):
+            borde = x in (cx - h, cx + h - 1) or t in (0, alto - 1)
+            # también es borde lo que sobresale de la fila de arriba/abajo (para que el contorno sea continuo)
+            if not borde and t > 0 and not (cx - filas[t - 1] < x < cx + filas[t - 1] - 1):
+                borde = True
+            if not borde and t < alto - 1 and not (cx - filas[t + 1] < x < cx + filas[t + 1] - 1):
+                borde = True
+            if borde:
+                color = CAPSULA_BORDE
+            elif x == (cx - h + 1 if direccion == 'east' else cx + h - 2):  # sombra del lado de atrás / derecho
+                color = CAPSULA_SOMBRA
+            elif x == cx - h + 1:
+                color = CAPSULA_LUZ
+            else:
+                color = CAPSULA_BLANCO
+            px[x, y] = color
+    if raya:  # la costura de abajo (en el plano oficial, la línea que cruza la cápsula)
+        t = round(raya * (alto - 1))
+        for x in range(cx - filas[t] + 1, cx + filas[t] - 1):
+            px[x, y0 + t] = CAPSULA_RAYA
+    if antena:
+        for y in (y0 - 2, y0 - 1):
+            px[cx - 1 if direccion != 'east' else cx - 2, y] = CAPSULA_BORDE
+    if direccion == 'north':
+        return
+    oscuro, claro, brillo = ojo_colores
+    ty = round(ojo * (alto - 1))
+    if direccion == 'south':
+        patron = ['.oooo.', 'oYYYYo', 'oYBBYo', 'oYBYYo', 'oYYYYo', '.oooo.'] if ojo_grande else             ['.oo.', 'oYYo', 'oYBo', '.oo.']
+        x0 = cx - len(patron[0]) // 2
+    else:  # de lado: medio ojo en la orilla de enfrente
+        h = filas[ty]
+        patron = ['o..', 'Yo.', 'BYo', 'YYo', 'Yo.', 'o..'] if ojo_grande else ['o.', 'Yo', 'Bo', 'o.']
+        x0 = cx + h - 1 - len(patron[0])
+    ty -= (len(patron) - 4) // 2
+    for dy, fila in enumerate(patron):
+        for dx, ch in enumerate(fila):
+            if ch != '.':
+                px[x0 + dx, y0 + ty - 1 + dy] = {'o': oscuro, 'Y': claro, 'B': brillo}[ch]
+
+
+def retoque_robot(im, direccion, alto, medio_ancho, centro_rel, ojo, ojo_colores, cuello, sombra=(), dx_lado=0,
+                  raya=0.78, redondez=2.6, ojo_grande=False):
+    """Cambia cabeza + pecho de la plantilla por la cápsula: borra lo que está arriba de los hombros (`cuello` filas
+    desde la coronilla) y dibuja la cápsula desde la coronilla. La columna central sale de la cabeza de cada cuadro."""
+    out = quitar_sombra(im, sombra) if sombra else im.copy()
+    bb = out.getbbox()
+    if not bb:
+        return out
+    top = bb[1]
+    px = out.load()
+    cabeza = [x for y in range(top, top + 8) for x in range(out.width) if px[x, y][3]]
+    cx = (min(cabeza) + max(cabeza) + 1) // 2 + (dx_lado if direccion == 'east' else 0)
+    for y in range(top, top + cuello):
+        for x in range(out.width):
+            px[x, y] = (0, 0, 0, 0)
+    capsula(out, cx, top, alto, medio_ancho, centro_rel, ojo, ojo_colores, direccion, raya=raya, redondez=redondez,
+            ojo_grande=ojo_grande)
+    return out
+
+
+CONTORNO_SUAVE = (44, 26, 34, 255)  # como el café oscuro de los demás (Chell 59,29,30); el negro puro se ve duro
+
+
+def suavizar_contorno(im, oscuro=70):
+    """Los píxeles casi negros de la orilla (los que tocan el fondo) pasan a CONTORNO_SUAVE."""
+    out = im.copy()
+    src, px = im.load(), out.load()
+    for y in range(im.height):
+        for x in range(im.width):
+            c = src[x, y]
+            if not c[3] or sum(c[:3]) >= oscuro:
+                continue
+            if any(not (0 <= xx < im.width and 0 <= yy < im.height) or not src[xx, yy][3]
+                   for xx, yy in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1))):
+                px[x, y] = CONTORNO_SUAVE
+    return out
+
+
+PBODY_OJO = ((180, 74, 18, 255), (247, 148, 40, 255), (255, 222, 120, 255))  # anillo, iris, brillo
+
+
+def retoque_pbody(im, direccion):
+    return suavizar_contorno(retoque_robot(im, direccion, alto=22, medio_ancho=4, centro_rel=0.6, ojo=0.36, ojo_colores=PBODY_OJO,
+                         cuello=12, sombra=SOMBRA_PISO_PBODY, dx_lado=0))
+
+
+ATLAS_OJO = ((28, 64, 150, 255), (64, 150, 240, 255), (176, 232, 255, 255))  # anillo, iris, brillo
+
+
+def retoque_atlas(im, direccion):
+    # esfera (casi redonda) con la costura de la "gorra" arriba; el ojo en medio
+    return suavizar_contorno(retoque_robot(im, direccion, alto=16, medio_ancho=7 if direccion != 'east' else 6,
+                                           centro_rel=0.5, ojo=0.5, ojo_colores=ATLAS_OJO, cuello=10,
+                                           sombra=SOMBRA_PISO_PBODY, raya=0.22, redondez=2,
+                                           ojo_grande=True))
+
+
+def nuca_stormtrooper(im, direccion):
+    """De espaldas la plantilla le pintó la cara al casco: lo oscuro de adentro de la cabeza pasa al blanco del casco
+    (el contorno se queda) y una raya gris marca el borde de atrás."""
+    if direccion != 'north':
+        return im
+    out = im.copy()
+    px = out.load()
+    top = out.getbbox()[1]
+    blanco = (238, 238, 238, 255)
+    for y in range(top + 1, top + 13):
+        fila = [x for x in range(out.width) if px[x, y][3]]
+        if not fila:
+            continue
+        x0, x1 = min(fila), max(fila)
+        for x in range(x0 + 1, x1):
+            if sum(px[x, y][:3]) < 330:
+                px[x, y] = blanco
+    for x in range(out.width):
+        y = top + 11
+        if px[x, y][3] and sum(px[x, y - 1][:3]) > 400 and px[x - 1, y][3] and px[x + 1, y][3]:
+            px[x, y] = (170, 170, 176, 255)
+    return out
+
+
+MASCARA_ARO = (236, 236, 236, 255)
+GUARDIA_ORILLA = (112, 22, 66, 255)
+
+
+def orilla_rosa(im):
+    """El guardia salió sin contorno: los rosas de la orilla (los que tocan el fondo) pasan a rosa muy oscuro."""
+    out = im.copy()
+    src, px = im.load(), out.load()
+    for y in range(im.height):
+        for x in range(im.width):
+            r, g, b, a = src[x, y]
+            if not a or not (r > 150 and g < 120 and b > 80):
+                continue
+            if any(not (0 <= xx < im.width and 0 <= yy < im.height) or not src[xx, yy][3]
+                   for xx, yy in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1))):
+                px[x, y] = GUARDIA_ORILLA
+    return out
+
+
+def mascara_circulo(im, direccion):
+    """Guardia: la máscara negra lisa con un círculo blanco (de lado, medio círculo). Lo claro que trae la máscara
+    (ranura de ojos, brillos) se pinta del negro de la máscara."""
+    im = orilla_rosa(im)
+    if direccion == 'north':
+        return im
+    out = im.copy()
+    px = out.load()
+    top = out.getbbox()[1]
+    oscuros = [(x, y) for y in range(top + 1, top + 9) for x in range(out.width)
+               if px[x, y][3] and sum(px[x, y][:3]) < 150]
+    if not oscuros:
+        return out
+    x0, x1 = min(x for x, _ in oscuros), max(x for x, _ in oscuros)
+    y0, y1 = min(y for _, y in oscuros), max(y for _, y in oscuros)
+    negro = px[oscuros[len(oscuros) // 2]]
+    for y in range(y0 + 1, y1):
+        for x in range(x0 + 1, x1):
+            c = px[x, y]
+            if c[3] and sum(c[:3]) >= 150 and not (c[0] > 180 and c[1] < 120):  # lo rosa es la capucha: no
+                px[x, y] = negro
+    cy = (y0 + y1) // 2
+    if direccion == 'south':
+        cx = (x0 + x1) // 2 - 2
+        patron = ['.WWW.', 'W...W', 'W...W', 'W...W', '.WWW.']
+    else:
+        cx = x1 - 3
+        patron = ['.W.', 'W.W', 'W.W', 'W.W', '.W.']
+    for dy, fila in enumerate(patron):
+        for dx, ch in enumerate(fila):
+            if ch == 'W':
+                px[cx + dx, cy - 2 + dy] = MASCARA_ARO
+    return out
+
+
+PIKMIN_TALLO = (58, 84, 40, 255)
+PIKMIN_HOJA = (104, 178, 64, 255)
+PIKMIN_HOJA_LUZ = (160, 214, 98, 255)
+PIKMIN_ROJO = (226, 60, 70, 255)
+PIKMIN_NARIZ_LUZ = (255, 132, 128, 255)
+HOJA_PIKMIN = ['.##..', '#GL#.', '#GGG#', '.#GG#', '..##.']  # la punta abajo a la izquierda toca el tallo
+
+
+def es_rojo(c):
+    return c[3] and c[0] > 150 and c[1] < 120
+
+
+def retoque_pikmin(im, direccion):
+    """Pikmin rojo: tallo largo con una hoja (la plantilla lo dio corto) y nariz puntiaguda (no la trajo)."""
+    out = im.copy()
+    px = out.load()
+    rojos = [(x, y) for y in range(out.height) for x in range(out.width) if es_rojo(px[x, y])]
+    top = min(y for _, y in rojos)  # coronilla (primera fila roja)
+    cabeza = [x for x, y in rojos if y <= top + 6]
+    cx = (min(cabeza) + max(cabeza)) // 2
+    for y in range(0, top - 1):  # se borra el tallo corto de la plantilla
+        for x in range(out.width):
+            px[x, y] = (0, 0, 0, 0)
+    for x in range(out.width):  # en la fila del contorno de la coronilla, lo que sale de la cabeza (ramita de lado)
+        if not min(cabeza) - 1 <= x <= max(cabeza) + 1:
+            px[x, top - 1] = (0, 0, 0, 0)
+    for y in range(top - 1, top + 7):  # el tallo viejo que se metía en la cabeza (verdes y olivos) pasa a rojo
+        for x in range(out.width):
+            r, g, b, a = px[x, y]
+            if a and g > 60 and g >= r - 40 and g > b:
+                px[x, y] = PIKMIN_ROJO if y >= top else CONTORNO_SUAVE
+    if direccion == 'north':  # de espaldas el tallo viejo bajaba por la nuca como raya oscura
+        for y in range(top, top + 6):
+            for x in range(cx - 2, cx + 3):
+                if px[x, y][3] and sum(px[x, y][:3]) < 330 and es_rojo(px[x - 3, y]) and es_rojo(px[x + 3, y]):
+                    px[x, y] = PIKMIN_ROJO
+    tx = cx - 1 if direccion == 'east' else cx  # de lado el tallo sale un poco hacia atrás
+    for y in range(top - 8, top - 1):
+        px[tx, y] = PIKMIN_TALLO
+    for dy, fila in enumerate(HOJA_PIKMIN):
+        for dx, ch in enumerate(fila):
+            if ch != '.':
+                px[tx + dx, top - 12 + dy] = {'#': PIKMIN_TALLO, 'G': PIKMIN_HOJA, 'L': PIKMIN_HOJA_LUZ}[ch]
+    if direccion == 'south':  # nariz vista de frente: punta clara con sombra abajo, entre los ojos
+        px[cx, top + 4] = PIKMIN_NARIZ_LUZ
+        px[cx, top + 5] = PIKMIN_ROJO
+        px[cx + 1, top + 5] = CONTORNO_SUAVE
+    elif direccion == 'east':  # de lado sobresale 2 px hacia enfrente
+        y = top + 4
+        xr = max(x for x in range(out.width) if px[x, y][3])
+        px[xr, y] = PIKMIN_ROJO
+        px[xr + 1, y] = PIKMIN_NARIZ_LUZ
+        px[xr + 2, y] = CONTORNO_SUAVE
+        px[xr + 1, y - 1] = CONTORNO_SUAVE
+        px[xr + 1, y + 1] = CONTORNO_SUAVE
+    return out
+
+
 FICHAS = {
     'doc': {
         'carpeta': 'doc/base',
@@ -280,6 +565,68 @@ FICHAS = {
         'manos_hasta': {'south': 31, 'east': 32, 'north': 30},
         'piel': (226, 220, 220),
         'tol_piel': 110,
+    },
+    'pbody': {  # becaria de Chell (2026-10-15): base v1 + cápsula por código
+        'carpeta': 'pbody/base',
+        'retoque': retoque_pbody,
+        'neutro': {'south': ('caminar8', 0), 'east': ('caminar8', 0), 'north': 'rot'},
+        'pasos': {'south': (0, 2, 4, 6), 'east': (0, 2, 4, 6)},
+        'piernas': {'south': (33, 41), 'east': (34, 43), 'north': (34, 42)},
+        'barbilla': {'south': 28, 'east': 20, 'north': 28},  # de lado, la mano blanca cuelga junto a la cápsula
+        'manos_hasta': {'south': 32, 'east': 30, 'north': 33},
+        'piel': (241, 239, 241),
+        'no_manos': CAPSULA_COLORES,
+    },
+    'atlas': {  # becario de Chell (2026-10-15): variante "a" + esfera por código
+        'carpeta': 'atlas/a',
+        'retoque': retoque_atlas,
+        'neutro': {'south': ('caminar8', 0), 'east': ('caminar8', 0), 'north': 'rot'},
+        'pasos': {'south': (0, 2, 4, 6), 'east': (0, 2, 4, 6)},
+        'piernas': {'south': (33, 37), 'east': (33, 37), 'north': (33, 38)},
+        'barbilla': {'south': 25, 'east': 18, 'north': 25},
+        'manos_hasta': {'south': 34, 'east': 30, 'north': 34},
+        'piel': (241, 239, 241),
+        'no_manos': CAPSULA_COLORES,
+    },
+    # Comodines (2026-10-15): becarios de cualquier jefe
+    'stormtrooper': {
+        'carpeta': 'stormtrooper/v2b',
+        'retoque': nuca_stormtrooper,
+        'neutro': {'south': ('caminar8', 0), 'east': ('caminar8', 0), 'north': 'rot'},
+        'pasos': {'south': (0, 2, 4, 6), 'east': (0, 2, 4, 6)},
+        'piernas': {'south': (30, 37), 'east': (31, 37), 'north': (31, 38)},
+        'barbilla': {'south': 23, 'east': 24, 'north': 23},  # "manos" = antebrazo blanco (todo es armadura blanca)
+        'manos_hasta': {'south': 29, 'east': 30, 'north': 29},
+        'piel': (238, 238, 238),
+    },
+    'toad': {
+        'carpeta': 'toad/v2a',
+        'neutro': {'south': ('caminar8', 0), 'east': ('caminar8', 0), 'north': 'rot'},
+        'pasos': {'south': (0, 2, 4, 6), 'east': (0, 2, 4, 6)},
+        'piernas': {'south': (26, 30), 'east': (26, 30), 'north': (26, 31)},
+        'barbilla': {'south': 16, 'east': 16, 'north': 17},
+        'piel': 'auto',
+    },
+    'guardia': {
+        'carpeta': 'guardia/base',
+        'retoque': mascara_circulo,
+        'neutro': {'south': ('caminar8', 0), 'east': ('caminar8', 0), 'north': 'rot'},
+        'pasos': {'south': (0, 2, 4, 6), 'east': (0, 2, 4, 6)},
+        'piernas': {'south': (32, 37), 'east': (32, 37), 'north': (32, 38)},
+        'barbilla': {'south': 26, 'east': 26, 'north': 26},  # guantes negros
+        'manos_hasta': {'south': 30, 'east': 31, 'north': 30},
+        'piel': (30, 26, 30),
+    },
+    'pikmin': {
+        'carpeta': 'pikmin/b',
+        'retoque': retoque_pikmin,
+        'neutro': {'south': ('caminar8', 0), 'east': ('caminar8', 0), 'north': 'rot'},
+        'pasos': {'south': (0, 2, 4, 6), 'east': (0, 2, 4, 6)},
+        'piernas': {'south': (24, 28), 'east': (24, 29), 'north': (25, 28)},
+        'barbilla': {'south': 18, 'east': 18, 'north': 18},
+        'manos_hasta': {'south': 23, 'east': 24, 'north': 23},
+        'piel': (241, 163, 142),
+        'tol_piel': 120,
     },
     'gandalf': {
         'carpeta': 'gandalf/base',
@@ -455,6 +802,8 @@ def manos(im, ficha, direccion):
         for x in range(im.width):
             # de frente/espaldas las manos cuelgan a los lados: lo del centro es pecho o cuello
             if direccion != 'east' and abs(x - centro) < 4:
+                continue
+            if px[x, y] in ficha.get('no_manos', ()):  # la cápsula de los robots es blanca como sus manos
                 continue
             if cerca(px[x, y], piel, ficha.get('tol_piel', 60)):
                 (izq if x < centro else der).append((x, y))

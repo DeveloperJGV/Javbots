@@ -1,0 +1,55 @@
+{
+  "group_id": "2e12896e-dfe6-49a5-b733-d2d8c9684ae4",
+  "states": [
+    {
+      "character": {
+        "id": "4cf0d9dc-8865-48d4-90c1-2379ff093a40",
+        "name": "Idle",
+        "prompt": "slender tall bipedal robot, small white egg-shaped head tilted forward with one big round glowing orange eye in the middle, thin dark grey mechanical neck, narrow white plastic chest shell like an oval capsule with dark grey seams, very thin long dark grey robotic arms with white shoulder plates, long thin dark grey robotic legs with white thigh plates and small white feet, orange accent stripes, full body, cute retro game robot",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 4,
+        "view": "low top-down",
+        "created_at": "2026-10-15T20:50:33.813381+00:00"
+      },
+      "folder": "Idle",
+      "frames": {
+        "rotations": {
+          "south": "Idle/rotations/south.png",
+          "west": "Idle/rotations/west.png",
+          "east": "Idle/rotations/east.png",
+          "north": "Idle/rotations/north.png"
+        },
+        "animations": {
+          "caminar8": {
+            "east": [
+              "Idle/animations/caminar8/east/frame_000.png",
+              "Idle/animations/caminar8/east/frame_001.png",
+              "Idle/animations/caminar8/east/frame_002.png",
+              "Idle/animations/caminar8/east/frame_003.png",
+              "Idle/animations/caminar8/east/frame_004.png",
+              "Idle/animations/caminar8/east/frame_005.png",
+              "Idle/animations/caminar8/east/frame_006.png",
+              "Idle/animations/caminar8/east/frame_007.png"
+            ],
+            "south": [
+              "Idle/animations/caminar8/south/frame_000.png",
+              "Idle/animations/caminar8/south/frame_001.png",
+              "Idle/animations/caminar8/south/frame_002.png",
+              "Idle/animations/caminar8/south/frame_003.png",
+              "Idle/animations/caminar8/south/frame_004.png",
+              "Idle/animations/caminar8/south/frame_005.png",
+              "Idle/animations/caminar8/south/frame_006.png",
+              "Idle/animations/caminar8/south/frame_007.png"
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-10-15T21:05:50.976266"
+}

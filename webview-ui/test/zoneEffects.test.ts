@@ -13,6 +13,7 @@ import {
   TELEPORT_BEAM_DURATION_SEC,
   TELEPORT_BEAM_HALF_WIDTH_PX,
   TELEPORT_BEAM_HOLD_FRACTION,
+  WILDCARD_INTERNS,
   ZONE_MIN_STAY_SEC,
   ZONE_SWITCH_DELAY_SEC,
 } from '../src/constants.js';
@@ -63,6 +64,36 @@ test("a boss sends its own interns, one per task, with the boss's hue shift", ()
   assert.equal(b.hueShift, 90);
   // Both out: the next one repeats an intern instead of failing
   assert.ok(BOSS_INTERNS[1].includes(os.characters.get(os.addSubagent(1, 'toolu_c'))!.palette));
+});
+
+test('with all its own interns out, a boss sends a free wildcard in its own colors', () => {
+  const os = internOffice();
+  setCharacterTemplates(new Array(21).fill(null).map(() => ({ down: [], up: [], right: [] })));
+  os.addAgent(1, 0, 120); // Doc: only Marty
+  os.addAgent(2, 3, 0); // Neo: only Trinity
+  assert.equal(os.characters.get(os.addSubagent(1, 'toolu_a'))!.palette, BOSS_INTERNS[0][0]);
+
+  // Marty is out: wildcards next, never the same one twice at once (also across bosses)
+  const seen = new Set<number>();
+  for (let i = 0; i < WILDCARD_INTERNS.length; i++) {
+    const owner = i % 2 === 0 ? 1 : 2;
+    if (owner === 2 && i === 1) os.addSubagent(2, 'toolu_trinity'); // Neo's own intern goes first
+    const sub = os.characters.get(os.addSubagent(owner, `toolu_w${i}`))!;
+    assert.ok(WILDCARD_INTERNS.includes(sub.palette), `got ${sub.palette}`);
+    assert.equal(sub.hueShift, 0, "wildcards don't take the boss's hue shift");
+    seen.add(sub.palette);
+  }
+  assert.equal(seen.size, WILDCARD_INTERNS.length);
+
+  // Every wildcard out: Doc repeats Marty, with his hue shift
+  const again = os.characters.get(os.addSubagent(1, 'toolu_z'))!;
+  assert.equal(again.palette, BOSS_INTERNS[0][0]);
+  assert.equal(again.hueShift, 120);
+
+  // A wildcard that is done (walking back) is free again
+  os.removeSubagent(1, 'toolu_w0');
+  const back = os.characters.get(os.addSubagent(1, 'toolu_y'))!;
+  assert.ok(WILDCARD_INTERNS.includes(back.palette));
 });
 
 test('a finished intern walks back to its boss, then fades out', () => {
