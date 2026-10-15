@@ -1,6 +1,8 @@
 import type { MusicLyricLine } from '../../../core/src/messages.js';
 import {
   LOG_PREFIX,
+  LRCLIB_MAX_DURATION_GAP_SEC,
+  LRCLIB_SEARCH_URL,
   LRCLIB_URL,
   LRCLIB_USER_AGENT,
   LYRICS_FETCH_TIMEOUT_MS,
@@ -61,40 +63,78 @@ type Fetcher = (
   init: { signal: AbortSignal; headers: Record<string, string> },
 ) => Promise<Response>;
 
-/** Look the song up in LRCLIB (free, community-made): synced lyrics if it has them, else plain. */
+interface LrclibRecord {
+  instrumental?: boolean;
+  duration?: number;
+  syncedLyrics?: unknown;
+  plainLyrics?: unknown;
+}
+
+/** One LRCLIB record → lyrics (synced if it has them, else plain), or undefined if it holds nothing usable. */
+function fromRecord(record: LrclibRecord): Lyrics | undefined {
+  if (record.instrumental) return undefined;
+  if (typeof record.syncedLyrics === 'string') {
+    const lines = cleanLines(parseLrc(record.syncedLyrics), true);
+    if (lines) return { synced: true, source: 'lrclib', lines };
+  }
+  if (typeof record.plainLyrics === 'string') {
+    const lines = cleanLines(
+      record.plainLyrics.split(/\r?\n/).map((text) => ({ text })),
+      false,
+    );
+    if (lines) return { synced: false, source: 'lrclib', lines };
+  }
+  return undefined;
+}
+
+/**
+ * Best search result: usable lyrics, a duration close to the song's (when both are known), synced before plain,
+ * then the closest duration.
+ */
+export function pickSearchResult(records: LrclibRecord[], durationMs: number): Lyrics | undefined {
+  const seconds = durationMs / 1000;
+  const scored = records
+    .map((r) => ({
+      lyrics: fromRecord(r),
+      gap: seconds > 0 && r.duration ? Math.abs(r.duration - seconds) : 0,
+    }))
+    .filter(
+      (c): c is { lyrics: Lyrics; gap: number } =>
+        Boolean(c.lyrics) && c.gap <= LRCLIB_MAX_DURATION_GAP_SEC,
+    )
+    .sort((a, b) => Number(b.lyrics.synced) - Number(a.lyrics.synced) || a.gap - b.gap);
+  return scored[0]?.lyrics;
+}
+
+/**
+ * Look the song up in LRCLIB (free, community-made). The exact lookup wants title, artist, album and duration to
+ * match LRCLIB's record, and Spotify's album often differs (single vs. album, remasters): when it misses, search by
+ * title and artist and keep the closest match.
+ */
 export async function fetchLrclib(
   song: { title: string; artist: string; album?: string; durationMs: number },
   fetcher: Fetcher = (url, init) => fetch(url, init),
 ): Promise<Lyrics | undefined> {
-  const params = new URLSearchParams({ track_name: song.title, artist_name: song.artist });
-  if (song.album) params.set('album_name', song.album);
-  if (song.durationMs > 0) params.set('duration', String(Math.round(song.durationMs / 1000)));
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), LYRICS_FETCH_TIMEOUT_MS);
+  const get = (url: string) =>
+    fetcher(url, { signal: controller.signal, headers: { 'User-Agent': LRCLIB_USER_AGENT } });
   try {
-    const res = await fetcher(`${LRCLIB_URL}?${params.toString()}`, {
-      signal: controller.signal,
-      headers: { 'User-Agent': LRCLIB_USER_AGENT },
-    });
-    if (!res.ok) return undefined;
-    const body = (await res.json()) as {
-      instrumental?: boolean;
-      syncedLyrics?: unknown;
-      plainLyrics?: unknown;
-    };
-    if (body.instrumental) return undefined;
-    if (typeof body.syncedLyrics === 'string') {
-      const lines = cleanLines(parseLrc(body.syncedLyrics), true);
-      if (lines) return { synced: true, source: 'lrclib', lines };
+    const exact = new URLSearchParams({ track_name: song.title, artist_name: song.artist });
+    if (song.album) exact.set('album_name', song.album);
+    if (song.durationMs > 0) exact.set('duration', String(Math.round(song.durationMs / 1000)));
+    const res = await get(`${LRCLIB_URL}?${exact.toString()}`);
+    if (res.ok) {
+      const found = fromRecord((await res.json()) as LrclibRecord);
+      if (found) return found;
     }
-    if (typeof body.plainLyrics === 'string') {
-      const lines = cleanLines(
-        body.plainLyrics.split(/\r?\n/).map((text) => ({ text })),
-        false,
-      );
-      if (lines) return { synced: false, source: 'lrclib', lines };
-    }
-    return undefined;
+    const search = new URLSearchParams({ track_name: song.title, artist_name: song.artist });
+    const results = await get(`${LRCLIB_SEARCH_URL}?${search.toString()}`);
+    if (!results.ok) return undefined;
+    const records = (await results.json()) as unknown;
+    return Array.isArray(records)
+      ? pickSearchResult(records as LrclibRecord[], song.durationMs)
+      : undefined;
   } catch (err) {
     console.warn(`${LOG_PREFIX} LRCLIB no respondió:`, (err as Error).message);
     return undefined;

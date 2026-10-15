@@ -40,6 +40,9 @@ export const WS_CLOSE_POLICY = 1008;
 /** If the extension hasn't sent lyrics this long after a song starts, ask LRCLIB. */
 export const LYRICS_FALLBACK_MS = 4_000;
 export const LRCLIB_URL = 'https://lrclib.net/api/get';
+export const LRCLIB_SEARCH_URL = 'https://lrclib.net/api/search';
+/** A search result whose duration differs more than this from the song is another version (or another song). */
+export const LRCLIB_MAX_DURATION_GAP_SEC = 15;
 export const LRCLIB_USER_AGENT = 'Javbots (https://github.com/DeveloperJGV/Javbots)';
 export const LYRICS_FETCH_TIMEOUT_MS = 8_000;
 export const LYRICS_MAX_LINES = 400;

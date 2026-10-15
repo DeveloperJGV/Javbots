@@ -60,6 +60,38 @@ describe('LRCLIB', () => {
     expect(plain).toMatchObject({ synced: false, source: 'lrclib' });
   });
 
+  it('searches by title and artist when the exact lookup misses (Spotify album differs)', async () => {
+    const lrc = LINES.map((l) => `[00:0${l.timeMs / 1000}.00]${l.text}`).join('\n');
+    const urls: string[] = [];
+    const fetcher = async (url: string) => {
+      urls.push(url);
+      if (url.includes('/api/get')) return new Response('{}', { status: 404 });
+      return new Response(
+        JSON.stringify([
+          { duration: 400, syncedLyrics: lrc }, // another version: too long
+          {
+            duration: 181,
+            plainLyrics: 'una letra simple de la canción\nsegunda línea de la letra',
+          },
+          { duration: 179, syncedLyrics: lrc },
+        ]),
+        { status: 200 },
+      );
+    };
+    const found = await fetchLrclib(
+      {
+        title: 'La Chica Del Bikini Azul',
+        artist: 'Luis Miguel',
+        album: 'Otro',
+        durationMs: 180_000,
+      },
+      fetcher,
+    );
+    expect(found).toMatchObject({ synced: true, source: 'lrclib' });
+    expect(urls[1]).toContain('/api/search');
+    expect(urls[1]).not.toContain('album');
+  });
+
   it('returns nothing for misses, instrumentals and junk', async () => {
     expect(await fetchLrclib(song, answer({}, 404))).toBeUndefined();
     expect(await fetchLrclib(song, answer({ instrumental: true }))).toBeUndefined();
