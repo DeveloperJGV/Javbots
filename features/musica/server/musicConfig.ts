@@ -11,6 +11,15 @@ export interface MusicConfig {
   enabled?: boolean;
   /** Music-only bearer token: it can post the current track and nothing else. */
   token: string;
+  /**
+   * Port for other screens on the local network (read-only: song, lyrics, cover; same token).
+   * Absent = off. Set by hand in music.json.
+   */
+  screenPort?: number;
+}
+
+function validPort(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 1024 && value <= 65535;
 }
 
 function configPath(): string {
@@ -29,6 +38,7 @@ export function readMusicConfig(): MusicConfig {
     ...(typeof raw.enabled === 'boolean' ? { enabled: raw.enabled } : {}),
     token:
       typeof raw.token === 'string' && raw.token.length >= 16 ? raw.token : crypto.randomUUID(),
+    ...(validPort(raw.screenPort) ? { screenPort: raw.screenPort } : {}),
   };
   if (config.token !== raw.token) writeMusicConfig(config);
   return config;

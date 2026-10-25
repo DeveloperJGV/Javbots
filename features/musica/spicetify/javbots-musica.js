@@ -13,7 +13,11 @@
   const SERVER = '__JAVBOTS_URL__';
   const TOKEN = '__JAVBOTS_TOKEN__';
   const HEARTBEAT_MS = 15000;
+  // Un salto mayor que esto entre lo esperado y la posición real es que alguien adelantó o regresó la canción.
+  const SEEK_JUMP_MS = 2500;
   const CONTROL_RETRY_MS = 5000;
+  /** Cuánto sube o baja el volumen cada botón (0..1). */
+  const VOLUME_STEP = 0.1;
 
   // Spicetify carga las extensiones antes de que el reproductor esté listo.
   if (!globalThis.Spicetify?.Player?.addEventListener || !globalThis.Spicetify?.Player?.data) {
@@ -41,12 +45,53 @@
       title: item.name || meta.title || '',
       artist: meta.artist_name || (item.artists && item.artists[0] && item.artists[0].name) || '',
       album: meta.album_title || (item.album && item.album.name) || '',
-      image: meta.image_url || meta.image_large_url || '',
+      // La más grande: otras pantallas la usan de fondo.
+      image: meta.image_xlarge_url || meta.image_large_url || meta.image_url || '',
       isPaused: Boolean(data.isPaused),
       positionMs: Player.getProgress(),
       durationMs: Player.getDuration(),
       device: remoteDevice(),
+      volume: volumeNow(),
+      tempo: item.uri && item.uri === tempoFor ? tempo : undefined,
     };
+  }
+
+  function volumeNow() {
+    try {
+      const v = Player.getVolume();
+      return typeof v === 'number' && isFinite(v) ? v : undefined;
+    } catch (e) {
+      return undefined;
+    }
+  }
+
+  /** Pulsos por minuto de la canción (para que las mascotas de otras pantallas se muevan al ritmo). */
+  let tempo;
+  let tempoFor = '';
+  async function loadTempo() {
+    const item = Player.data && Player.data.item;
+    if (!item || !item.uri || item.uri === tempoFor) return;
+    tempoFor = item.uri;
+    tempo = undefined;
+    let bpm;
+    try {
+      const analysis = await globalThis.Spicetify.getAudioData(item.uri);
+      bpm = analysis && analysis.track && analysis.track.tempo;
+    } catch (e) {
+      // Sin análisis de audio para esta canción: se intenta con sus características.
+    }
+    if (!bpm) {
+      try {
+        const id = item.uri.split(':')[2];
+        const features = await globalThis.Spicetify.CosmosAsync.get('https://api.spotify.com/v1/audio-features/' + id);
+        bpm = features && features.tempo;
+      } catch (e) {
+        // Spotify no lo da: las mascotas se mueven a su paso de siempre.
+      }
+    }
+    if (tempoFor !== item.uri || typeof bpm !== 'number' || !(bpm > 0)) return;
+    tempo = Math.round(bpm * 10) / 10;
+    send();
   }
 
   function send() {
@@ -116,7 +161,19 @@
     next: function () {
       Player.next();
     },
+    volumeUp: function () {
+      changeVolume(VOLUME_STEP);
+    },
+    volumeDown: function () {
+      changeVolume(-VOLUME_STEP);
+    },
   };
+  function changeVolume(delta) {
+    const v = volumeNow();
+    if (v === undefined) return;
+    Player.setVolume(Math.max(0, Math.min(1, Math.round((v + delta) * 100) / 100)));
+    setTimeout(send, 300); // que las pantallas vean el volumen nuevo sin esperar al latido
+  }
   function connectControl() {
     let socket;
     try {
@@ -146,11 +203,24 @@
 
   Player.addEventListener('songchange', send);
   Player.addEventListener('songchange', sendLyrics);
+  Player.addEventListener('songchange', loadTempo);
   Player.addEventListener('onplaypause', send);
+
+  // Adelantar o regresar no tiene evento propio: se nota porque la posición brinca. Se avisa en ese momento
+  // para que la letra en otras pantallas no se quede atrás hasta el siguiente latido.
+  let lastProgress = { at: Date.now(), ms: Player.getProgress() };
+  Player.addEventListener('onprogress', function () {
+    const at = Date.now();
+    const ms = Player.getProgress();
+    const expected = lastProgress.ms + (Player.data && Player.data.isPaused ? 0 : at - lastProgress.at);
+    lastProgress = { at: at, ms: ms };
+    if (Math.abs(ms - expected) > SEEK_JUMP_MS) send();
+  });
   setInterval(function () {
     send();
     sendLyrics();
   }, HEARTBEAT_MS);
   send();
   sendLyrics();
+  loadTempo();
 })();

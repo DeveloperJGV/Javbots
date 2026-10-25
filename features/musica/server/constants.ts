@@ -19,6 +19,10 @@ export const COVER_FETCH_TIMEOUT_MS = 8_000;
 /** Covers kept in memory (a song change back and forth doesn't download twice). */
 export const COVER_CACHE_SIZE = 8;
 
+/** Plausible song tempos (BPM); anything else in a report is dropped. */
+export const MIN_TEMPO = 30;
+export const MAX_TEMPO = 300;
+
 /** Text fields are clipped: they only feed a label. */
 export const MAX_TEXT_LENGTH = 200;
 
@@ -51,3 +55,10 @@ export const LYRICS_MAX_LINE_LENGTH = 300;
 export const LYRICS_MIN_TEXT_LENGTH = 30;
 /** Lyrics that arrived before their track report, kept by song. */
 export const LYRICS_PENDING_SIZE = 4;
+
+/** Read-only routes of the screen port (`screenPort` in music.json): current song + lyrics, and its cover. */
+export const SCREEN_NOW_PATH = '/api/music/now';
+export const SCREEN_COVER_PATH = '/api/music/cover';
+/** Playback buttons of the screens (POST, music token): the same commands the office sends. */
+export const SCREEN_CONTROL_PATH = '/api/music/control';
+export const SCREEN_MAX_BODY_BYTES = 1024;

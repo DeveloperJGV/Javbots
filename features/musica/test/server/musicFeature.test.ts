@@ -1,13 +1,15 @@
 import Fastify from 'fastify';
 import * as fs from 'fs';
+import type { AddressInfo } from 'net';
 import * as os from 'os';
 import * as path from 'path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { FeatureClient } from '../../../../server/src/serverFeature.js';
 import { CoverCache } from '../../server/cover.js';
-import { createMusicFeature } from '../../server/musicFeature.js';
 import { readMusicConfig, writeMusicConfig } from '../../server/musicConfig.js';
+import { createMusicFeature } from '../../server/musicFeature.js';
+import { startScreenServer } from '../../server/screenServer.js';
 import {
   enabledExtensions,
   installExtension,
@@ -340,5 +342,121 @@ describe('cover cache', () => {
     expect(await respond('text/html', 10).get(url)).toBeUndefined();
     expect(await respond('image/jpeg', 600 * 1024).get(url)).toBeUndefined();
     expect(await respond('image/jpeg', 3).get(url)).toBe('data:image/jpeg;base64,AAAA');
+  });
+});
+
+describe('screen port', () => {
+  let userdata: string;
+
+  beforeEach(() => {
+    userdata = fs.mkdtempSync(path.join(os.tmpdir(), 'pxl-spicetify-'));
+  });
+  afterEach(() => {
+    fs.rmSync(userdata, { recursive: true, force: true });
+  });
+
+  it('keeps a valid screenPort in music.json and drops a bad one', () => {
+    const token = readMusicConfig().token;
+    writeMusicConfig({ token, screenPort: 3101 });
+    expect(readMusicConfig().screenPort).toBe(3101);
+    writeMusicConfig({ token, screenPort: 80 });
+    expect(readMusicConfig().screenPort).toBeUndefined();
+  });
+
+  it('moves the position forward while playing and freezes it while paused', async () => {
+    let t = 10_000;
+    const feature = createMusicFeature({
+      templatePath: TEMPLATE,
+      serverUrl: () => 'http://127.0.0.1:3100',
+      run: fakeSpicetify(userdata).run,
+      covers: fakeCovers(),
+      now: () => t,
+    });
+    await flush();
+    expect(feature.screenState().track).toBeNull();
+    const app = Fastify();
+    feature.registerRoutes?.(app);
+    await app.ready();
+    const post = (track: Record<string, unknown>) =>
+      app.inject({
+        method: 'POST',
+        url: '/api/music',
+        payload: { track },
+        headers: { authorization: `Bearer ${readMusicConfig().token}` },
+      });
+
+    await post({ title: 'Una', artist: 'Otra', positionMs: 5_000, durationMs: 200_000 });
+    t += 3_000;
+    expect(feature.screenState().track).toMatchObject({ title: 'Una', positionMs: 8_000, isPaused: false });
+
+    await post({ title: 'Una', artist: 'Otra', positionMs: 9_000, durationMs: 200_000, isPaused: true });
+    t += 5_000;
+    expect(feature.screenState().track?.positionMs).toBe(9_000);
+
+    await app.close();
+    feature.dispose?.();
+  });
+
+  it('serves state and cover only with the music token', async () => {
+    const token = 'x'.repeat(32);
+    const server = startScreenServer({
+      port: 0,
+      host: '127.0.0.1',
+      token: () => token,
+      state: () => ({ track: null }),
+      cover: () => 'data:image/png;base64,AQID',
+    });
+    await new Promise<void>((resolve) => server.once('listening', () => resolve()));
+    const { port } = server.address() as AddressInfo;
+    const base = `http://127.0.0.1:${port}`;
+    const auth = { authorization: `Bearer ${token}` };
+
+    expect((await fetch(`${base}/api/music/now`)).status).toBe(401);
+    expect(await (await fetch(`${base}/api/music/now`, { headers: auth })).json()).toEqual({ track: null });
+    const cover = await fetch(`${base}/api/music/cover`, { headers: auth });
+    expect(cover.headers.get('content-type')).toBe('image/png');
+    expect([...new Uint8Array(await cover.arrayBuffer())]).toEqual([1, 2, 3]);
+    expect((await fetch(`${base}/api/music`, { method: 'POST', headers: auth })).status).toBe(405);
+
+    await new Promise((resolve) => server.close(resolve));
+  });
+
+  it('relays the playback buttons of a screen, only with the token and only known commands', async () => {
+    const token = 'y'.repeat(32);
+    const sent: string[] = [];
+    const server = startScreenServer({
+      port: 0,
+      host: '127.0.0.1',
+      token: () => token,
+      state: () => ({ track: null }),
+      cover: () => undefined,
+      control: (action) => {
+        if (action !== 'next' && action !== 'volumeUp') return false;
+        sent.push(action);
+        return true;
+      },
+    });
+    await new Promise<void>((resolve) => server.once('listening', () => resolve()));
+    const { port } = server.address() as AddressInfo;
+    const url = `http://127.0.0.1:${port}/api/music/control`;
+    const post = (body: string, auth = `Bearer ${token}`) =>
+      fetch(url, { method: 'POST', headers: { authorization: auth }, body });
+
+    expect((await post('{"action":"next"}', 'Bearer nope')).status).toBe(401);
+    expect((await post('{"action":"next"}')).status).toBe(200);
+    expect((await post('{"action":"volumeUp"}')).status).toBe(200);
+    expect((await post('{"action":"rm -rf"}')).status).toBe(409);
+    expect((await post('not json')).status).toBe(400);
+    expect((await post(JSON.stringify({ action: 'next', pad: 'z'.repeat(4000) }))).status).not.toBe(200);
+    expect(sent).toEqual(['next', 'volumeUp']);
+
+    await new Promise((resolve) => server.close(resolve));
+  });
+
+  it('keeps volume and tempo only when they make sense', () => {
+    expect(parseTrackReport({ track: { title: 'A', volume: 0.4, tempo: 92 } })).toMatchObject({ volume: 0.4, tempo: 92 });
+    const junk = parseTrackReport({ track: { title: 'A', volume: 7, tempo: 'fast' } });
+    expect(junk?.volume).toBeUndefined();
+    expect(junk?.tempo).toBeUndefined();
   });
 });

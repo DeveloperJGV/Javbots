@@ -15,6 +15,7 @@ import {
 import { CoverCache } from './cover.js';
 import { cleanLines, fetchLrclib, type Lyrics, songKey } from './lyrics.js';
 import { type MusicConfig, readMusicConfig, writeMusicConfig } from './musicConfig.js';
+import { startScreenServer } from './screenServer.js';
 import {
   installExtension,
   isExtensionInstalled,
@@ -22,6 +23,7 @@ import {
   type SpicetifyRunner,
   spicetifyUserdata,
 } from './spicetify.js';
+import { timingSafeEqual } from './token.js';
 import { parseTrackReport } from './track.js';
 
 export interface MusicFeatureOptions {
@@ -35,6 +37,30 @@ export interface MusicFeatureOptions {
   now?: () => number;
   /** Fallback lyrics source (LRCLIB). */
   fetchLyrics?: typeof fetchLrclib;
+  /** Starts the screen port when music.json has `screenPort` (off in tests). */
+  startScreen?: typeof startScreenServer;
+}
+
+/** Body of GET /api/music/now on the screen port. `positionMs` is already moved forward to "now". */
+export interface ScreenState {
+  track: {
+    /** Changes when the song changes (title|artist). */
+    key: string;
+    title: string;
+    artist: string;
+    album?: string;
+    isPaused: boolean;
+    positionMs: number;
+    durationMs: number;
+    hasCover: boolean;
+    device?: string;
+    /** 0..1, when the extension reports it. */
+    volume?: number;
+    /** BPM, when Spotify knows it. */
+    tempo?: number;
+  } | null;
+  lyrics: Lyrics | null;
+  lyricsLoading: boolean;
 }
 
 /** The bit of a WebSocket the control channel uses (a fake in tests). */
@@ -44,14 +70,7 @@ export interface ControlSocket {
   on(event: 'close', listener: () => void): void;
 }
 
-const CONTROL_ACTIONS = new Set(['previous', 'togglePlay', 'next']);
-
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
+const CONTROL_ACTIONS = new Set(['previous', 'togglePlay', 'next', 'volumeUp', 'volumeDown']);
 
 /**
  * Music from Spotify (via a Spicetify extension) shown in the office.
@@ -66,6 +85,10 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
   /** The extension's control channel opened (exposed for tests; the WebSocket route calls it). */
   attachControl(socket: ControlSocket): void;
   currentLyrics(): Lyrics | undefined;
+  /** What other screens get from GET /api/music/now. */
+  screenState(): ScreenState;
+  /** A playback command from a screen or the office (exposed for tests). */
+  sendControl(action: string): boolean;
 } {
   const run = opts.run ?? runSpicetify;
   const covers = opts.covers ?? new CoverCache();
@@ -75,6 +98,11 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
   /** CDN URL of the current track's cover (to tell a new cover from the same one). */
   let trackCoverUrl: string | undefined;
   let lastReportAt = 0;
+  /** When the current track's position was reported (to move it forward while it plays). */
+  let trackReportedAt = 0;
+  /** Only the screens use these (the office shows neither), so they stay out of MusicTrack. */
+  let volume: number | undefined;
+  let tempo: number | undefined;
   let staleTimer: ReturnType<typeof setTimeout> | undefined;
   let spicetify = { found: false, installed: false };
   let lastMessage: string | undefined;
@@ -227,6 +255,8 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
     if (parsed === null) {
       track = undefined;
       trackCoverUrl = undefined;
+      volume = undefined;
+      tempo = undefined;
       if (songNow) songChanged(undefined);
     } else {
       // The same cover as before: keep it (no re-download, no flicker between reports).
@@ -242,6 +272,9 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
         ...(parsed.device ? { device: parsed.device } : {}),
       };
       track = next;
+      trackReportedAt = now();
+      volume = parsed.volume;
+      tempo = parsed.tempo;
       trackCoverUrl = parsed.coverUrl;
       const key = songKey(parsed.title, parsed.artist);
       if (key !== songNow) songChanged(key);
@@ -255,6 +288,46 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
       }
     }
     broadcastNowPlaying();
+    return true;
+  }
+
+  function screenState(): ScreenState {
+    if (!isEnabled() || !track) return { track: null, lyrics: null, lyricsLoading: false };
+    const elapsed = track.isPaused ? 0 : now() - trackReportedAt;
+    return {
+      track: {
+        key: songNow ?? '',
+        title: track.title,
+        artist: track.artist,
+        ...(track.album ? { album: track.album } : {}),
+        isPaused: track.isPaused,
+        positionMs: Math.min(track.positionMs + elapsed, track.durationMs || Infinity),
+        durationMs: track.durationMs,
+        hasCover: Boolean(track.cover),
+        ...(track.device ? { device: track.device } : {}),
+        ...(volume !== undefined ? { volume } : {}),
+        ...(tempo !== undefined ? { tempo } : {}),
+      },
+      lyrics: lyrics ?? null,
+      lyricsLoading: lyricsSearching,
+    };
+  }
+
+  const screen = config.screenPort
+    ? (opts.startScreen ?? startScreenServer)({
+        port: config.screenPort,
+        token: () => config.token,
+        state: screenState,
+        cover: () => track?.cover,
+        control: sendControl,
+      })
+    : undefined;
+
+  /** Relays a playback command to the extension; false when it isn't one or nobody is listening. */
+  function sendControl(action: string): boolean {
+    if (!CONTROL_ACTIONS.has(action) || controlSockets.size === 0) return false;
+    const command = JSON.stringify({ action });
+    for (const s of controlSockets) s.send(command);
     return true;
   }
 
@@ -333,9 +406,7 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
           return true;
         case 'musicControl': {
           // Skipping songs is the owner's call: privileged clients only.
-          if (!client.privileged || !CONTROL_ACTIONS.has(String(msg.action))) return true;
-          const command = JSON.stringify({ action: msg.action });
-          for (const s of controlSockets) s.send(command);
+          if (client.privileged) sendControl(String(msg.action));
           return true;
         }
         case 'installMusicExtension': {
@@ -363,11 +434,14 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
     dispose() {
       if (staleTimer) clearTimeout(staleTimer);
       if (lyricsTimer) clearTimeout(lyricsTimer);
+      screen?.close();
       clients.clear();
     },
 
     current: () => track,
     attachControl,
     currentLyrics: () => lyrics,
+    screenState,
+    sendControl,
   };
 }

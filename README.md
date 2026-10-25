@@ -25,10 +25,10 @@ cambiamos el idioma, el arte, los cuartos y le agregamos cosas nuevas. La docume
 
 ## Novedades
 
-- **15 de octubre de 2026**: seis becarios nuevos: P-body y Atlas para Chell, y comodines para cualquier jefe
-  (Toad, Moogle, Stormtrooper y un guardia del Juego del Calamar).
-- **14 de octubre de 2026**: música de Spotify en la oficina (columna con la carátula, tocadiscos y cuadro en
-  Becarios; opcional, con Spicetify).
+- **25 de octubre de 2026**: las otras pantallas de la casa también pueden pausar, cambiar de canción y subir o
+  bajar el volumen; la extensión de Spotify cuenta el volumen y el tempo.
+- **24 de octubre de 2026**: la música en otras pantallas de la casa (una tablet con la letra, por ejemplo) y la
+  letra ya no se atrasa al adelantar la canción.
 
 Todo lo nuevo, por fecha, en [NOVEDADES.md](NOVEDADES.md).
 

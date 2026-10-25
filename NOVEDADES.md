@@ -3,6 +3,22 @@
 Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
 (Pixel Agents) está en [CHANGELOG.md](CHANGELOG.md).
 
+## 25 de octubre de 2026
+
+- **Botones de la música en otras pantallas.** Una pantalla de la casa ya no solo ve lo que suena: también puede
+  regresar, pausar, adelantar y subir o bajar el volumen del Spotify de la PC, por el mismo puerto de pantallas.
+- **Volumen y tempo**: la extensión de Spotify ahora cuenta el volumen y los pulsos por minuto de la canción (para
+  que las mascotas de otra pantalla se muevan al ritmo), y manda la carátula más grande. Hay que volver a
+  instalarla desde Ajustes.
+
+## 24 de octubre de 2026
+
+- **La música en otras pantallas.** Javbots puede compartir lo que suena (canción, posición, letra y carátula)
+  con otra pantalla de la casa, como una tablet, por un puerto aparte. Viene apagado; se prende con `screenPort`
+  en `music.json`. Detalles en [features/musica](features/musica/README.md#pantallas-en-la-red-opcional).
+- **La letra ya no se atrasa al adelantar la canción**: la extensión de Spotify avisa en cuanto la posición
+  brinca (hay que volver a instalarla desde Ajustes).
+
 ## 15 de octubre de 2026
 
 - **Seis becarios nuevos.** Chell ahora también manda a **P-body y Atlas**, los robots del cooperativo de Portal 2

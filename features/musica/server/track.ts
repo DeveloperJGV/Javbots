@@ -1,7 +1,9 @@
 import {
   COVER_ID_PATTERN,
   COVER_URL_PREFIX,
+  MAX_TEMPO,
   MAX_TEXT_LENGTH,
+  MIN_TEMPO,
   SPOTIFY_IMAGE_URL,
 } from './constants.js';
 
@@ -17,12 +19,21 @@ export interface TrackReport {
   durationMs: number;
   /** Spotify Connect device when it is not this computer (e.g. an Echo Dot). */
   device?: string;
+  /** Spotify's volume, 0..1 (for the volume buttons on other screens). */
+  volume?: number;
+  /** Beats per minute, when Spotify knows it (pets on other screens move to the beat). */
+  tempo?: number;
 }
 
 function text(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
   const trimmed = value.trim();
   return trimmed ? trimmed.slice(0, MAX_TEXT_LENGTH) : undefined;
+}
+
+/** A finite number inside [min, max], or undefined. */
+function inRange(value: unknown, min: number, max: number): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max ? value : undefined;
 }
 
 function millis(value: unknown): number {
@@ -65,5 +76,7 @@ export function parseTrackReport(body: unknown): TrackReport | null | undefined 
     positionMs: Math.min(millis(t.positionMs), durationMs || Infinity),
     durationMs,
     device: text(t.device),
+    volume: inRange(t.volume, 0, 1),
+    tempo: inRange(t.tempo, MIN_TEMPO, MAX_TEMPO),
   };
 }
