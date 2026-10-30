@@ -495,6 +495,21 @@ export const PAPER_CHANCE = 0.15;
 export const ZONE_SWITCH_DELAY_SEC = 2;
 /** Minimum time in a zone before moving on to the next one (no ping-pong). */
 export const ZONE_MIN_STAY_SEC = 8;
+/**
+ * Walk to the room of every tool (Fase 3) instead of staying at the desk the whole turn. Off: Claude switches
+ * tools every few seconds and a third of the switches changed rooms, so agents spent half the turn walking.
+ * The work shows at the desk instead (sparks, confetti, tears) and permission still goes to Senku.
+ */
+export const ZONE_PER_TOOL = false;
+/** Small always-on chip over a working agent (what it does · for how long), when its full label is hidden. */
+export const ACTIVITY_CHIP_FONT_PX = 16;
+export const ACTIVITY_CHIP_MAX_WIDTH_PX = 190;
+export const ACTIVITY_CHIP_OPACITY = 0.85;
+export const ACTIVITY_CHIP_RAISE_PX = 20;
+/** Confetti for a commit made at the desk. */
+export const COMMIT_CONFETTI_COUNT = 14;
+/** A finished turn: stay seated at the desk this long before getting up (free time starts at LEISURE_START_SEC). */
+export const AFTER_TURN_SEAT_SEC = 120;
 
 // Interns (sub-agents), Fase 4B: they fade in next to their boss and walk to the interns'
 // room; when done they walk back to the boss and fade out there.
@@ -506,13 +521,13 @@ export const INTERN_REST_MIN_SEC = 20;
 export const INTERN_REST_MAX_SEC = 40;
 
 // ── Free time (fork, Fase 5.1) ──────────────────────────────
-/** Time without work before an agent picks a free-time activity (before that it wanders). */
+/** Time without work before an agent picks a free-time activity (before that it stays at its desk). */
 export const LEISURE_START_SEC = 45;
 /** How long one activity lasts once the agent got there. */
 export const LEISURE_ACTIVITY_MIN_SEC = 20;
 export const LEISURE_ACTIVITY_MAX_SEC = 60;
 /** Chance of wandering for a while between two activities, and for how long. */
-export const LEISURE_WANDER_CHANCE = 0.25;
+export const LEISURE_WANDER_CHANCE = 0;
 export const LEISURE_WANDER_MIN_SEC = 15;
 export const LEISURE_WANDER_MAX_SEC = 30;
 /** Nothing free (or unreachable): wander this long before trying again. */

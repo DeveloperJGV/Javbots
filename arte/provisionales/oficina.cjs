@@ -1,4 +1,5 @@
 // Plano grande de la oficina (Fase 4, provisional: muebles actuales + letreros).
+// Después de este generador, `codigo-grande.cjs` agrega Código grande y la sala de cómputo (56 columnas).
 //
 //   Arriba:  Archivo Jedi | Código | Light Labs (Mega Man) | Lab. de Senku
 //   Medio:   pasillo-galería (cuadros en memoria + pedestal del Anillo)

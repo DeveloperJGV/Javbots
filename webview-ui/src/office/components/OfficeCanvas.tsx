@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef } from 'react';
 
+import { githubStore } from '../../../../features/github/webview/githubStore.js';
 import { musicStore } from '../../../../features/musica/webview/musicStore.js';
+import { usageStore } from '../../../../features/usage/webview/usageStore.js';
 import {
   CAMERA_FOLLOW_LERP,
   CAMERA_FOLLOW_SNAP_THRESHOLD,
@@ -517,6 +519,10 @@ export function OfficeCanvas({
       const hitId = officeState.getCharacterAt(pos.worldX, pos.worldY);
       // Only run pet hit-test if no character was hit (avoids redundant work).
       const petId = hitId === null ? officeState.getPetAt(pos.worldX, pos.worldY) : null;
+      // GitHub room (features/github): the repository of the cabinet under the mouse
+      const github =
+        hitId === null && petId === null ? officeState.githubAt(pos.worldX, pos.worldY) : null;
+      githubStore.setHover(github ? { label: github.label, x: e.clientX, y: e.clientY } : null);
       const tile = screenToTile(e.clientX, e.clientY);
       officeState.hoveredTile = tile;
       const canvas = canvasRef.current;
@@ -528,7 +534,9 @@ export function OfficeCanvas({
             hitId === null &&
             petId === null &&
             (officeState.isBoardAt(pos.worldX, pos.worldY) ||
-              officeState.isTurntableAt(pos.worldX, pos.worldY)),
+              officeState.isTurntableAt(pos.worldX, pos.worldY) ||
+              officeState.isUsageMeterAt(pos.worldX, pos.worldY) ||
+              github !== null),
           selectedAgentId: officeState.selectedAgentId,
           tile,
           getSeatAtTile: (col, row) => officeState.getSeatAtTile(col, row),
@@ -775,6 +783,19 @@ export function OfficeCanvas({
         return;
       }
 
+      // Usage meter (features/usage): open the plan limits and cost per agent.
+      if (officeState.isUsageMeterAt(pos.worldX, pos.worldY)) {
+        usageStore.setDetailOpen(true);
+        return;
+      }
+
+      // GitHub room (features/github): the detail, with the clicked cabinet's repository first.
+      const github = officeState.githubAt(pos.worldX, pos.worldY);
+      if (github) {
+        githubStore.open(github.repo);
+        return;
+      }
+
       // Activity whiteboard: open its panel.
       if (officeState.isBoardAt(pos.worldX, pos.worldY)) {
         onOpenBoard();
@@ -840,6 +861,7 @@ export function OfficeCanvas({
     editorState.ghostRow = -1;
     officeState.hoveredAgentId = null;
     officeState.hoveredTile = null;
+    githubStore.setHover(null);
 
     // Reset cursor in non-edit mode so pointer doesn't get stuck after hovering a pet.
     if (!isEditMode) {

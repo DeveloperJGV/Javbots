@@ -5,6 +5,16 @@ Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
 
 ## 25 de octubre de 2026
 
+- **Sala de GitHub**, abajo de la sala de cómputo. Cada archivero es uno de tus repos y sube de nivel con los
+  commits (madera, metal y oro), junta hojas encima y prende un foco verde si hubo push esta semana. En la pared,
+  tu gráfica de contribuciones y un corcho con los PRs abiertos. Al pasar el mouse sale el nombre del repo; un clic
+  abre la lista con enlaces. Los datos salen de `gh`. Detalles en [features/github](features/github/README.md).
+- **Fable en el uso de Claude.** La barra de abajo, el tablero de Código (ahora con tres tubos: 5 horas, semana
+  y Fable) y el detalle muestran el límite semanal de Fable cuando lo hay, y Fable siempre sale en la lista por
+  modelo. Como la barra de estado de Claude Code no manda ese límite, la oficina le pregunta a Claude Code su
+  `/usage` al abrirse y cada 5 minutos mientras está abierta (no abre sesión ni gasta).
+- **La sala de cómputo tiene más vida**: piso de madera, 6 escritorios con su juguete cada uno (Groot, cubo
+  Rubik, Game Boy…), plantas, lámpara de lava, pósters y una esquina de café con máquina de snacks y tapete.
 - **Botones de la música en otras pantallas.** Una pantalla de la casa ya no solo ve lo que suena: también puede
   regresar, pausar, adelantar y subir o bajar el volumen del Spotify de la PC, por el mismo puerto de pantallas.
 - **Volumen y tempo**: la extensión de Spotify ahora cuenta el volumen y los pulsos por minuto de la canción (para
@@ -18,6 +28,24 @@ Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
   en `music.json`. Detalles en [features/musica](features/musica/README.md#pantallas-en-la-red-opcional).
 - **La letra ya no se atrasa al adelantar la canción**: la extensión de Spotify avisa en cuanto la posición
   brinca (hay que volver a instalarla desde Ajustes).
+- **Los agentes se quedan quietos trabajando.** Antes caminaban a otro cuarto cada vez que cambiaban de
+  herramienta (leer, editar, correr un comando), y pasaban medio turno en el pasillo. Ahora trabajan todo el
+  turno en su escritorio y lo que hacen se ve ahí mismo: chispas de 88 mph al terminar un comando, confeti con
+  cada commit, lágrimas si algo falla. El permiso todavía los lleva con Senku. Al terminar se quedan en su
+  lugar, y a los 45 s se van a la sala de descanso (tele, puffs y Pac-Man) en vez de pasear por toda la oficina.
+- **Siempre se sabe quién trabaja en qué**: encima de cada agente que trabaja sale una etiqueta chiquita con lo
+  que hace y cuánto lleva ("Editando App.tsx · 3 min").
+- **Uso de Claude** (opcional): una barra abajo a la izquierda con los límites del plan (5 horas y semana) y, al
+  hacer clic, lo que lleva cada agente (costo estimado, tokens y contexto). Los datos salen de la barra de
+  estado de Claude Code. En el detalle sale lo que lleva cada modelo (Opus, Fable…). Detalles en
+  [features/usage](features/usage/README.md).
+- **Código creció**: ahora ocupa lo que eran Light Labs y Senku, con 7 puestos más. Las piezas de Mega Man se
+  juntaron en una esquina y Senku quedó como rincón (ahí siguen yendo a pedir permiso). En la pared hay un
+  **tablero de uso** con dos tubos que se llenan (5 horas y semana) y un clic abre el detalle.
+- **Sala de cómputo de becarios**: una sala nueva a la derecha, con 9 computadoras, donde trabajan los becarios.
+  Becarios (los sillones) queda para su descanso y la fiesta.
+- **Nombres de pestaña de herdr**: si usas [herdr](https://herdr.dev), cada personaje lleva el nombre de su
+  pestaña en vez del de la carpeta. Detalles en [features/herdr](features/herdr/README.md).
 
 ## 15 de octubre de 2026
 

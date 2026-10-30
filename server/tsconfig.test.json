@@ -6,5 +6,5 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["__tests__/**/*.ts", "src/**/*.ts", "../features/musica/server/**/*.ts", "../features/musica/test/server/**/*.ts"]
+  "include": ["__tests__/**/*.ts", "src/**/*.ts", "../features/musica/server/**/*.ts", "../features/musica/test/server/**/*.ts", "../features/usage/server/**/*.ts", "../features/usage/test/server/**/*.ts", "../features/herdr/server/**/*.ts", "../features/herdr/test/server/**/*.ts", "../features/github/server/**/*.ts", "../features/github/test/server/**/*.ts"]
 }

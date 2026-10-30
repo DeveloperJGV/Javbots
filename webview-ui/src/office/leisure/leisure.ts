@@ -114,6 +114,13 @@ export const ALL_LEISURE: readonly LeisureActivity[] = [
   LeisureActivity.STARS,
 ];
 
+/** An agent's free time: the break room only (TV, beanbags, arcade), so the rest of the office stays calm. */
+export const AGENT_LEISURE: readonly LeisureActivity[] = [
+  LeisureActivity.TV,
+  LeisureActivity.CONSOLE,
+  LeisureActivity.PACMAN,
+];
+
 /** What an intern does in the interns' room before going home. */
 export const INTERN_LEISURE: readonly LeisureActivity[] = [
   LeisureActivity.TV,

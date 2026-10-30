@@ -26,7 +26,8 @@ cambiamos el idioma, el arte, los cuartos y le agregamos cosas nuevas. La docume
 ## Novedades
 
 - **25 de octubre de 2026**: las otras pantallas de la casa también pueden pausar, cambiar de canción y subir o
-  bajar el volumen; la extensión de Spotify cuenta el volumen y el tempo.
+  bajar el volumen; la extensión de Spotify cuenta el volumen y el tempo. Fable en el uso de Claude (barra,
+  tablero de tres tubos y detalle), una sala de cómputo con más vida y la sala de GitHub (un archivero por repo).
 - **24 de octubre de 2026**: la música en otras pantallas de la casa (una tablet con la letra, por ejemplo) y la
   letra ya no se atrasa al adelantar la canción.
 

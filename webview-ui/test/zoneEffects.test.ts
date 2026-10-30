@@ -5,6 +5,7 @@ import { test } from 'vitest';
 import {
   AREA_DEFAULT_COLORS,
   BOSS_INTERNS,
+  COMMIT_CONFETTI_COUNT,
   FIRE_TRAIL_LENGTH_PX,
   FLUX_SPARK_COUNT,
   INTERN_FADE_SEC,
@@ -191,6 +192,7 @@ test('a command finishing in the DeLorean workshop hits 88 mph, elsewhere not', 
     areaTiles: Array.from({ length: cols * 3 }, (_, i) => (i % cols >= 7 ? 'taller' : null)),
   };
   const os = new OfficeState(layout);
+  os.zonePerTool = true; // the Fase 3 mode: a room per tool
   os.addAgent(1, 0, 0, undefined, true);
   os.setAgentActivity(1, 'Running: make');
   os.setAgentActive(1, true);
@@ -200,4 +202,31 @@ test('a command finishing in the DeLorean workshop hits 88 mph, elsewhere not', 
   os.particles.particles.length = 0;
   os.onToolDone(1);
   assert.ok(os.particles.particles.length >= FLUX_SPARK_COUNT);
+});
+
+test('agents staying put: a command hits 88 mph and a commit throws confetti at the desk', () => {
+  setParticlesEnabled(true);
+  const layout: OfficeLayout = {
+    version: 1,
+    cols: 6,
+    rows: 3,
+    tiles: new Array<TileType>(18).fill(TileType.FLOOR_1),
+    furniture: [],
+  };
+  const os = new OfficeState(layout);
+  os.addAgent(1, 0, 0, undefined, true);
+  os.setAgentActive(1, true);
+  for (let t = 0; t < 2; t += 0.1) os.update(0.1);
+  os.setAgentActivity(1, 'Running: make');
+  os.particles.particles.length = 0;
+  os.onToolDone(1);
+  assert.ok(os.particles.particles.length >= FLUX_SPARK_COUNT);
+  os.setAgentActivity(1, 'Running: git commit -m "x"');
+  os.particles.particles.length = 0;
+  os.onToolDone(1);
+  assert.equal(os.particles.particles.length, COMMIT_CONFETTI_COUNT);
+  os.setAgentActivity(1, 'Reading foo.ts');
+  os.particles.particles.length = 0;
+  os.onToolDone(1);
+  assert.equal(os.particles.particles.length, 0);
 });

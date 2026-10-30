@@ -3,6 +3,7 @@ import * as http from 'http';
 import * as os from 'os';
 import * as path from 'path';
 
+import { HOOK_PANE_FIELD } from '../../../../../../features/herdr/server/constants.js';
 import {
   HOOK_API_PREFIX,
   SERVER_JSON_DIR,
@@ -193,6 +194,10 @@ async function main(): Promise<void> {
   // Only the fact that a prompt was sent is needed for the "thinking" state;
   // what the user typed stays in this process.
   for (const field of PROMPT_TEXT_FIELDS) delete data[field];
+
+  // Which herdr pane this session runs in, so the office can show the tab's name (features/herdr).
+  const herdrPane = process.env['HERDR_PANE_ID'];
+  if (herdrPane) data[HOOK_PANE_FIELD] = herdrPane;
 
   const body = JSON.stringify(data);
   await Promise.all(servers.map((server) => postToServer(server, body, eventName, sid)));

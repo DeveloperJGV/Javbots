@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { GithubPanel } from '../../features/github/webview/GithubPanel.js';
+import { useHerdrTabs } from '../../features/herdr/webview/useHerdrTabs.js';
 import { LyricBubble } from '../../features/musica/webview/LyricBubble.js';
 import { MusicColumn } from '../../features/musica/webview/MusicColumn.js';
 import { MusicSettings } from '../../features/musica/webview/MusicSettings.js';
 import { useMusic } from '../../features/musica/webview/useMusic.js';
+import { UsageBar } from '../../features/usage/webview/UsageBar.js';
+import { useUsage } from '../../features/usage/webview/useUsage.js';
 import { toMajorMinor } from './changelogData.js';
 import { ActivityBoardModal } from './components/ActivityBoardModal.js';
 import { BottomToolbar } from './components/BottomToolbar.js';
@@ -58,6 +62,10 @@ function getOfficeState(): OfficeState {
 function App() {
   // Optional feature (features/musica): what Spotify is playing, via a Spicetify extension
   const music = useMusic(transport);
+  // Optional feature (features/usage): Claude plan limits and cost per agent
+  const usage = useUsage(transport);
+  // Optional feature (features/herdr): each character named after its herdr terminal tab
+  useHerdrTabs(transport, getOfficeState());
   // Browser runtime (dev or static dist): dispatch mock messages after the
   // useExtensionMessages listener has been registered.
   useEffect(() => {
@@ -593,6 +601,11 @@ function App() {
         />
 
         <ConnectionIndicator />
+
+        {/* Optional feature (features/usage): Claude plan limits and cost per agent */}
+        <UsageBar usage={usage} />
+        {/* Optional feature (features/github): repositories as cabinets in the GitHub room */}
+        <GithubPanel transport={transport} />
 
         <ActivityBoardModal
           isOpen={isBoardOpen}

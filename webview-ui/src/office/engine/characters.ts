@@ -1,4 +1,5 @@
 import {
+  AFTER_TURN_SEAT_SEC,
   BREATH_PERIOD_SEC,
   DEFAULT_MAX_CONTEXT_TOKENS,
   SEAT_REST_MAX_SEC,
@@ -117,6 +118,7 @@ export function createCharacter(
     errorCooldownSec: 0,
     leisure: null,
     idleSec: 0,
+    workSec: 0,
     internRestSec: null,
     cheerSec: 0,
     hopTimer: 0,
@@ -147,7 +149,9 @@ export function updateCharacter(
       if (!ch.isActive) {
         // Free time: stay on the couch / cushion / at the arcade until it is over
         if (atLeisureStop(ch)) break;
-        if (ch.seatTimer > 0) {
+        // Just finished a turn: stay at the desk (free time, once picked, gets it up)
+        if (ch.seatTimer < 0) ch.seatTimer = AFTER_TURN_SEAT_SEC;
+        if (ch.seatTimer > 0 && !ch.leisure) {
           ch.seatTimer -= dt;
           break;
         }
@@ -299,9 +303,9 @@ export function updateCharacter(
               ch.state = CharacterState.TYPE;
               ch.dir = seat.facingDir;
               // seatTimer < 0 is a sentinel from setAgentActive(false) meaning
-              // "turn just ended" — skip the long rest so idle transition is immediate
+              // "turn just ended": stay at the desk like after any turn (fork)
               if (ch.seatTimer < 0) {
-                ch.seatTimer = 0;
+                ch.seatTimer = AFTER_TURN_SEAT_SEC;
               } else {
                 ch.seatTimer = randomRange(SEAT_REST_MIN_SEC, SEAT_REST_MAX_SEC);
               }

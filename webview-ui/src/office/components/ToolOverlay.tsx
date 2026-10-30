@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react';
 
 import { Button } from '../../components/ui/Button.js';
 import {
+  ACTIVITY_CHIP_FONT_PX,
+  ACTIVITY_CHIP_MAX_WIDTH_PX,
+  ACTIVITY_CHIP_OPACITY,
+  ACTIVITY_CHIP_RAISE_PX,
   CONTEXT_CRITICAL_THRESHOLD,
   CONTEXT_DANGER_THRESHOLD,
   CONTEXT_GAUGE_BG,
@@ -87,6 +91,12 @@ function getActivityText(
   return leisure ? leisureLabel(leisure) : 'Descansando';
 }
 
+/** " · 3 min" once a turn has run a minute (nothing before). */
+function workTimeText(workSec: number): string {
+  const min = Math.floor(workSec / 60);
+  return min >= 1 ? ` · ${min} min` : '';
+}
+
 function getFuelColor(ratio: number): string {
   if (ratio >= CONTEXT_CRITICAL_THRESHOLD) return CONTEXT_GAUGE_COLOR_CRITICAL;
   if (ratio >= CONTEXT_DANGER_THRESHOLD) return CONTEXT_GAUGE_COLOR_DANGER;
@@ -143,13 +153,52 @@ export function ToolOverlay({
         const isHovered = hoveredId === id;
         const isSub = ch.isSubagent;
 
-        // Only show for hovered or selected agents (unless always-show is on)
-        if (!alwaysShowOverlay && !isSelected && !isHovered) return null;
-
         // Position above character
         const sittingOffset = sittingDropPx(ch);
         const screenX = project.toScreenX(ch.x);
         const screenY = project.toScreenY(ch.y + sittingOffset - TOOL_OVERLAY_VERTICAL_OFFSET);
+
+        // Only the full panel for hovered or selected agents (unless always-show is on); a working agent
+        // still says what it is doing in a small chip, so the office never hides who works on what (fork)
+        if (!alwaysShowOverlay && !isSelected && !isHovered) {
+          if (isSub || !ch.isActive) return null;
+          const needsYou = ch.bubbleType === 'permission';
+          const text = translateStatus(
+            getActivityText(id, agentTools, true, ch.bubbleType, false, null, false),
+          );
+          return (
+            <div
+              key={id}
+              className="absolute -translate-x-1/2 flex items-center gap-4 px-4 pixel-panel whitespace-nowrap"
+              style={{
+                left: screenX,
+                top: screenY - ACTIVITY_CHIP_RAISE_PX,
+                maxWidth: ACTIVITY_CHIP_MAX_WIDTH_PX,
+                pointerEvents: 'none',
+                opacity: ACTIVITY_CHIP_OPACITY,
+                zIndex: 40,
+              }}
+              data-testid="agent-activity-chip"
+              data-agent-id={id}
+            >
+              <span
+                className={`w-6 h-6 rounded-full shrink-0 ${needsYou ? '' : 'pixel-pulse'}`}
+                style={{
+                  background: needsYou
+                    ? 'var(--color-status-permission)'
+                    : 'var(--color-status-active)',
+                }}
+              />
+              <span
+                className="overflow-hidden text-ellipsis leading-none"
+                style={{ fontSize: ACTIVITY_CHIP_FONT_PX }}
+              >
+                {text}
+                {workTimeText(ch.workSec)}
+              </span>
+            </div>
+          );
+        }
 
         // A "Done" agent (finished turn: waiting bubble without awaitingInput)
         // shows ONLY its floating green checkmark bubble, never the label panel
@@ -223,9 +272,9 @@ export function ToolOverlay({
           : undefined;
         const internLabel =
           bossId !== undefined
-            ? `${INTERN_LABEL_PREFIX} ${officeState.characters.get(bossId)?.folderName ?? `Agente ${bossId}`}`
+            ? `${INTERN_LABEL_PREFIX} ${officeState.agentTabLabels.get(bossId) ?? officeState.characters.get(bossId)?.folderName ?? `Agente ${bossId}`}`
             : null;
-        const subtitle = internLabel ?? ch.folderName;
+        const subtitle = internLabel ?? officeState.agentTabLabels.get(id) ?? ch.folderName;
         const hasExtraLines = !!(subtitle || teamRoleLabel);
 
         // Context gauge. Every agent gets one — lead, teammate, adopted,
@@ -276,6 +325,7 @@ export function ToolOverlay({
                   }}
                 >
                   {translateStatus(activityText)}
+                  {!isSub && ch.isActive ? workTimeText(ch.workSec) : ''}
                 </span>
                 {subtitle && (
                   <span className="text-2xs leading-none overflow-hidden text-ellipsis block">

@@ -96,6 +96,7 @@ function makeChar(id: number, col: number, row: number): Character {
     errorCooldownSec: 0,
     leisure: null,
     idleSec: 0,
+    workSec: 0,
     internRestSec: null,
     cheerSec: 0,
     hopTimer: 0,

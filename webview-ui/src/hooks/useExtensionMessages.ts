@@ -129,10 +129,10 @@ interface ExtensionMessageState {
   setDayNightMode: (m: DayNightMode) => void;
 }
 
-/** How the activity board names an agent: like its label (teammate name, else its folder). */
+/** How the activity board names an agent: like its label (teammate name, else its herdr tab, else its folder). */
 function boardName(os: OfficeState, id: number): string {
   const ch = os.characters.get(id);
-  return ch?.agentName || ch?.folderName || `Agente ${id}`;
+  return ch?.agentName || os.agentTabLabels.get(id) || ch?.folderName || `Agente ${id}`;
 }
 
 function saveAgentSeats(os: OfficeState): void {

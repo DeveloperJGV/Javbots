@@ -103,7 +103,7 @@
     "asyncapi:validate": "node scripts/validate-asyncapi.mjs",
     "check-types": "tsc --noEmit && tsc --noEmit -p server/tsconfig.test.json",
     "prepare": "husky",
-    "lint": "eslint adapters/vscode server core features/musica/server && cd webview-ui && eslint . && cd ../features/musica/webview && eslint . -c ../../../webview-ui/eslint.config.js",
+    "lint": "eslint adapters/vscode server core features/musica/server features/usage/server features/herdr/server features/github/server && cd webview-ui && eslint . && cd ../features/musica/webview && eslint . -c ../../../webview-ui/eslint.config.js && cd ../../usage/webview && eslint . -c ../../../webview-ui/eslint.config.js && cd ../../herdr/webview && eslint . -c ../../../webview-ui/eslint.config.js && cd ../../github/webview && eslint . -c ../../../webview-ui/eslint.config.js",
     "lint:fix": "eslint adapters/vscode server core --fix && cd webview-ui && eslint . --fix",
     "import-tileset": "tsx scripts/import-tileset-cli.ts",
     "format": "prettier --write \"adapters/vscode/**/*.ts\" \"server/**/*.ts\" \"core/src/**/*.ts\" \"webview-ui/src/**/*.{ts,tsx,css}\" \"*.{js,mjs}\" \"webview-ui/*.{js,ts}\"",

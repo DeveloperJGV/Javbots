@@ -13,6 +13,7 @@ import { OfficeState } from '../src/office/engine/officeState.js';
 import { isSeated } from '../src/office/engine/posture.js';
 import { buildDynamicCatalog } from '../src/office/layout/furnitureCatalog.js';
 import {
+  ALL_LEISURE,
   atLeisureStop,
   findLeisureSpots,
   INTERN_LEISURE,
@@ -174,12 +175,14 @@ test('back to work: leaves the couch and types at its own desk, not on the couch
 test('stargazing only happens at night', () => {
   const layout = office([item('desk', 'OFFICE_CHAIR', 1, 1), item('t', 'SENKU_TELESCOPE', 2, 9)]);
   const day = new OfficeState(layout);
+  day.leisureActivities = ALL_LEISURE;
   idleAgent(day, 1);
   run(day, LEISURE_START_SEC + 1);
   assert.equal(day.characters.get(1)!.leisure, null, 'by day the telescope is no option');
 
   setDayNightMode('night');
   const night = new OfficeState(layout);
+  night.leisureActivities = ALL_LEISURE;
   idleAgent(night, 1);
   run(night, LEISURE_START_SEC + 1);
   assert.equal(night.characters.get(1)!.leisure?.activity, 'stars');

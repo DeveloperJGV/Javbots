@@ -1,5 +1,7 @@
 @import 'tailwindcss';
 @source '../../features/musica/webview';
+@source '../../features/usage/webview';
+@source '../../features/github/webview';
 
 @font-face {
   font-family: 'FS Pixel Sans';

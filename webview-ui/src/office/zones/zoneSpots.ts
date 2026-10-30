@@ -24,11 +24,13 @@ export function tileZoneKind(layout: OfficeLayout, col: number, row: number): Zo
   return layout.areas?.find((a) => a.label === label)?.zoneKind ?? null;
 }
 
-/** The zone an agent wants to be in right now (null = its own desk). */
-export function wantedZone(ch: Character): ZoneKind | null {
-  if (ch.isSubagent) return Zone.INTERNS;
+/** The zone an agent wants to be in right now (null = its own desk). `perTool` = ZONE_PER_TOOL. */
+export function wantedZone(ch: Character, perTool = true): ZoneKind | null {
+  if (ch.isSubagent) return Zone.COMPUTERS; // OfficeState falls back to INTERNS without a computer room
   if (!ch.isActive) return null;
   if (ch.bubbleType === 'permission') return Zone.PERMISSION;
+  // One place per turn: the work shows at the desk, not with a walk per tool
+  if (!perTool) return null;
   if (ch.errorHoldSec > 0) return Zone.ERROR;
   if (ch.bubbleType === 'thinking') return null;
   return ch.activityZone;

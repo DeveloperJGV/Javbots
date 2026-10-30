@@ -1,10 +1,23 @@
 import { pickDiversePalette } from '../../../../core/src/paletteUtils.js';
 import {
+  applyGithubFurniture,
+  isCabinet,
+  isGraph,
+  isPrBoard,
+  repoForCabinet,
+} from '../../../../features/github/webview/githubFurniture.js';
+import { githubStore } from '../../../../features/github/webview/githubStore.js';
+import {
   applyMusicFurniture,
   isTurntable,
   MusicNotes,
 } from '../../../../features/musica/webview/musicFurniture.js';
 import { musicStore } from '../../../../features/musica/webview/musicStore.js';
+import {
+  applyUsageFurniture,
+  isUsageMeter,
+} from '../../../../features/usage/webview/usageFurniture.js';
+import { usageStore } from '../../../../features/usage/webview/usageStore.js';
 import {
   AUTO_ON_FACING_DEPTH,
   AUTO_ON_SIDE_DEPTH,
@@ -13,6 +26,7 @@ import {
   CHARACTER_HIT_HALF_WIDTH,
   CHARACTER_HIT_HEIGHT,
   CHEER_SEC,
+  COMMIT_CONFETTI_COUNT,
   CONFETTI_RAIN_SPAWN_SEC,
   DISMISS_BUBBLE_FAST_FADE_SEC,
   FURNITURE_ANIM_INTERVAL_SEC,
@@ -52,6 +66,7 @@ import {
   WILDCARD_INTERNS,
   ZONE_ERROR_COOLDOWN_SEC,
   ZONE_ERROR_HOLD_SEC,
+  ZONE_PER_TOOL,
 } from '../../constants.js';
 import { ActivityLog } from '../board/activityLog.js';
 import { boardSprite } from '../board/boardSprite.js';
@@ -78,7 +93,7 @@ import {
 import { findPath, getWalkableTiles, isWalkable } from '../layout/tileMap.js';
 import type { LeisureActivity } from '../leisure/leisure.js';
 import {
-  ALL_LEISURE,
+  AGENT_LEISURE,
   atLeisureStop,
   findLeisureSpots,
   INTERN_LEISURE,
@@ -156,6 +171,12 @@ export class OfficeState {
   furnitureAnimTimer = 0;
   /** Steam, sparks and dust (fork, Fase 2). */
   particles = new ParticleSystem();
+  /** Walk to each tool's room (Fase 3) instead of one place per turn; see ZONE_PER_TOOL. */
+  zonePerTool = ZONE_PER_TOOL;
+  /** What agents may do on a break (AGENT_LEISURE: the break room only). */
+  leisureActivities: readonly LeisureActivity[] = AGENT_LEISURE;
+  private zoneKindsOf: OfficeLayout | null = null;
+  private zoneKinds = new Set<string>();
   /** Notes off the turntable while music plays (features/musica). */
   private musicNotes = new MusicNotes();
   /** Easter egg: Isaac's click streak and dance (clock = furnitureAnimTimer). */
@@ -164,6 +185,8 @@ export class OfficeState {
   /** What each agent did since the page opened: the hallway whiteboard and its panel. */
   activity = new ActivityLog();
   /** The big party under way (fork, Fase 5.5), or null. */
+  /** Name of the herdr terminal tab each agent runs in (features/herdr); shown instead of its folder. */
+  agentTabLabels = new Map<number, string>();
   party: PartyState | null = null;
   /** Agents (not interns) that worked since everyone was last done: 2+ means a big party. */
   private workedSinceParty = new Set<number>();
@@ -973,8 +996,11 @@ export class OfficeState {
   setAgentActive(id: number, active: boolean): void {
     const ch = this.characters.get(id);
     if (ch) {
+      const wasActive = ch.isActive;
       ch.isActive = active;
       if (active) {
+        // A new turn: the "working for N min" count starts over
+        if (!wasActive) ch.workSec = 0;
         // Back to work: drop the free-time activity and get up from the couch
         ch.idleSec = 0;
         this.endLeisure(ch);
@@ -1075,11 +1101,18 @@ export class OfficeState {
   }
 
   private withAmbientAnimation(instances: FurnitureInstance[]): FurnitureInstance[] {
-    // Optional feature (features/musica): spinning turntable, album cover in its frame
-    return applyMusicFurniture(
-      this.withOfficeAnimation(instances),
-      this.furnitureAnimTimer,
-      musicStore.get(),
+    // Optional features: spinning turntable and album cover (features/musica), plan limits on the meter
+    // (features/usage), repositories in the GitHub room (features/github)
+    return applyGithubFurniture(
+      applyUsageFurniture(
+        applyMusicFurniture(
+          this.withOfficeAnimation(instances),
+          this.furnitureAnimTimer,
+          musicStore.get(),
+        ),
+        usageStore.get(),
+      ),
+      githubStore.get(),
     );
   }
 
@@ -1121,6 +1154,23 @@ export class OfficeState {
   /** Whether a world point lands on the turntable (features/musica: a click shows / hides the music column). */
   isTurntableAt(worldX: number, worldY: number): boolean {
     return this.furniture.some((f) => isTurntable(f) && hitsPaintedPixel(f, worldX, worldY));
+  }
+
+  /** Whether a world point lands on the usage meter (features/usage). */
+  isUsageMeterAt(worldX: number, worldY: number): boolean {
+    return this.furniture.some((f) => isUsageMeter(f) && hitsPaintedPixel(f, worldX, worldY));
+  }
+
+  /** What of the GitHub room a world point lands on (features/github): a cabinet's repository, the graph or the PRs. */
+  githubAt(worldX: number, worldY: number): { label: string; repo?: string } | null {
+    const hit = this.furniture.find(
+      (f) => (isCabinet(f) || isGraph(f) || isPrBoard(f)) && hitsPaintedPixel(f, worldX, worldY),
+    );
+    if (!hit) return null;
+    if (isGraph(hit)) return { label: 'Contribuciones de las últimas semanas' };
+    if (isPrBoard(hit)) return { label: 'PRs abiertos' };
+    const repo = repoForCabinet(this.furniture, hit, githubStore.get().status);
+    return repo ? { label: `${repo.name} · ${repo.commits} commits`, repo: repo.name } : null;
   }
 
   /** Whether a world point lands on Isaac (the basement easter egg). */
@@ -1309,12 +1359,12 @@ export class OfficeState {
         this.wanderFor(ch, LEISURE_RETRY_SEC);
       } else if (Math.random() < LEISURE_WANDER_CHANCE) {
         this.wanderFor(ch, randomRange(LEISURE_WANDER_MIN_SEC, LEISURE_WANDER_MAX_SEC));
-      } else if (!this.startLeisure(ch, ALL_LEISURE, last)) {
+      } else if (!this.startLeisure(ch, this.leisureActivities, last)) {
         this.wanderFor(ch, LEISURE_RETRY_SEC);
       }
       return;
     }
-    if (ch.idleSec >= LEISURE_START_SEC && !this.startLeisure(ch, ALL_LEISURE)) {
+    if (ch.idleSec >= LEISURE_START_SEC && !this.startLeisure(ch, this.leisureActivities)) {
       this.wanderFor(ch, LEISURE_RETRY_SEC);
     }
   }
@@ -1401,6 +1451,17 @@ export class OfficeState {
     ch.dir = Direction.DOWN;
     ch.frame = 0;
     ch.frameTimer = 0;
+  }
+
+  /** Whether the layout paints any area of this zone kind (cached per layout object). */
+  private hasZone(kind: ZoneKind): boolean {
+    if (this.zoneKindsOf !== this.layout) {
+      this.zoneKindsOf = this.layout;
+      this.zoneKinds = new Set(
+        (this.layout.areas ?? []).flatMap((a) => (a.zoneKind ? [a.zoneKind] : [])),
+      );
+    }
+    return this.zoneKinds.has(kind);
   }
 
   /** Box of the interns' room tiles in sprite px, or null without one. */
@@ -1545,7 +1606,7 @@ export class OfficeState {
       const sitting = sittingDropPx(ch);
       this.particles.burstTears(ch.x, ch.y + sitting - TEAR_EYE_HEIGHT_PX);
     }
-    if (ch.isSubagent || ch.errorCooldownSec > 0) return;
+    if (ch.isSubagent || !this.zonePerTool || ch.errorCooldownSec > 0) return;
     ch.errorHoldSec = ZONE_ERROR_HOLD_SEC;
     ch.errorCooldownSec = ZONE_ERROR_COOLDOWN_SEC;
   }
@@ -1564,16 +1625,25 @@ export class OfficeState {
     }
   }
 
-  /** A tool finished: a command done in the DeLorean workshop hits 88 mph. */
+  /** A tool finished: a command hits 88 mph (in the DeLorean workshop, or at the desk when agents stay put) and a
+   *  commit throws a little confetti at the desk. */
   onToolDone(id: number): void {
     const ch = this.characters.get(id);
     if (!ch || ch.matrixEffect || !areParticlesEnabled()) return;
-    const spot = ch.zoneSpot;
-    if (ch.zoneAt !== Zone.COMMANDS || ch.activityZone !== Zone.COMMANDS || !spot) return;
-    if (ch.state !== CharacterState.TYPE || ch.tileCol !== spot.col || ch.tileRow !== spot.row) {
+    if (ch.state !== CharacterState.TYPE) return;
+    if (this.zonePerTool) {
+      const spot = ch.zoneSpot;
+      if (ch.zoneAt !== Zone.COMMANDS || ch.activityZone !== Zone.COMMANDS || !spot) return;
+      if (ch.tileCol !== spot.col || ch.tileRow !== spot.row) return;
+      this.particles.burst88mph(ch.x, ch.y + TILE_SIZE / 2 - 1);
       return;
     }
-    this.particles.burst88mph(ch.x, ch.y + TILE_SIZE / 2 - 1);
+    if (ch.isSubagent || ch.path.length > 0) return;
+    if (ch.activityZone === Zone.COMMANDS) {
+      this.particles.burst88mph(ch.x, ch.y + TILE_SIZE / 2 - 1);
+    } else if (ch.activityZone === Zone.COMMIT) {
+      this.particles.burstConfetti(ch.x, ch.y - TILE_SIZE, COMMIT_CONFETTI_COUNT);
+    }
   }
 
   setAgentTool(id: number, tool: string | null): void {
@@ -1893,7 +1963,9 @@ export class OfficeState {
 
       ch.errorHoldSec = Math.max(0, ch.errorHoldSec - dt);
       ch.errorCooldownSec = Math.max(0, ch.errorCooldownSec - dt);
-      const wanted = wantedZone(ch);
+      if (ch.isActive) ch.workSec += dt;
+      let wanted = wantedZone(ch, this.zonePerTool);
+      if (wanted === Zone.COMPUTERS && !this.hasZone(Zone.COMPUTERS)) wanted = Zone.INTERNS;
       if (shouldSwitchZone(ch, wanted, dt)) this.enterZone(ch, wanted);
       if (!ch.isSubagent) this.updateLeisure(ch, dt);
 

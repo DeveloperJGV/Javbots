@@ -41,7 +41,10 @@ export type ServerMessage =
   | AgentDiagnostics
   | MusicNowPlaying
   | MusicStatus
-  | MusicLyrics;
+  | MusicLyrics
+  | UsageStatus
+  | HerdrTabLabels
+  | GithubStatus;
 
 export type ClientMessage =
   | WebviewReady
@@ -374,6 +377,74 @@ export interface MusicLyricLine {
   timeMs?: number;
 }
 
+export interface UsageStatus {
+  type: 'usageStatus';
+  profiles: UsageProfile[];
+}
+
+export interface UsageProfile {
+  profile: string;
+  updatedAt?: string;
+  fiveHour?: UsageLimit;
+  sevenDay?: UsageLimit;
+  otherLimits?: UsageNamedLimit[];
+  sessions: UsageSession[];
+}
+
+export interface UsageLimit {
+  pct: number;
+  resetsAt?: string;
+}
+
+export interface UsageNamedLimit {
+  key: string;
+  pct: number;
+  resetsAt?: string;
+}
+
+export interface UsageSession {
+  id: string;
+  folder?: string;
+  model?: string;
+  costUsd?: number;
+  tokens?: number;
+  contextPct?: number;
+  updatedAt?: string;
+}
+
+export interface HerdrTabLabels {
+  type: 'herdrTabLabels';
+  labels: Record<string, string>;
+}
+
+export interface GithubStatus {
+  type: 'githubStatus';
+  login: string;
+  totalRepos: number;
+  repos: GithubRepo[];
+  pullRequests: GithubPullRequest[];
+  weeks: number[][];
+  updatedAt: string;
+}
+
+export interface GithubRepo {
+  name: string;
+  url: string;
+  private: boolean;
+  pushedAt?: string;
+  stars: number;
+  commits: number;
+  openPullRequests: number;
+}
+
+export interface GithubPullRequest {
+  repo: string;
+  number: number;
+  title: string;
+  url: string;
+  author?: string;
+}
+
 export interface WebviewReady {
   type: 'webviewReady';
 }
@@ -515,7 +586,7 @@ export interface InstallMusicExtension {
 
 export interface MusicControl {
   type: 'musicControl';
-  action: AnonymousSchema_276;
+  action: AnonymousSchema_318;
 }
 
-export type AnonymousSchema_276 = 'previous' | 'togglePlay' | 'next';
+export type AnonymousSchema_318 = 'previous' | 'togglePlay' | 'next';

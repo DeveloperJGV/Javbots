@@ -122,6 +122,12 @@ components:
         - $ref: '#/components/schemas/MusicNowPlaying'
         - $ref: '#/components/schemas/MusicStatus'
         - $ref: '#/components/schemas/MusicLyrics'
+        # Claude usage (feature: features/usage)
+        - $ref: '#/components/schemas/UsageStatus'
+        # herdr tab names (feature: features/herdr)
+        - $ref: '#/components/schemas/HerdrTabLabels'
+        # GitHub room (feature: features/github)
+        - $ref: '#/components/schemas/GithubStatus'
       discriminator: type
 
     ClientMessage:
@@ -1052,6 +1058,182 @@ components:
           type: string
         timeMs:
           type: number
+
+    # ── Claude usage (feature: features/usage) ─────────────────────
+
+    UsageStatus:
+      description: >-
+        Claude plan limits (5 hours, week) and each session's estimated cost,
+        per Claude Code profile, as saved by the statusline script in
+        ~/.pixel-agents/uso/. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, profiles]
+      properties:
+        type:
+          const: usageStatus
+        profiles:
+          type: array
+          items:
+            $ref: '#/components/schemas/UsageProfile'
+
+    GithubStatus:
+      description: >-
+        The GitHub room: the user's repositories (newest push first) with their
+        commit count and open pull requests, plus the last weeks of the
+        contribution calendar, as `gh` sees them. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, login, totalRepos, repos, pullRequests, weeks, updatedAt]
+      properties:
+        type:
+          const: githubStatus
+        login:
+          type: string
+        totalRepos:
+          type: number
+        repos:
+          type: array
+          items:
+            $ref: '#/components/schemas/GithubRepo'
+        pullRequests:
+          type: array
+          items:
+            $ref: '#/components/schemas/GithubPullRequest'
+        weeks:
+          type: array
+          description: Contributions per day, oldest week first, 7 days each (Sunday first).
+          items:
+            type: array
+            items:
+              type: number
+        updatedAt:
+          type: string
+
+    GithubRepo:
+      type: object
+      additionalProperties: false
+      required: [name, url, private, stars, commits, openPullRequests]
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+        private:
+          type: boolean
+        pushedAt:
+          type: string
+        stars:
+          type: number
+        commits:
+          type: number
+          description: Commits on the default branch.
+        openPullRequests:
+          type: number
+
+    GithubPullRequest:
+      type: object
+      additionalProperties: false
+      required: [repo, number, title, url]
+      properties:
+        repo:
+          type: string
+        number:
+          type: number
+        title:
+          type: string
+        url:
+          type: string
+        author:
+          type: string
+
+    HerdrTabLabels:
+      description: >-
+        The name of the herdr terminal tab each agent's Claude session runs in,
+        shown above the character instead of its folder. Agents not in herdr
+        are left out. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, labels]
+      properties:
+        type:
+          const: herdrTabLabels
+        labels:
+          type: object
+          description: Map of agent ID (string) to herdr tab name.
+          additionalProperties:
+            type: string
+
+    UsageProfile:
+      type: object
+      additionalProperties: false
+      required: [profile, sessions]
+      properties:
+        profile:
+          description: Name of the profile file (e.g. personal).
+          type: string
+        updatedAt:
+          type: string
+        fiveHour:
+          $ref: '#/components/schemas/UsageLimit'
+        sevenDay:
+          $ref: '#/components/schemas/UsageLimit'
+        otherLimits:
+          description: >-
+            Any other plan limit the statusline reports (e.g. a weekly limit
+            for one model), keyed as Claude Code names it.
+          type: array
+          items:
+            $ref: '#/components/schemas/UsageNamedLimit'
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/UsageSession'
+
+    UsageLimit:
+      type: object
+      additionalProperties: false
+      required: [pct]
+      properties:
+        pct:
+          description: Percent of the limit used (0-100).
+          type: number
+        resetsAt:
+          type: string
+
+    UsageNamedLimit:
+      type: object
+      additionalProperties: false
+      required: [key, pct]
+      properties:
+        key:
+          description: The rate_limits key, e.g. seven_day_fable.
+          type: string
+        pct:
+          type: number
+        resetsAt:
+          type: string
+
+    UsageSession:
+      type: object
+      additionalProperties: false
+      required: [id]
+      properties:
+        id:
+          type: string
+        folder:
+          type: string
+        model:
+          type: string
+        costUsd:
+          description: Estimated by Claude Code at list price (not the bill).
+          type: number
+        tokens:
+          type: integer
+        contextPct:
+          type: integer
+        updatedAt:
+          type: string
 
     MusicStatus:
       description: >-

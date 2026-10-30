@@ -19,8 +19,10 @@ export const ZoneKind = {
   COMMIT: 'commit',
   /** Waiting for the user's "yes": Senku with his revival formula. */
   PERMISSION: 'permission',
-  /** Where interns (sub-agents) work. */
+  /** The interns' room: where they rest and the party happens (and where they work without a computer room). */
   INTERNS: 'interns',
+  /** The interns' computer room: where they work when the office has one. */
+  COMPUTERS: 'computers',
   /** A tool just failed: the basement (The Binding of Isaac). */
   ERROR: 'error',
 } as const;
@@ -36,6 +38,7 @@ export const ZONE_KINDS: readonly ZoneKind[] = [
   ZoneKind.COMMIT,
   ZoneKind.PERMISSION,
   ZoneKind.INTERNS,
+  ZoneKind.COMPUTERS,
   ZoneKind.ERROR,
 ];
 
@@ -53,6 +56,7 @@ export const ZONE_LABELS: Record<ZoneKind, string> = {
   commit: 'Commit',
   permission: 'Permiso',
   interns: 'Becarios',
+  computers: 'Cómputo de becarios',
   error: 'Error',
 };
 

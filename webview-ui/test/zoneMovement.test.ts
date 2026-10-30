@@ -4,6 +4,7 @@ import { test } from 'vitest';
 
 import {
   AREA_DEFAULT_COLORS,
+  LEISURE_START_SEC,
   ZONE_ERROR_COOLDOWN_SEC,
   ZONE_ERROR_HOLD_SEC,
   ZONE_MIN_STAY_SEC,
@@ -48,6 +49,7 @@ function placeAgent(os: OfficeState, id: number, col: number, row: number): void
 
 test('a lasting activity walks the agent into its zone, standing', () => {
   const os = new OfficeState(zonedLayout('library'));
+  os.zonePerTool = true; // the Fase 3 mode: a room per tool
   placeAgent(os, 1, 1, 2);
   os.setAgentActivity(1, 'Reading foo.ts');
   os.setAgentActive(1, true);
@@ -62,6 +64,7 @@ test('a lasting activity walks the agent into its zone, standing', () => {
 
 test('turn end releases the zone at once', () => {
   const os = new OfficeState(zonedLayout('library'));
+  os.zonePerTool = true; // the Fase 3 mode: a room per tool
   placeAgent(os, 1, 1, 2);
   os.setAgentActivity(1, 'Reading foo.ts');
   os.setAgentActive(1, true);
@@ -76,6 +79,7 @@ test('turn end releases the zone at once', () => {
 
 test('a brief activity does not move the agent', () => {
   const os = new OfficeState(zonedLayout('library'));
+  os.zonePerTool = true; // the Fase 3 mode: a room per tool
   placeAgent(os, 1, 1, 2);
   os.setAgentActive(1, true);
   run(os, ZONE_MIN_STAY_SEC); // settled at its place
@@ -125,6 +129,7 @@ test('interns head to the interns room and keep their spot between tools', () =>
 
 test('two agents never get the same spot', () => {
   const os = new OfficeState(zonedLayout('library', 10, 11, 1)); // a single zone tile
+  os.zonePerTool = true; // the Fase 3 mode: a room per tool
   placeAgent(os, 1, 0, 0);
   placeAgent(os, 2, 1, 0);
   for (const id of [1, 2]) {
@@ -156,6 +161,7 @@ test('spots: free zone chairs first, then floor facing furniture', () => {
 
 test('a failed tool sends the agent to the error zone at once, then back', () => {
   const os = new OfficeState(zonedLayout('error'));
+  os.zonePerTool = true; // the Fase 3 mode: a room per tool
   placeAgent(os, 1, 1, 2);
   os.setAgentActivity(1, 'Running: npm run build');
   os.setAgentActive(1, true);
@@ -169,6 +175,7 @@ test('a failed tool sends the agent to the error zone at once, then back', () =>
 
 test('right after a trip, further failures do not send it again', () => {
   const os = new OfficeState(zonedLayout('error'));
+  os.zonePerTool = true; // the Fase 3 mode: a room per tool
   placeAgent(os, 1, 1, 2);
   os.setAgentActive(1, true);
   os.onToolFailed(1);
@@ -178,4 +185,66 @@ test('right after a trip, further failures do not send it again', () => {
   run(os, ZONE_ERROR_COOLDOWN_SEC);
   os.onToolFailed(1);
   assert.equal(os.characters.get(1)!.errorHoldSec, ZONE_ERROR_HOLD_SEC);
+});
+
+test('by default an agent works the whole turn at its desk, whatever the tool', () => {
+  const os = new OfficeState(zonedLayout('library'));
+  placeAgent(os, 1, 1, 2);
+  os.setAgentActive(1, true);
+  for (const status of [
+    'Reading foo.ts',
+    'Editing foo.ts',
+    'Running: npm test',
+    'Reading bar.ts',
+  ]) {
+    os.setAgentActivity(1, status);
+    run(os, ZONE_MIN_STAY_SEC + ZONE_SWITCH_DELAY_SEC + 2);
+    const ch = os.characters.get(1)!;
+    assert.equal(ch.zoneAt, null, status);
+    assert.equal(ch.tileCol, 1, status);
+  }
+});
+
+test('by default a failed tool brings tears, not a trip to the basement', () => {
+  const os = new OfficeState(zonedLayout('error'));
+  placeAgent(os, 1, 1, 2);
+  os.setAgentActive(1, true);
+  os.onToolFailed(1);
+  run(os, 1);
+  assert.equal(os.characters.get(1)!.errorHoldSec, 0);
+  assert.equal(os.characters.get(1)!.zoneAt, null);
+});
+
+test('by default permission still sends the agent to Senku', () => {
+  const os = new OfficeState(zonedLayout('permission'));
+  placeAgent(os, 1, 1, 2);
+  os.setAgentActive(1, true);
+  os.showPermissionBubble(1);
+  run(os, ZONE_MIN_STAY_SEC + ZONE_SWITCH_DELAY_SEC + 6);
+  assert.equal(os.characters.get(1)!.zoneAt, 'permission');
+});
+
+test('a finished turn keeps the agent at its desk until free time', () => {
+  const os = new OfficeState(zonedLayout('library'));
+  placeAgent(os, 1, 1, 2);
+  os.setAgentActive(1, true);
+  run(os, 2);
+  os.setAgentActive(1, false);
+  run(os, LEISURE_START_SEC - 5);
+  const ch = os.characters.get(1)!;
+  assert.equal(ch.state, CharacterState.TYPE, 'still at the desk');
+  assert.equal(ch.tileCol, 1);
+});
+
+test('the turn timer counts from the start of the turn, not from each tool', () => {
+  const os = new OfficeState(zonedLayout('library'));
+  placeAgent(os, 1, 1, 2);
+  os.setAgentActive(1, true);
+  run(os, 30);
+  os.setAgentActive(1, true); // another tool, same turn
+  run(os, 40);
+  assert.ok(os.characters.get(1)!.workSec >= 69);
+  os.setAgentActive(1, false);
+  os.setAgentActive(1, true);
+  assert.equal(os.characters.get(1)!.workSec, 0);
 });

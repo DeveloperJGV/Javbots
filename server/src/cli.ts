@@ -10,7 +10,11 @@
 
 import * as path from 'path';
 
+import { createGithubFeature } from '../../features/github/server/githubFeature.js';
+import { createHerdrFeature } from '../../features/herdr/server/herdrFeature.js';
 import { createMusicFeature } from '../../features/musica/server/musicFeature.js';
+import { runUsageCommand } from '../../features/usage/server/usageCommand.js';
+import { createUsageFeature } from '../../features/usage/server/usageFeature.js';
 import { AgentRuntime } from './agentRuntime.js';
 import { AgentStateStore } from './agentStateStore.js';
 import {
@@ -147,7 +151,11 @@ async function main(): Promise<void> {
     const runtime = new AgentRuntime(store, claudeProvider);
 
     // Wire hook events: HTTP POST -> runtime -> hookEventHandler -> agents
+    // Optional feature: each character named after its herdr terminal tab (features/herdr).
+    const herdr = createHerdrFeature({ agents: () => store.entries() });
+
     server.onHookEvent((providerId, event) => {
+      herdr.noteHookEvent(event);
       runtime.handleHookEvent(providerId, event);
     });
 
@@ -245,7 +253,13 @@ async function main(): Promise<void> {
       assetCache,
       onSetHooksEnabled,
       onReloadAssets,
-      features: [music],
+      // Optional feature: Claude plan limits and cost per agent (features/usage).
+      features: [
+        music,
+        createUsageFeature({ command: () => runUsageCommand() }),
+        herdr,
+        createGithubFeature(),
+      ],
     });
     currentConfig = { port: config.port, token: config.token };
 

@@ -288,6 +288,8 @@ export interface Character {
   leisure: LeisureState | null;
   /** Seconds since the agent last worked; free time starts at LEISURE_START_SEC. */
   idleSec: number;
+  /** Seconds working in the current turn (fork): "· 3 min" on the activity chip. */
+  workSec: number;
   /** An intern done with its task, resting before it leaves: seconds left, else null. */
   internRestSec: number | null;
 

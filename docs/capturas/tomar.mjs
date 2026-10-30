@@ -130,15 +130,16 @@ function chromiumInstalado() {
   return undefined;
 }
 
-// Plano 44×30; viewport 1500×1050 CSS a DPR 2 → zoom 4 (1 tile = 32 px CSS).
-const COLS = 44, ROWS = 30, W = 1500, H = 1050, T = 32;
+// Plano 56×30; viewport 1900×1050 CSS a DPR 2 → zoom 4 (1 tile = 32 px CSS).
+const COLS = 56, ROWS = 30, W = 1900, H = 1050, T = 32;
 const OX = Math.floor((W * 2 - COLS * 64) / 2) / 2;
 const OY = Math.floor((H * 2 - ROWS * 64) / 2) / 2;
 /** Recorte de cuartos (col0,row0,col1,row1); una fila extra arriba para la pared. */
 const cuarto = (c0, r0, c1, r1) => ({ x: OX + c0 * T, y: OY + (r0 - 1) * T, width: (c1 - c0 + 1) * T, height: (r1 - r0 + 2) * T });
 const CUARTOS = {
   jedi: cuarto(1, 2, 12, 9),
-  codigo: cuarto(14, 2, 27, 9),
+  codigo: cuarto(14, 2, 42, 9),
+  computo: cuarto(44, 2, 54, 16),
   lightlabs: cuarto(29, 2, 35, 9),
   delorean: cuarto(1, 18, 13, 28),
   aperture: cuarto(15, 18, 24, 28),
