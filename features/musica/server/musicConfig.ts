@@ -16,6 +16,10 @@ export interface MusicConfig {
    * Absent = off. Set by hand in music.json.
    */
   screenPort?: number;
+  /** Client ID of a Spotify app (dashboard) so the office can read the account's playback without Spicetify. */
+  spotifyClientId?: string;
+  /** Session with that app (written at login, removed on disconnect or when Spotify revokes it). */
+  spotifyRefreshToken?: string;
 }
 
 function validPort(value: unknown): value is number {
@@ -39,6 +43,12 @@ export function readMusicConfig(): MusicConfig {
     token:
       typeof raw.token === 'string' && raw.token.length >= 16 ? raw.token : crypto.randomUUID(),
     ...(validPort(raw.screenPort) ? { screenPort: raw.screenPort } : {}),
+    ...(typeof raw.spotifyClientId === 'string' && raw.spotifyClientId.trim()
+      ? { spotifyClientId: raw.spotifyClientId.trim() }
+      : {}),
+    ...(typeof raw.spotifyRefreshToken === 'string' && raw.spotifyRefreshToken
+      ? { spotifyRefreshToken: raw.spotifyRefreshToken }
+      : {}),
   };
   if (config.token !== raw.token) writeMusicConfig(config);
   return config;

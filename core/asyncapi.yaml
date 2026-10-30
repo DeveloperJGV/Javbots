@@ -161,6 +161,7 @@ components:
         - $ref: '#/components/schemas/SetMusicEnabled'
         - $ref: '#/components/schemas/InstallMusicExtension'
         - $ref: '#/components/schemas/MusicControl'
+        - $ref: '#/components/schemas/DisconnectSpotify'
       discriminator: type
 
     # ── Server message variants ────────────────────────────────────
@@ -1260,6 +1261,27 @@ components:
         message:
           description: Outcome of the last install attempt, to show the user.
           type: string
+        spotifyConfigured:
+          description: music.json has a Spotify client id, so the office can connect to the account.
+          type: boolean
+        spotifyConnected:
+          description: >-
+            There is a Spotify session: the office follows the account's playback even with Spotify
+            closed on this computer.
+          type: boolean
+        source:
+          description: Where the current track comes from.
+          type: string
+          enum: [extension, spotify]
+
+    DisconnectSpotify:
+      description: Forget the Spotify session (Web API). Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: disconnectSpotify
 
     SetMusicEnabled:
       description: Show or hide the music column and the turntable animation.

@@ -3,6 +3,14 @@
 Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
 (Pixel Agents) está en [CHANGELOG.md](CHANGELOG.md).
 
+## 30 de octubre de 2026
+
+- **La música sin Spotify abierto en la computadora.** La oficina se puede conectar a tu cuenta de Spotify
+  (Ajustes → Música → Conectar con Spotify) y así ve lo que suena en el celular o en una bocina aunque el Spotify de
+  la PC esté cerrado o en pausa. Con Spotify abierto y sonando aquí, la extensión sigue mandando como antes. Los
+  botones de la música, también los de otras pantallas, funcionan igual por esa vía. Hace falta una app gratuita
+  en el panel de desarrollador de Spotify; cómo, en [features/musica](features/musica/README.md).
+
 ## 25 de octubre de 2026
 
 - **Sala de GitHub**, abajo de la sala de cómputo. Cada archivero es uno de tus repos y sube de nivel con los

@@ -62,3 +62,20 @@ export const SCREEN_COVER_PATH = '/api/music/cover';
 /** Playback buttons of the screens (POST, music token): the same commands the office sends. */
 export const SCREEN_CONTROL_PATH = '/api/music/control';
 export const SCREEN_MAX_BODY_BYTES = 1024;
+
+/** Spotify's Web API as a second source (works with Spotify closed here). Login with PKCE: no client secret. */
+export const SPOTIFY_ACCOUNTS_URL = 'https://accounts.spotify.com';
+export const SPOTIFY_API_URL = 'https://api.spotify.com/v1';
+export const SPOTIFY_SCOPES =
+  'user-read-currently-playing user-read-playback-state user-modify-playback-state';
+/** GET with the music token: sends the browser to Spotify's login. */
+export const SPOTIFY_LOGIN_PATH = '/api/music/spotify/login';
+/** Where Spotify sends the browser back (register `http://127.0.0.1:<port>` + this in the app's dashboard). */
+export const SPOTIFY_CALLBACK_PATH = '/api/music/spotify/callback';
+/** How often the account is asked what's playing (only while the extension isn't reporting a playing song). */
+export const SPOTIFY_POLL_MS = 4_000;
+/** A report from the extension newer than this means Spotify runs on this computer: it stays the source. */
+export const SPOTIFY_EXTENSION_FRESH_MS = 20_000;
+export const SPOTIFY_FETCH_TIMEOUT_MS = 8_000;
+/** Volume buttons without the extension: percent per press. */
+export const SPOTIFY_VOLUME_STEP = 10;

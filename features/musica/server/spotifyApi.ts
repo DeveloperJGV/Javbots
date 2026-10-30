@@ -1,0 +1,253 @@
+import * as crypto from 'crypto';
+
+import {
+  SPOTIFY_ACCOUNTS_URL,
+  SPOTIFY_API_URL,
+  SPOTIFY_FETCH_TIMEOUT_MS,
+  SPOTIFY_SCOPES,
+  SPOTIFY_VOLUME_STEP,
+} from './constants.js';
+
+type Fetcher = (
+  url: string,
+  init: { method?: string; signal: AbortSignal; headers: Record<string, string>; body?: string },
+) => Promise<Response>;
+
+export interface SpotifyApiOptions {
+  clientId: string;
+  /** Where Spotify sends the browser back after the login (must be registered in the app's dashboard). */
+  redirectUri: () => string;
+  refreshToken?: string;
+  /** Called when the refresh token changes (login, rotation) or is lost (revoked): persist it. */
+  onRefreshToken: (token: string | undefined) => void;
+  fetcher?: Fetcher;
+  now?: () => number;
+}
+
+/** What `/me/player` says, in the shape of the extension's report body (so one path handles both). */
+export interface SpotifyPlayback {
+  track: {
+    title: string;
+    artist: string;
+    album?: string;
+    image?: string;
+    isPaused: boolean;
+    positionMs: number;
+    durationMs: number;
+    device?: string;
+    volume?: number;
+  } | null;
+}
+
+/**
+ * Spotify's Web API as a second source of "what's playing": it works with Spotify closed on this computer
+ * (a phone, an Echo…). Authorization Code + PKCE (no client secret), the refresh token lives in music.json.
+ * Only the owner's account, only read playback and the playback buttons.
+ */
+export function createSpotifyApi(opts: SpotifyApiOptions) {
+  const fetcher: Fetcher = opts.fetcher ?? ((url, init) => fetch(url, init));
+  const now = opts.now ?? Date.now;
+  let refreshToken = opts.refreshToken;
+  let accessToken: string | undefined;
+  let expiresAt = 0;
+  /** PKCE verifier of the login in progress, by state (a login that never comes back just expires). */
+  const pending = new Map<string, { verifier: string; at: number }>();
+
+  const base64url = (buf: Buffer) => buf.toString('base64url');
+
+  async function call(
+    url: string,
+    init: { method?: string; headers?: Record<string, string>; body?: string } = {},
+  ): Promise<Response> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), SPOTIFY_FETCH_TIMEOUT_MS);
+    try {
+      return await fetcher(url, { ...init, headers: init.headers ?? {}, signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  function setRefreshToken(token: string | undefined): void {
+    if (token === refreshToken) return;
+    refreshToken = token;
+    opts.onRefreshToken(token);
+  }
+
+  function saveTokens(json: { access_token?: unknown; expires_in?: unknown; refresh_token?: unknown }): void {
+    if (typeof json.access_token !== 'string') throw new Error('spotify: sin access_token');
+    accessToken = json.access_token;
+    const seconds = typeof json.expires_in === 'number' ? json.expires_in : 3600;
+    expiresAt = now() + (seconds - 60) * 1000;
+    if (typeof json.refresh_token === 'string' && json.refresh_token) setRefreshToken(json.refresh_token);
+  }
+
+  /** The URL to send the browser to; the verifier waits for the callback with the same `state`. */
+  function authorizeUrl(): string {
+    const verifier = base64url(crypto.randomBytes(64));
+    const state = base64url(crypto.randomBytes(16));
+    for (const [key, value] of pending) if (now() - value.at > 10 * 60_000) pending.delete(key);
+    pending.set(state, { verifier, at: now() });
+    const challenge = base64url(crypto.createHash('sha256').update(verifier).digest());
+    const params = new URLSearchParams({
+      client_id: opts.clientId,
+      response_type: 'code',
+      redirect_uri: opts.redirectUri(),
+      code_challenge_method: 'S256',
+      code_challenge: challenge,
+      state,
+      scope: SPOTIFY_SCOPES,
+    });
+    return `${SPOTIFY_ACCOUNTS_URL}/authorize?${params}`;
+  }
+
+  /** The callback: swaps the code for tokens. Returns null when it worked, else what went wrong. */
+  async function exchangeCode(code: string, state: string): Promise<string | null> {
+    const login = pending.get(state);
+    if (!login) return 'el inicio de sesión ya venció o no es de esta oficina';
+    pending.delete(state);
+    const body = new URLSearchParams({
+      client_id: opts.clientId,
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: opts.redirectUri(),
+      code_verifier: login.verifier,
+    });
+    const res = await call(`${SPOTIFY_ACCOUNTS_URL}/api/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+    });
+    if (!res.ok) return `Spotify respondió ${res.status}`;
+    saveTokens((await res.json()) as Record<string, unknown>);
+    return null;
+  }
+
+  /** A valid access token, refreshing it when needed; undefined when there is no session (or it was revoked). */
+  async function token(): Promise<string | undefined> {
+    if (accessToken && now() < expiresAt) return accessToken;
+    if (!refreshToken) return undefined;
+    const body = new URLSearchParams({
+      client_id: opts.clientId,
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+    });
+    const res = await call(`${SPOTIFY_ACCOUNTS_URL}/api/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+    });
+    if (res.status === 400 || res.status === 401) {
+      // Revoked or expired for good: the user has to connect again.
+      accessToken = undefined;
+      setRefreshToken(undefined);
+      return undefined;
+    }
+    if (!res.ok) throw new Error(`spotify refresh ${res.status}`);
+    saveTokens((await res.json()) as Record<string, unknown>);
+    return accessToken;
+  }
+
+  async function api(path: string, method = 'GET'): Promise<Response | undefined> {
+    const t = await token();
+    if (!t) return undefined;
+    const res = await call(`${SPOTIFY_API_URL}${path}`, { method, headers: { Authorization: `Bearer ${t}` } });
+    if (res.status === 401) accessToken = undefined;
+    return res;
+  }
+
+  /**
+   * What the account is playing, anywhere. `track: null` when nothing (or an ad/podcast); undefined when
+   * there's no session or Spotify didn't answer (the caller keeps what it had).
+   */
+  async function playback(): Promise<SpotifyPlayback | undefined> {
+    let res: Response | undefined;
+    try {
+      res = await api('/me/player?additional_types=track');
+    } catch {
+      return undefined;
+    }
+    if (!res) return undefined;
+    if (res.status === 204) return { track: null };
+    if (!res.ok) return undefined;
+    return toPlayback((await res.json()) as Record<string, unknown>);
+  }
+
+  /** The office's playback buttons, when the extension isn't there to run them. */
+  async function control(action: string, volume: number | undefined): Promise<boolean> {
+    try {
+      let res: Response | undefined;
+      switch (action) {
+        case 'next':
+          res = await api('/me/player/next', 'POST');
+          break;
+        case 'previous':
+          res = await api('/me/player/previous', 'POST');
+          break;
+        case 'togglePlay': {
+          const current = await playback();
+          if (!current?.track) return false;
+          res = await api(current.track.isPaused ? '/me/player/play' : '/me/player/pause', 'PUT');
+          break;
+        }
+        case 'volumeUp':
+        case 'volumeDown': {
+          if (volume === undefined) return false;
+          const step = action === 'volumeUp' ? SPOTIFY_VOLUME_STEP : -SPOTIFY_VOLUME_STEP;
+          const percent = Math.max(0, Math.min(100, Math.round(volume * 100 + step)));
+          res = await api(`/me/player/volume?volume_percent=${percent}`, 'PUT');
+          break;
+        }
+        default:
+          return false;
+      }
+      return Boolean(res?.ok);
+    } catch {
+      return false;
+    }
+  }
+
+  return {
+    authorizeUrl,
+    exchangeCode,
+    playback,
+    control,
+    /** There is a session (a refresh token) to poll with. */
+    connected: () => Boolean(refreshToken),
+    /** Forget the session (the user disconnects). */
+    disconnect: () => {
+      accessToken = undefined;
+      setRefreshToken(undefined);
+    },
+  };
+}
+
+export type SpotifyApi = ReturnType<typeof createSpotifyApi>;
+
+/** `/me/player` → the report body the extension would have sent. Exported for tests. */
+export function toPlayback(json: Record<string, unknown>): SpotifyPlayback {
+  if (json.currently_playing_type !== 'track') return { track: null };
+  const item = json.item as Record<string, unknown> | null | undefined;
+  if (!item || typeof item.name !== 'string') return { track: null };
+  const artists = Array.isArray(item.artists)
+    ? (item.artists as { name?: unknown }[]).map((a) => a.name).filter((n): n is string => typeof n === 'string')
+    : [];
+  const album = item.album as { name?: unknown; images?: { url?: unknown; width?: unknown }[] } | undefined;
+  // Spotify lists covers from largest to smallest.
+  const image = album?.images?.[0]?.url;
+  const device = json.device as { name?: unknown; type?: unknown; volume_percent?: unknown } | undefined;
+  const isComputer = typeof device?.type === 'string' && device.type.toLowerCase() === 'computer';
+  return {
+    track: {
+      title: item.name,
+      artist: artists.join(', '),
+      ...(typeof album?.name === 'string' ? { album: album.name } : {}),
+      ...(typeof image === 'string' ? { image } : {}),
+      isPaused: json.is_playing !== true,
+      positionMs: typeof json.progress_ms === 'number' ? json.progress_ms : 0,
+      durationMs: typeof item.duration_ms === 'number' ? item.duration_ms : 0,
+      ...(typeof device?.name === 'string' && !isComputer ? { device: device.name } : {}),
+      ...(typeof device?.volume_percent === 'number' ? { volume: device.volume_percent / 100 } : {}),
+    },
+  };
+}

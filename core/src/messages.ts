@@ -74,7 +74,8 @@ export type ClientMessage =
   | RequestDiagnostics
   | SetMusicEnabled
   | InstallMusicExtension
-  | MusicControl;
+  | MusicControl
+  | DisconnectSpotify;
 
 export interface ProviderCapabilities {
   type: 'providerCapabilities';
@@ -358,7 +359,12 @@ export interface MusicStatus {
   controls?: boolean;
   token?: string;
   message?: string;
+  spotifyConfigured?: boolean;
+  spotifyConnected?: boolean;
+  source?: AnonymousSchema_215;
 }
+
+export type AnonymousSchema_215 = 'extension' | 'spotify';
 
 export interface MusicLyrics {
   type: 'musicLyrics';
@@ -366,11 +372,11 @@ export interface MusicLyrics {
   artist?: string;
   loading?: boolean;
   synced?: boolean;
-  source?: AnonymousSchema_218;
+  source?: AnonymousSchema_221;
   lines?: MusicLyricLine[];
 }
 
-export type AnonymousSchema_218 = 'spotify' | 'lrclib';
+export type AnonymousSchema_221 = 'spotify' | 'lrclib';
 
 export interface MusicLyricLine {
   text: string;
@@ -586,7 +592,11 @@ export interface InstallMusicExtension {
 
 export interface MusicControl {
   type: 'musicControl';
-  action: AnonymousSchema_318;
+  action: AnonymousSchema_321;
 }
 
-export type AnonymousSchema_318 = 'previous' | 'togglePlay' | 'next';
+export type AnonymousSchema_321 = 'previous' | 'togglePlay' | 'next';
+
+export interface DisconnectSpotify {
+  type: 'disconnectSpotify';
+}

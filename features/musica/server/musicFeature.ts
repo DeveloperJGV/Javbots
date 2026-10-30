@@ -10,6 +10,10 @@ import {
   MUSIC_CONTROL_PATH,
   MUSIC_LYRICS_API_PATH,
   MUSIC_STALE_MS,
+  SPOTIFY_CALLBACK_PATH,
+  SPOTIFY_EXTENSION_FRESH_MS,
+  SPOTIFY_LOGIN_PATH,
+  SPOTIFY_POLL_MS,
   WS_CLOSE_POLICY,
 } from './constants.js';
 import { CoverCache } from './cover.js';
@@ -23,6 +27,7 @@ import {
   type SpicetifyRunner,
   spicetifyUserdata,
 } from './spicetify.js';
+import { createSpotifyApi, type SpotifyApi } from './spotifyApi.js';
 import { timingSafeEqual } from './token.js';
 import { parseTrackReport } from './track.js';
 
@@ -39,7 +44,14 @@ export interface MusicFeatureOptions {
   fetchLyrics?: typeof fetchLrclib;
   /** Starts the screen port when music.json has `screenPort` (off in tests). */
   startScreen?: typeof startScreenServer;
+  /** Spotify's Web API over this (tests); default `fetch`. */
+  spotifyFetch?: Parameters<typeof createSpotifyApi>[0]['fetcher'];
+  /** Ask the account every few seconds while connected (off in tests, which call `pollSpotify()`). */
+  pollSpotify?: boolean;
 }
+
+/** Who reported the current track. */
+export type TrackSource = 'extension' | 'spotify';
 
 /** Body of GET /api/music/now on the screen port. `positionMs` is already moved forward to "now". */
 export interface ScreenState {
@@ -89,6 +101,8 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
   screenState(): ScreenState;
   /** A playback command from a screen or the office (exposed for tests). */
   sendControl(action: string): boolean;
+  /** One round of asking Spotify's Web API what's playing (exposed for tests; the timer calls it). */
+  pollSpotify(): Promise<void>;
 } {
   const run = opts.run ?? runSpicetify;
   const covers = opts.covers ?? new CoverCache();
@@ -98,6 +112,9 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
   /** CDN URL of the current track's cover (to tell a new cover from the same one). */
   let trackCoverUrl: string | undefined;
   let lastReportAt = 0;
+  /** Last report from the extension (Spotify open on this computer): while fresh, it is the main source. */
+  let lastExtensionAt = 0;
+  let source: TrackSource | undefined;
   /** When the current track's position was reported (to move it forward while it plays). */
   let trackReportedAt = 0;
   /** Only the screens use these (the office shows neither), so they stay out of MusicTrack. */
@@ -109,8 +126,28 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
   const clients = new Set<FeatureClient>();
   /** Spotify extensions connected for playback control (normally one). */
   const controlSockets = new Set<ControlSocket>();
-  /** Off by default where Spicetify isn't installed: nobody without it sees an empty music corner. */
-  const isEnabled = () => config.enabled ?? spicetify.found;
+  // The account's playback through Spotify's Web API, when music.json has a client id: it also works with
+  // Spotify closed here (a phone, an Echo…). The session (refresh token) lives in music.json.
+  const spotify: SpotifyApi | undefined = config.spotifyClientId
+    ? createSpotifyApi({
+        clientId: config.spotifyClientId,
+        redirectUri: () => `${opts.serverUrl() ?? 'http://127.0.0.1'}${SPOTIFY_CALLBACK_PATH}`,
+        refreshToken: config.spotifyRefreshToken,
+        fetcher: opts.spotifyFetch,
+        now,
+        onRefreshToken: (refresh) => {
+          const { spotifyRefreshToken: _old, ...rest } = config;
+          config = refresh ? { ...rest, spotifyRefreshToken: refresh } : rest;
+          writeMusicConfig(config);
+          broadcastStatus();
+          if (refresh) scheduleSpotify();
+        },
+      })
+    : undefined;
+  const spotifyConnected = () => spotify?.connected() ?? false;
+  let spotifyTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Off by default where Spicetify isn't installed (and no Spotify session): nobody sees an empty music corner. */
+  const isEnabled = () => config.enabled ?? (spicetify.found || spotifyConnected());
   const fetchLyrics = opts.fetchLyrics ?? fetchLrclib;
   /** Song the current lyrics belong to (title|artist), and the lyrics themselves. */
   let songNow: string | undefined;
@@ -129,9 +166,12 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
   const status = (client: FeatureClient): MusicStatus => ({
     type: 'musicStatus',
     enabled: isEnabled(),
-    controls: controlSockets.size > 0,
+    controls: controlSockets.size > 0 || spotifyConnected(),
     spicetifyFound: spicetify.found,
     extensionInstalled: spicetify.installed,
+    spotifyConfigured: spotify !== undefined,
+    spotifyConnected: spotifyConnected(),
+    ...(track && source ? { source } : {}),
     ...(client.privileged ? { token: config.token } : {}),
     ...(client.privileged && lastMessage ? { message: lastMessage } : {}),
   });
@@ -247,10 +287,16 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
     return true;
   }
 
-  async function report(body: unknown): Promise<boolean> {
+  async function report(body: unknown, from: TrackSource = 'extension'): Promise<boolean> {
     const parsed = parseTrackReport(body);
     if (parsed === undefined) return false;
+    if (from === 'extension') {
+      lastExtensionAt = now();
+      // Spotify here is paused while the account plays somewhere else (the Web API said so): that one wins.
+      if (parsed?.isPaused && source === 'spotify' && track && !track.isPaused) return true;
+    }
     lastReportAt = now();
+    source = parsed ? from : undefined;
     armStaleTimer();
     if (parsed === null) {
       track = undefined;
@@ -323,12 +369,54 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
       })
     : undefined;
 
-  /** Relays a playback command to the extension; false when it isn't one or nobody is listening. */
+  /**
+   * Relays a playback command to the extension, or to Spotify's Web API when the extension isn't connected;
+   * false when it isn't one or nobody can run it.
+   */
   function sendControl(action: string): boolean {
-    if (!CONTROL_ACTIONS.has(action) || controlSockets.size === 0) return false;
-    const command = JSON.stringify({ action });
-    for (const s of controlSockets) s.send(command);
+    if (!CONTROL_ACTIONS.has(action)) return false;
+    if (controlSockets.size > 0) {
+      const command = JSON.stringify({ action });
+      for (const s of controlSockets) s.send(command);
+      return true;
+    }
+    if (!spotify?.connected()) return false;
+    void spotify.control(action, volume).then((ok) => {
+      // See it reflected soon (Spotify takes a moment to report the change).
+      if (ok) setTimeout(() => void pollSpotify(), 500).unref?.();
+    });
     return true;
+  }
+
+  /**
+   * Asks the account what's playing. The extension stays the source while Spotify runs on this computer and
+   * plays (it knows the song's lyrics, tempo and skips at once); the API fills in when it is closed or paused.
+   */
+  async function pollSpotify(): Promise<void> {
+    if (!spotify?.connected() || !isEnabled()) return;
+    const extensionFresh = now() - lastExtensionAt < SPOTIFY_EXTENSION_FRESH_MS;
+    if (extensionFresh && source === 'extension' && track && !track.isPaused) return;
+    const playback = await spotify.playback();
+    if (!playback) return;
+    if (!playback.track) {
+      if (!extensionFresh && track) await report({ track: null }, 'spotify');
+      return;
+    }
+    // Both paused: the extension already said so (with more detail).
+    if (extensionFresh && playback.track.isPaused && track) return;
+    await report(playback, 'spotify');
+  }
+
+  function scheduleSpotify(): void {
+    if (opts.pollSpotify === false || !spotify?.connected()) return;
+    if (spotifyTimer) clearTimeout(spotifyTimer);
+    spotifyTimer = setTimeout(() => {
+      void pollSpotify().finally(scheduleSpotify);
+    }, SPOTIFY_POLL_MS);
+    spotifyTimer.unref?.();
+  }
+  if (spotify?.connected() && opts.pollSpotify !== false) {
+    void pollSpotify().finally(scheduleSpotify);
   }
 
   function attachControl(socket: ControlSocket): void {
@@ -372,6 +460,34 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
         }
         attachControl(socket);
       });
+      if (spotify) {
+        // The owner clicks "Conectar con Spotify" in Settings: a link with the music token that lands here.
+        app.get(SPOTIFY_LOGIN_PATH, async (request, reply) => {
+          const token = new URL(request.url, 'http://localhost').searchParams.get('token') ?? '';
+          if (!timingSafeEqual(token, config.token)) return reply.code(401).send({ error: 'unauthorized' });
+          return reply.redirect(spotify.authorizeUrl());
+        });
+        app.get(SPOTIFY_CALLBACK_PATH, async (request, reply) => {
+          const params = new URL(request.url, 'http://localhost').searchParams;
+          const error = params.get('error');
+          const code = params.get('code');
+          const state = params.get('state');
+          const problem = error
+            ? `Spotify dijo: ${error}`
+            : !code || !state
+              ? 'faltan datos en la respuesta de Spotify'
+              : await spotify.exchangeCode(code, state);
+          if (problem) console.warn(`${LOG_PREFIX} Spotify: no se pudo conectar (${problem})`);
+          else {
+            console.log(`${LOG_PREFIX} Conectado a la cuenta de Spotify`);
+            void pollSpotify();
+          }
+          const text = problem ? `No se pudo conectar con Spotify: ${problem}.` : 'Listo: la oficina ya está conectada a Spotify. Puedes cerrar esta pestaña.';
+          return reply
+            .type('text/html; charset=utf-8')
+            .send(`<!doctype html><html lang="es"><meta charset="utf-8"><title>Javbots</title><body style="font-family:sans-serif;padding:2em">${text}</body></html>`);
+        });
+      }
       app.post(MUSIC_LYRICS_API_PATH, async (request, reply) => {
         const auth = request.headers.authorization ?? '';
         if (!timingSafeEqual(auth, `Bearer ${config.token}`)) {
@@ -409,6 +525,18 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
           if (client.privileged) sendControl(String(msg.action));
           return true;
         }
+        case 'disconnectSpotify': {
+          if (!client.privileged || !spotify) return true;
+          spotify.disconnect();
+          if (source === 'spotify' && track) {
+            track = undefined;
+            source = undefined;
+            songChanged(undefined);
+            broadcastNowPlaying();
+          }
+          broadcastStatus();
+          return true;
+        }
         case 'installMusicExtension': {
           if (!client.privileged) return true;
           const serverUrl = opts.serverUrl();
@@ -434,6 +562,7 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
     dispose() {
       if (staleTimer) clearTimeout(staleTimer);
       if (lyricsTimer) clearTimeout(lyricsTimer);
+      if (spotifyTimer) clearTimeout(spotifyTimer);
       screen?.close();
       clients.clear();
     },
@@ -443,5 +572,6 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
     currentLyrics: () => lyrics,
     screenState,
     sendControl,
+    pollSpotify,
   };
 }

@@ -63,6 +63,48 @@ export function MusicSettings({
             {copied ? 'Token copiado' : 'Copiar el token (para instalarla a mano)'}
           </button>
         )}
+        <div className="flex flex-col gap-6 pt-6 border-t-2 border-border">
+          {!status.spotifyConfigured ? (
+            <span>
+              Sin Spotify abierto en esta computadora, la oficina puede preguntarle a tu cuenta qué suena (en el
+              celular, una bocina…): pon <code>spotifyClientId</code> en <code>music.json</code> (ver el README de
+              la música).
+            </span>
+          ) : status.spotifyConnected ? (
+            <>
+              <span>
+                Conectada a tu cuenta de Spotify: la oficina ve lo que suena aunque Spotify no esté abierto aquí
+                {status.source === 'spotify' ? ' (ahora mismo la canción viene de ahí).' : '.'}
+              </span>
+              {status.token && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => transport.send({ type: 'disconnectSpotify' })}
+                >
+                  Desconectar de Spotify
+                </Button>
+              )}
+            </>
+          ) : (
+            <>
+              <span>
+                Sin Spotify abierto en esta computadora, la oficina puede preguntarle a tu cuenta qué suena (en
+                el celular, una bocina…).
+              </span>
+              {status.token && (
+                <a
+                  className="self-start text-accent-bright underline text-xs"
+                  href={`/api/music/spotify/login?token=${encodeURIComponent(status.token)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Conectar con Spotify
+                </a>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -46,8 +46,31 @@ Spotify + Spicetify ── javbots-musica.js ──POST /api/music──▶ serv
   funcionando.
 - Si pasan 90 s sin noticias de la extensión (Spotify cerrado), la canción desaparece.
 - **Otros dispositivos (Echo, bocinas):** la extensión manda lo que el Spotify de escritorio sabe de la
-  reproducción, incluido el nombre del dispositivo cuando no es la computadora. Solo funciona con el Spotify de
-  escritorio abierto.
+  reproducción, incluido el nombre del dispositivo cuando no es la computadora. Con Spotify cerrado en la
+  computadora, la oficina puede seguir viendo lo que suena si la conectas a tu cuenta (sección siguiente).
+
+## Sin Spotify abierto en la computadora (opcional)
+
+La oficina puede preguntarle directamente a tu cuenta de Spotify qué suena (en el celular, una bocina, otra
+computadora…) con la API web de Spotify. Hace falta una app en el
+[panel de desarrollador de Spotify](https://developer.spotify.com/dashboard) (gratis, con tu misma cuenta):
+
+1. Crea la app (Web API) y en sus *Redirect URIs* agrega `http://127.0.0.1:3100/api/music/spotify/callback`
+   (con el puerto en que corre la oficina).
+2. Pon su *Client ID* en `~/.pixel-agents/music.json` y reinicia la oficina:
+
+   ```json
+   { "enabled": true, "token": "…", "spotifyClientId": "…" }
+   ```
+
+3. En Ajustes → Música, **Conectar con Spotify**: se abre la página de Spotify, aceptas y listo. La sesión queda
+   en `music.json` (`spotifyRefreshToken`); **Desconectar de Spotify** la borra.
+
+No hay *client secret*: el inicio de sesión usa PKCE, así que nada de la app queda expuesto. Mientras el Spotify de
+la computadora esté abierto y sonando, la extensión sigue siendo la fuente (trae la letra de Spotify, el tempo y
+avisa al instante); la cuenta se consulta cada 4 s solo cuando la extensión no reporta nada o reporta pausa, y si
+en otro aparato sí suena algo, gana ese. La letra entonces viene de LRCLIB. Los botones de la música (también los
+de otras pantallas) funcionan igual sin la extensión, a través de la API.
 
 ## Pantallas en la red (opcional)
 
@@ -61,9 +84,9 @@ canción, la letra y la carátula, y recibe los botones de reproducción. Viene 
 
 | Ruta                       | Qué hace                                                                                         |
 | -------------------------- | ------------------------------------------------------------------------------------------------ |
-| `GET /api/music/now`       | `{ track, lyrics, lyricsLoading }`. `track.positionMs` ya viene adelantada al momento de pedirla; `track.volume` (0..1) y `track.tempo` (pulsos por minuto) si la extensión los sabe |
+| `GET /api/music/now`       | `{ track, lyrics, lyricsLoading }`. `track.positionMs` ya viene adelantada al momento de pedirla; `track.volume` (0..1) y `track.tempo` (pulsos por minuto) si la fuente los sabe |
 | `GET /api/music/cover`     | La carátula (imagen)                                                                             |
-| `POST /api/music/control`  | `{ "action": "previous" \| "togglePlay" \| "next" \| "volumeUp" \| "volumeDown" }`. 409 si Spotify no está abierto con la extensión |
+| `POST /api/music/control`  | `{ "action": "previous" \| "togglePlay" \| "next" \| "volumeUp" \| "volumeDown" }`. 409 si no hay extensión conectada ni cuenta de Spotify |
 
 Todas piden `Authorization: Bearer <token de música>`. Cualquiera en tu red que tenga ese token puede ver qué
 escuchas y cambiar de canción o de volumen (nada más): no lo compartas. Windows puede pedir permiso en el firewall la primera vez.
@@ -76,7 +99,7 @@ botones de volumen. Para tenerlo, vuelve a instalar la extensión desde Ajustes.
 
 | Carpeta             | Qué hay                                                                                                     |
 | ------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `server/`           | Ruta `/api/music`, token, carátulas, instalación en Spicetify, puerto de pantallas (`screenServer.ts`)     |
+| `server/`           | Ruta `/api/music`, token, carátulas, instalación en Spicetify, puerto de pantallas (`screenServer.ts`), API web de Spotify (`spotifyApi.ts`) |
 | `webview/`          | Columna, sección de Ajustes, estado, tocadiscos que gira, cuadro y notas                                    |
 | `spicetify/`        | La extensión que corre dentro de Spotify                                                                    |
 | `assets/furniture/` | Muebles `TURNTABLE` y `ALBUM_FRAME` (esbuild los copia a `dist/assets`)                                     |
