@@ -14,6 +14,15 @@ import {
   HOLO_BUST_FLICKER_PERIOD_SEC,
   HOLO_BUST_LIGHT,
   HOLO_BUST_LIGHT_DIM,
+  JUKEBOX_CLASSIC_BANDS,
+  JUKEBOX_CYCLE_STEP_SEC,
+  JUKEBOX_MODERN_BANDS,
+  JUKEBOX_RETRO_FRACTION,
+  JUKEBOX_RETRO_LAMP,
+  JUKEBOX_RETRO_LAMP_DIM,
+  JUKEBOX_RETRO_ORANGE,
+  JUKEBOX_RETRO_ORANGE_DIM,
+  JUKEBOX_RETRO_PERIOD_SEC,
   LAVA_BANDS,
   LAVA_CYCLE_STEP_SEC,
   MATRIX_BANDS,
@@ -164,6 +173,22 @@ const AMBIENT_SPECS: Record<string, AmbientSpec> = {
     swapFraction: NEON_FLICKER_FRACTION,
   },
   LAVA_LAMP: { kind: 'cycle', colors: LAVA_BANDS, stepSec: LAVA_CYCLE_STEP_SEC },
+  // Jukeboxes (features/musica): the light tubes run; the 70s one breathes
+  JUKEBOX_CLASSIC: {
+    kind: 'cycle',
+    colors: JUKEBOX_CLASSIC_BANDS,
+    stepSec: JUKEBOX_CYCLE_STEP_SEC,
+  },
+  JUKEBOX_MODERN: { kind: 'cycle', colors: JUKEBOX_MODERN_BANDS, stepSec: JUKEBOX_CYCLE_STEP_SEC },
+  JUKEBOX_RETRO: {
+    kind: 'pulse',
+    swaps: [
+      [JUKEBOX_RETRO_LAMP, JUKEBOX_RETRO_LAMP_DIM],
+      [JUKEBOX_RETRO_ORANGE, JUKEBOX_RETRO_ORANGE_DIM],
+    ],
+    periodSec: JUKEBOX_RETRO_PERIOD_SEC,
+    swapFraction: JUKEBOX_RETRO_FRACTION,
+  },
   // Matrix rain falls; server LEDs blink
   MATRIX_SCREEN: { kind: 'cycle', colors: MATRIX_BANDS, stepSec: MATRIX_CYCLE_STEP_SEC },
   SERVER_RACK: {

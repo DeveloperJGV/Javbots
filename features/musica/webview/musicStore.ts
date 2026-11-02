@@ -8,6 +8,8 @@ export interface MusicState {
   track?: MusicTrack;
   /** When the current report arrived (ms): the progress bar runs from here. */
   receivedAt: number;
+  /** The jukebox whose style menu is open (its uid in the layout), if any. */
+  jukeboxPickerUid?: string;
   /** Since when the track has been paused (ms), for hiding the column. */
   pausedSince?: number;
   /** The cover reduced to pixel art for the office's ALBUM_FRAME (null while decoding / none). */
@@ -49,6 +51,15 @@ class MusicStore {
   private set(next: Partial<MusicState>): void {
     this.state = { ...this.state, ...next };
     for (const l of this.listeners) l();
+  }
+
+  /** Open / close the jukebox style menu (a click on a jukebox). */
+  openJukeboxPicker(uid: string): void {
+    this.set({ jukeboxPickerUid: uid });
+  }
+
+  closeJukeboxPicker(): void {
+    this.set({ jukeboxPickerUid: undefined });
   }
 
   /** Show / hide the column (a click on the turntable). */

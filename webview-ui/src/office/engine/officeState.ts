@@ -1,4 +1,6 @@
 import { pickDiversePalette } from '../../../../core/src/paletteUtils.js';
+import { BODEGA_EMPTY_TYPE, BODEGA_TYPE } from '../../../../features/bodega/webview/constants.js';
+import { baseType as bodegaBaseType } from '../../../../features/bodega/webview/storedItems.js';
 import {
   applyGithubFurniture,
   isCabinet,
@@ -9,6 +11,7 @@ import {
 import { githubStore } from '../../../../features/github/webview/githubStore.js';
 import {
   applyMusicFurniture,
+  isJukebox,
   isTurntable,
   MusicNotes,
 } from '../../../../features/musica/webview/musicFurniture.js';
@@ -157,6 +160,11 @@ function seatFacingOffset(direction: Direction): { dCol: number; dRow: number } 
   if (direction === Direction.DOWN) return { dCol: 0, dRow: 1 };
   return { dCol: 0, dRow: -1 };
 }
+
+const isBodega = (f: { type?: string }): boolean => {
+  const t = bodegaBaseType(f.type ?? '');
+  return t === BODEGA_TYPE || t === BODEGA_EMPTY_TYPE;
+};
 
 export class OfficeState {
   layout: OfficeLayout;
@@ -1154,6 +1162,28 @@ export class OfficeState {
   /** Whether a world point lands on the turntable (features/musica: a click shows / hides the music column). */
   isTurntableAt(worldX: number, worldY: number): boolean {
     return this.furniture.some((f) => isTurntable(f) && hitsPaintedPixel(f, worldX, worldY));
+  }
+
+  /** The layout uid of the jukebox under a world point (features/musica: a click opens its style menu). */
+  jukeboxUidAt(worldX: number, worldY: number): string | null {
+    const hit = this.furniture.find((f) => isJukebox(f) && hitsPaintedPixel(f, worldX, worldY));
+    if (!hit) return null;
+    const col = Math.round(hit.x / TILE_SIZE);
+    const bottomRow = Math.round((hit.y + hit.sprite.length) / TILE_SIZE);
+    const placed = this.layout.furniture.find((p) => {
+      const entry = getCatalogEntry(p.type);
+      return (
+        p.type.split(':')[0] === hit.type?.split(':')[0] &&
+        p.col === col &&
+        p.row + (entry?.footprintH ?? 0) === bottomRow
+      );
+    });
+    return placed?.uid ?? null;
+  }
+
+  /** Whether a world point lands on the storage shelf (features/bodega: a click opens the stored furniture). */
+  isBodegaAt(worldX: number, worldY: number): boolean {
+    return this.furniture.some((f) => isBodega(f) && hitsPaintedPixel(f, worldX, worldY));
   }
 
   /** Whether a world point lands on the usage meter (features/usage). */

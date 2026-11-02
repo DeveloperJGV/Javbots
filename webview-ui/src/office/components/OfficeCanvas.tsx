@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 
+import { bodegaStore } from '../../../../features/bodega/webview/bodegaStore.js';
 import { githubStore } from '../../../../features/github/webview/githubStore.js';
 import { musicStore } from '../../../../features/musica/webview/musicStore.js';
 import { usageStore } from '../../../../features/usage/webview/usageStore.js';
@@ -535,6 +536,8 @@ export function OfficeCanvas({
             petId === null &&
             (officeState.isBoardAt(pos.worldX, pos.worldY) ||
               officeState.isTurntableAt(pos.worldX, pos.worldY) ||
+              officeState.isBodegaAt(pos.worldX, pos.worldY) ||
+              officeState.jukeboxUidAt(pos.worldX, pos.worldY) !== null ||
               officeState.isUsageMeterAt(pos.worldX, pos.worldY) ||
               github !== null),
           selectedAgentId: officeState.selectedAgentId,
@@ -780,6 +783,19 @@ export function OfficeCanvas({
       // Turntable (features/musica): show / hide the music column.
       if (officeState.isTurntableAt(pos.worldX, pos.worldY)) {
         musicStore.toggleColumn();
+        return;
+      }
+
+      // Jukebox (features/musica): its style menu.
+      const jukeboxUid = officeState.jukeboxUidAt(pos.worldX, pos.worldY);
+      if (jukeboxUid) {
+        musicStore.openJukeboxPicker(jukeboxUid);
+        return;
+      }
+
+      // Storage shelf (features/bodega): open the stored furniture.
+      if (officeState.isBodegaAt(pos.worldX, pos.worldY)) {
+        bodegaStore.open();
         return;
       }
 

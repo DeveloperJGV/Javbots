@@ -25,11 +25,11 @@ cambiamos el idioma, el arte, los cuartos y le agregamos cosas nuevas. La docume
 
 ## Novedades
 
+- **2 de noviembre de 2026**: sala de música (tienda de discos retro con cabina de DJ, instrumentos, karaoke y
+  guiños geek), una rockola con tres estilos que se cambian con un clic y una bodega con miniaturas de todo lo que
+  no está puesto en la oficina.
 - **30 de octubre de 2026**: la música ya no necesita Spotify abierto en la computadora: la oficina se conecta a
   tu cuenta de Spotify y ve lo que suena en el celular o en una bocina; los botones funcionan igual por esa vía.
-- **25 de octubre de 2026**: las otras pantallas de la casa también pueden pausar, cambiar de canción y subir o
-  bajar el volumen; la extensión de Spotify cuenta el volumen y el tempo. Fable en el uso de Claude (barra,
-  tablero de tres tubos y detalle), una sala de cómputo con más vida y la sala de GitHub (un archivero por repo).
 
 Todo lo nuevo, por fecha, en [NOVEDADES.md](NOVEDADES.md).
 

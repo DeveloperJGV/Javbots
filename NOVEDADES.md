@@ -3,6 +3,18 @@
 Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
 (Pixel Agents) está en [CHANGELOG.md](CHANGELOG.md).
 
+## 2 de noviembre de 2026
+
+- **Sala de música** donde estaba el laboratorio de Portal: una tienda de discos retro con neón, estantes de discos
+  y casetes, cajas de discos, sillón con audífonos, batería, piano, micrófono, bocinas, tele de karaoke y una cabina
+  de DJ con el tocadiscos (que se mudó de Becarios junto con el cuadro de la carátula). Con guiños: el amplificador de
+  Marty en _Volver al futuro_, la radio de _Portal_ y una guitarra de _Guitar Hero_.
+- **Rockola con tres estilos**: clásica de los 50, setentera y digital. Un clic en ella y escoges cómo se ve; sus
+  luces corren y la digital muestra la carátula de lo que suena.
+- **Bodega** en el Sótano: un clic en el estante muestra, con miniaturas, todos los muebles que no están puestos en
+  la oficina (y los personajes en pausa). "Sacar" abre el editor con el mueble listo para colocarlo; lo que borras
+  vuelve solo a la bodega. Detalles en [features/bodega](features/bodega/README.md).
+
 ## 30 de octubre de 2026
 
 - **La música sin Spotify abierto en la computadora.** La oficina se puede conectar a tu cuenta de Spotify

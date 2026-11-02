@@ -1,0 +1,13 @@
+{
+  "id": "WALL_GUITAR_ELECTRIC",
+  "name": "Guitarra el\u00e9ctrica",
+  "category": "wall",
+  "type": "asset",
+  "canPlaceOnWalls": true,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 0,
+  "width": 16,
+  "height": 32,
+  "footprintW": 1,
+  "footprintH": 2
+}

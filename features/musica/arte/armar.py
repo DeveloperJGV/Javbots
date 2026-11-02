@@ -36,7 +36,7 @@ def guardar(id_, nombre, im, fw, fh, **extra):
 
 # Tocadiscos: la maleta abierta tal cual (llena sus 2x2 cuadros); el giro del disco va por código.
 tocadiscos = Image.open(AQUI / 'originales' / 'tocadiscos_b.png').convert('RGBA')
-guardar('TURNTABLE', 'Tocadiscos', tocadiscos, 2, 2, backgroundTiles=1)
+guardar('TURNTABLE', 'Tocadiscos', tocadiscos, 2, 2, backgroundTiles=1, canPlaceOnSurfaces=True)  # va sobre la cabina de DJ
 
 # Cuadro de la carátula (pared): marco de madera oscura con un disco genérico. Cuando suena algo, la página
 # pinta la carátula pixeleada en el hueco de 22x22 que empieza en (5, 5) (MUSIC_COVER_* en webview/constants.ts).

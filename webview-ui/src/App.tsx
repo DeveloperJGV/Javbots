@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { BodegaPanel } from '../../features/bodega/webview/BodegaPanel.js';
+import { bodegaStore } from '../../features/bodega/webview/bodegaStore.js';
 import { GithubPanel } from '../../features/github/webview/GithubPanel.js';
 import { useHerdrTabs } from '../../features/herdr/webview/useHerdrTabs.js';
+import { JukeboxPicker } from '../../features/musica/webview/JukeboxPicker.js';
 import { LyricBubble } from '../../features/musica/webview/LyricBubble.js';
 import { MusicColumn } from '../../features/musica/webview/MusicColumn.js';
 import { MusicSettings } from '../../features/musica/webview/MusicSettings.js';
@@ -278,6 +281,48 @@ function App() {
     useCallback(() => setEditorTickForKeyboard((n) => n + 1), []),
     editor.handleToggleEditMode,
   );
+
+  // Storage room (features/bodega): "Sacar" opens the editor with that piece ready to place.
+  const editorRef = useRef(editor);
+  editorRef.current = editor;
+  useEffect(
+    () =>
+      bodegaStore.onTakeOut((type) => {
+        const ed = editorRef.current;
+        if (!ed.isEditMode) ed.handleToggleEditMode();
+        if (editorState.activeTool !== EditTool.FURNITURE_PLACE)
+          ed.handleToolChange(EditTool.FURNITURE_PLACE);
+        if (editorState.selectedFurnitureType !== type) ed.handleFurnitureTypeChange(type);
+      }),
+    [],
+  );
+  const getPlacedTypes = useCallback(
+    () =>
+      getOfficeState()
+        .getLayout()
+        .furniture.map((f) => f.type),
+    [],
+  );
+
+  // Jukebox style menu (features/musica): swap the piece in place and save, like an editor change.
+  const getFurnitureType = useCallback(
+    (uid: string) =>
+      getOfficeState()
+        .getLayout()
+        .furniture.find((f) => f.uid === uid)?.type,
+    [],
+  );
+  const handlePickJukebox = useCallback((uid: string, type: string) => {
+    const os = getOfficeState();
+    const layout = os.getLayout();
+    const next: OfficeLayout = {
+      ...layout,
+      furniture: layout.furniture.map((f) => (f.uid === uid ? { ...f, type } : f)),
+    };
+    os.rebuildFromLayout(next);
+    editorRef.current.setLastSavedLayout(next);
+    transport.send({ type: 'saveLayout', layout: next as unknown as Record<string, unknown> });
+  }, []);
 
   const handleCloseAgent = useCallback((id: number) => {
     transport.send({ type: 'closeAgent', id });
@@ -606,6 +651,9 @@ function App() {
         <UsageBar usage={usage} />
         {/* Optional feature (features/github): repositories as cabinets in the GitHub room */}
         <GithubPanel transport={transport} />
+        {/* Optional feature (features/bodega): every piece of furniture not in the office, with thumbnails */}
+        <BodegaPanel getPlacedTypes={getPlacedTypes} />
+        <JukeboxPicker getType={getFurnitureType} onPick={handlePickJukebox} />
 
         <ActivityBoardModal
           isOpen={isBoardOpen}

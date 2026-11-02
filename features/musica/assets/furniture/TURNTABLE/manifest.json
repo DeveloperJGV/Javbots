@@ -4,7 +4,7 @@
   "category": "misc",
   "type": "asset",
   "canPlaceOnWalls": false,
-  "canPlaceOnSurfaces": false,
+  "canPlaceOnSurfaces": true,
   "backgroundTiles": 1,
   "width": 32,
   "height": 32,

@@ -1,6 +1,8 @@
 import type { FurnitureInstance, SpriteData } from '../../../webview-ui/src/office/types.js';
 import {
   ALBUM_FRAME_TYPE,
+  JUKEBOX_SCREEN,
+  JUKEBOX_STYLES,
   MUSIC_COVER_SIZE,
   MUSIC_COVER_X,
   MUSIC_COVER_Y,
@@ -102,6 +104,38 @@ export function framedCover(frame: SpriteData, cover: SpriteData): SpriteData {
   return out;
 }
 
+const screenCache = new WeakMap<SpriteData, WeakMap<SpriteData, SpriteData>>();
+
+/** The digital jukebox with the cover, shrunk to its screen (nearest pixel: stays pixel art). */
+export function screenCover(jukebox: SpriteData, cover: SpriteData): SpriteData {
+  let byCover = screenCache.get(jukebox);
+  if (!byCover) {
+    byCover = new WeakMap();
+    screenCache.set(jukebox, byCover);
+  }
+  const hit = byCover.get(cover);
+  if (hit) return hit;
+  const out = jukebox.map((row) => row.slice());
+  const { x: sx, y: sy, size } = JUKEBOX_SCREEN;
+  const src = cover.length;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const color =
+        cover[Math.floor(((y + 0.5) * src) / size)]?.[Math.floor(((x + 0.5) * src) / size)];
+      if (color && out[sy + y]) out[sy + y][sx + x] = color;
+    }
+  }
+  byCover.set(cover, out);
+  return out;
+}
+
+const JUKEBOX_TYPES = new Set(JUKEBOX_STYLES.map((s) => s.type));
+
+/** Whether a furniture instance is a jukebox (any style): a click opens the style menu. */
+export function isJukebox(f: FurnitureInstance): boolean {
+  return JUKEBOX_TYPES.has(baseType(f.type));
+}
+
 /** Whether a furniture instance is the album frame. */
 export function isAlbumFrame(f: FurnitureInstance): boolean {
   return baseType(f.type) === ALBUM_FRAME_TYPE;
@@ -143,6 +177,8 @@ export function applyMusicFurniture(
     const type = baseType(f.type);
     if (playing && type === TURNTABLE_TYPE) return { ...f, sprite: spinSprite(f.sprite, step) };
     if (cover && type === ALBUM_FRAME_TYPE) return { ...f, sprite: framedCover(f.sprite, cover) };
+    if (playing && cover && type === JUKEBOX_SCREEN.type)
+      return { ...f, sprite: screenCover(f.sprite, cover) };
     return f;
   });
 }

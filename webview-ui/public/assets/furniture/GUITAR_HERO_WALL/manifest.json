@@ -1,0 +1,13 @@
+{
+  "id": "GUITAR_HERO_WALL",
+  "name": "Guitarra de Guitar Hero",
+  "category": "wall",
+  "type": "asset",
+  "canPlaceOnWalls": true,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 0,
+  "width": 16,
+  "height": 32,
+  "footprintW": 1,
+  "footprintH": 2
+}

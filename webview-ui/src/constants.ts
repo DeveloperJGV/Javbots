@@ -405,6 +405,17 @@ export const RACK_BLINK_FRACTION = 0.3;
 /** Lava lamp (Fase 4, Becarios): its bands as drawn in LAVA_LAMP.png; they creep along slowly. */
 export const LAVA_BANDS = ['#ff5a3c', '#ff9a3c', '#b8389c', '#7a2a8a'] as const;
 export const LAVA_CYCLE_STEP_SEC = 0.6;
+/** Jukebox lights (features/musica, arte/pixellab/musica/rockola/armar.py): exact colors of each style's tubes. */
+export const JUKEBOX_CLASSIC_BANDS = ['#ff5ffd', '#ffc94a', '#4fe3f0'] as const;
+export const JUKEBOX_MODERN_BANDS = ['#f500ef', '#ac00f2', '#43f2ff', '#02acea'] as const;
+export const JUKEBOX_CYCLE_STEP_SEC = 0.35;
+/** The 70s jukebox: its amber panel lamps dim and come back. */
+export const JUKEBOX_RETRO_LAMP = '#ffd268';
+export const JUKEBOX_RETRO_LAMP_DIM = '#c99a3e';
+export const JUKEBOX_RETRO_ORANGE = '#fa560b';
+export const JUKEBOX_RETRO_ORANGE_DIM = '#c4400a';
+export const JUKEBOX_RETRO_PERIOD_SEC = 1.2;
+export const JUKEBOX_RETRO_FRACTION = 0.4;
 export const PORTAL_SPARK_SPAWN_SEC = 0.4;
 export const PORTAL_SPARK_LIFE_SEC = 0.7;
 export const PORTAL_BLUE_SPARKS = ['#ffffff', '#bfe8ff'] as const;
