@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { DayNightMode, HooksConsentRequest } from '../../../core/src/messages.js';
+import { GROUND_FLOOR } from '../../../core/src/offices.js';
 import {
   playDoneSound,
   playPartySound,
@@ -29,7 +30,7 @@ import {
 } from '../office/toolUtils.js';
 import type { OfficeLayout, ToolActivity } from '../office/types.js';
 import { setWallSprites } from '../office/wallTiles.js';
-import { officesStore, requestedOffice } from '../offices.js';
+import { officesStore, requestedFloor, requestedOffice } from '../offices.js';
 import { setPackOffice } from '../packs/registry.js';
 import { isBrowserRuntime, isE2E } from '../runtime.js';
 import { transport } from '../transport/index.js';
@@ -254,10 +255,12 @@ export function useExtensionMessages(
       }
 
       if (msg.type === 'officesLoaded') {
-        setPackOffice(msg.current);
+        setPackOffice(msg.current, msg.floor);
         officesStore.set({
           current: msg.current,
+          floor: msg.floor ?? GROUND_FLOOR,
           offices: msg.offices,
+          mainFloors: msg.mainFloors,
           mainLabel: msg.mainLabel,
           mainTitle: msg.mainTitle,
         });
@@ -856,7 +859,7 @@ export function useExtensionMessages(
       }
     };
     const unsubscribe = transport.onMessage(handler);
-    transport.send({ type: 'webviewReady', office: requestedOffice });
+    transport.send({ type: 'webviewReady', office: requestedOffice, floor: requestedFloor });
     return unsubscribe;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getOfficeState]);

@@ -25,9 +25,11 @@ cambiamos el idioma, el arte, los cuartos y le agregamos cosas nuevas. La docume
 
 ## Novedades
 
-- **3 de noviembre de 2026**: tablero de conexiones en el Sótano (un foco por servicio de fuera, con su estado y
-  para qué sirve), un solo reproductor en la sala de música con cuatro estilos (tocadiscos o tres rockolas) y los
-  boletos del mostrador, que muestran tus próximos conciertos de Google Calendar y buscan más en Ticketmaster México.
+- **3 de noviembre de 2026**: pisos con elevador (cada oficina es un edificio; los pisos nuevos traen su propio
+  plano y los agentes viven en la Planta baja), tablero de conexiones en el Sótano (un foco por servicio de fuera,
+  con su estado y para qué sirve), un solo reproductor en la sala de música con cuatro estilos (tocadiscos o tres
+  rockolas) y los boletos del mostrador, que muestran tus próximos conciertos de Google Calendar y buscan más en
+  Ticketmaster México.
 - **2 de noviembre de 2026**: sala de música (tienda de discos retro con cabina de DJ, instrumentos, karaoke y
   guiños geek), una rockola con tres estilos que se cambian con un clic y una bodega con miniaturas de todo lo que
   no está puesto en la oficina.

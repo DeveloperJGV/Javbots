@@ -21,7 +21,7 @@ import {
   WS_CLOSE_FORBIDDEN_ORIGIN,
   WS_CLOSE_UNAUTHORIZED,
 } from './constants.js';
-import { knownOffice } from './officeRegistry.js';
+import { knownFloor, knownOffice } from './officeRegistry.js';
 import type { FeatureClient, ServerFeature } from './serverFeature.js';
 import type { AgentState } from './types.js';
 
@@ -64,6 +64,11 @@ const startTime = Date.now();
 /** The office a page declared in its /ws URL (`?office=`), when this server knows it. */
 export function officeFromUrl(url: string | undefined): string | null {
   return knownOffice(new URL(url ?? '/', 'http://localhost').searchParams.get('office'));
+}
+
+/** The floor of that office the page declared in its /ws URL (`?floor=`); the ground floor when unknown. */
+export function floorFromUrl(url: string | undefined, office: string): string {
+  return knownFloor(office, new URL(url ?? '/', 'http://localhost').searchParams.get('floor'));
 }
 
 /** `/ws?token=abc&x=1` → `/ws?token=…&x=1` (log lines only). */
@@ -228,7 +233,12 @@ function registerWebSocketRoute(app: FastifyInstance, options: HttpServerOptions
     // Which office this page shows: from its /ws URL (so a reconnect after a server restart keeps it) or its
     // webviewReady. Until one of them says, layout and seat saves are refused: they would land in another office.
     const declared = officeFromUrl(request.url);
-    const session: ClientSession = { office: declared ?? MAIN_OFFICE, known: declared !== null };
+    const office = declared ?? MAIN_OFFICE;
+    const session: ClientSession = {
+      office,
+      floor: floorFromUrl(request.url, office),
+      known: declared !== null,
+    };
 
     const features = options.features ?? [];
     const client: FeatureClient = { send: (m) => safeSend(socket, m), privileged };

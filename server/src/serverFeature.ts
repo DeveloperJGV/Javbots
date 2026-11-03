@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 
 import type { ConnectionInfo } from '../../core/src/messages.js';
+import type { FloorSpec } from '../../core/src/offices.js';
 
 /** One connected WebSocket client, as a feature sees it. */
 export interface FeatureClient {
@@ -25,4 +26,9 @@ export interface ServerFeature {
   dispose?(): void;
   /** The outside services it talks to and their state right now (features/conexiones shows them). */
   connections?(): ConnectionInfo[];
+  /**
+   * Floors it adds to a building (core/src/offices.ts), read once at startup: id, level, button, name and starting
+   * layout. Its page code finds out which floor the page shows from officesStore (webview-ui/src/offices.ts).
+   */
+  floors?(): FloorSpec[];
 }

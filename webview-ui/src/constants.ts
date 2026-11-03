@@ -815,6 +815,25 @@ export const OFFICE_STORAGE_KEY = 'javbots.oficina';
 /** Name of the main office on the switch when the pack doesn't give one. */
 export const MAIN_OFFICE_LABEL = 'Javbots';
 
+// ── Floors (core/src/offices.ts) and the elevator panel on the left that picks building and floor ──
+/** URL parameter that picks the floor of the office (?piso=x); also remembered per browser, per office. */
+export const FLOOR_URL_PARAM = 'piso';
+export const FLOOR_STORAGE_KEY_PREFIX = 'javbots.piso.';
+/** The ground floor on the elevator: the office's own layout, where the agents sit. */
+export const GROUND_FLOOR_LABEL = 'Planta baja';
+export const GROUND_FLOOR_BUTTON = 'PB';
+/** The panel: a steel plate with dark buttons; the floor you're on is lit. */
+export const ELEVATOR_PLATE_BG = '#3a3d4e';
+export const ELEVATOR_PLATE_BORDER = '#5c6078';
+export const ELEVATOR_BUTTON_BG = '#23243a';
+export const ELEVATOR_BUTTON_TEXT = '#c8cbe0';
+export const ELEVATOR_LIT_BG = '#ffb84a';
+export const ELEVATOR_LIT_BORDER = '#ffe2a8';
+export const ELEVATOR_LIT_TEXT = '#2a1a00';
+/** The little display over the buttons that says the floor you're on. */
+export const ELEVATOR_DISPLAY_BG = '#120c08';
+export const ELEVATOR_DISPLAY_TEXT = '#ff9a2e';
+
 // ── Walking staff (office/staff): furniture a private pack draws as people (WebviewPack.staff) ──
 /** How long a guard checks the piece on an alarm before going back to its post. */
 export const STAFF_PATROL_CHECK_SEC = 4;

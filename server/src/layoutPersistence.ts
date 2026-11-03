@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-import { MAIN_OFFICE, officeLayoutFileName } from '../../core/src/offices.js';
+import { floorLayoutFileName, GROUND_FLOOR, MAIN_OFFICE } from '../../core/src/offices.js';
 import { LAYOUT_FILE_DIR, LAYOUT_FILE_POLL_INTERVAL_MS, LAYOUT_REVISION_KEY } from './constants.js';
 
 export interface LayoutWatcher {
@@ -10,13 +10,19 @@ export interface LayoutWatcher {
   dispose(): void;
 }
 
-/** ~/.pixel-agents/layout.json for the main office; each other office keeps its own file (core/src/offices.ts). */
-function getLayoutFilePath(office: string = MAIN_OFFICE): string {
-  return path.join(os.homedir(), LAYOUT_FILE_DIR, officeLayoutFileName(office));
+/**
+ * ~/.pixel-agents/layout.json for the main office's ground floor; each other office and each other floor keeps its
+ * own file (core/src/offices.ts: floorLayoutFileName).
+ */
+function getLayoutFilePath(office: string = MAIN_OFFICE, floor: string = GROUND_FLOOR): string {
+  return path.join(os.homedir(), LAYOUT_FILE_DIR, floorLayoutFileName(office, floor));
 }
 
-export function readLayoutFromFile(office: string = MAIN_OFFICE): Record<string, unknown> | null {
-  const filePath = getLayoutFilePath(office);
+export function readLayoutFromFile(
+  office: string = MAIN_OFFICE,
+  floor: string = GROUND_FLOOR,
+): Record<string, unknown> | null {
+  const filePath = getLayoutFilePath(office, floor);
   try {
     if (!fs.existsSync(filePath)) return null;
     const raw = fs.readFileSync(filePath, 'utf-8');
@@ -30,8 +36,9 @@ export function readLayoutFromFile(office: string = MAIN_OFFICE): Record<string,
 export function writeLayoutToFile(
   layout: Record<string, unknown>,
   office: string = MAIN_OFFICE,
+  floor: string = GROUND_FLOOR,
 ): void {
-  const filePath = getLayoutFilePath(office);
+  const filePath = getLayoutFilePath(office, floor);
   const dir = path.dirname(filePath);
   try {
     if (!fs.existsSync(dir)) {

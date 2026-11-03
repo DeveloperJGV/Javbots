@@ -1,4 +1,9 @@
-import { agentIdFromSeatKey, MAIN_OFFICE, officeSeatKey } from '../../core/src/offices.js';
+import {
+  agentIdFromSeatKey,
+  GROUND_FLOOR,
+  MAIN_OFFICE,
+  officeSeatKey,
+} from '../../core/src/offices.js';
 import type { HookProvider } from '../../core/src/provider.js';
 import { resendAgentActivity } from './agentActivityResend.js';
 import { buildAgentDiagnostics } from './agentDiagnostics.js';
@@ -16,7 +21,14 @@ import {
 } from './configPersistence.js';
 import { HUE_SHIFT_MAX_DEG, PALETTE_COUNT } from './constants.js';
 import { readLayoutFromFile, writeLayoutToFile } from './layoutPersistence.js';
-import { getMainOfficeNames, getOffices, knownOffice } from './officeRegistry.js';
+import {
+  floorDefaultLayout,
+  getFloors,
+  getMainOfficeNames,
+  getOffices,
+  knownFloor,
+  knownOffice,
+} from './officeRegistry.js';
 import type { ConsentEffects } from './providers/hook/consentExecutor.js';
 import { applyConsentChoice } from './providers/hook/consentExecutor.js';
 import { hooksConsentRequest } from './providers/hook/consentGate.js';
@@ -56,9 +68,11 @@ export interface AssetCache {
   officeLayouts?: Record<string, Record<string, unknown> | null>;
 }
 
-/** Per-connection state: which office this page shows (from its /ws URL or its webviewReady). */
+/** Per-connection state: which office and floor this page shows (from its /ws URL or its webviewReady). */
 export interface ClientSession {
   office: string;
+  /** The floor of that office (core/src/offices.ts); the ground floor when absent. */
+  floor?: string;
   /** The page said which office it shows. Layout and seat saves wait for it. */
   known: boolean;
 }
@@ -85,6 +99,10 @@ export interface ClientMessageContext {
 
 function officeOf(ctx: ClientMessageContext): string {
   return ctx.session?.office ?? MAIN_OFFICE;
+}
+
+function floorOf(ctx: ClientMessageContext): string {
+  return ctx.session?.floor ?? GROUND_FLOOR;
 }
 
 /** A save from a page that hasn't said its office yet could write another office's files. */
@@ -127,6 +145,7 @@ export function handleClientMessage(
     case 'webviewReady':
       if (ctx.session) {
         ctx.session.office = knownOffice(msg.office) ?? MAIN_OFFICE;
+        ctx.session.floor = knownFloor(ctx.session.office, msg.floor);
         ctx.session.known = true;
       }
       handleWebviewReady(send, ctx);
@@ -153,12 +172,14 @@ export function handleClientMessage(
 
     case 'saveLayout':
       if (msg.layout && !officeUnknown(ctx, 'saveLayout')) {
-        writeLayoutToFile(msg.layout as Record<string, unknown>, officeOf(ctx));
+        writeLayoutToFile(msg.layout as Record<string, unknown>, officeOf(ctx), floorOf(ctx));
       }
       break;
 
     case 'saveAgentSeats':
-      if (msg.seats && !officeUnknown(ctx, 'saveAgentSeats')) {
+      // Seats only exist on the ground floor: a page on another floor draws no agents, so its (empty) seats
+      // would wipe the office's.
+      if (msg.seats && !officeUnknown(ctx, 'saveAgentSeats') && floorOf(ctx) === GROUND_FLOOR) {
         const office = officeOf(ctx);
         const seats = msg.seats as Record<
           string,
@@ -423,12 +444,16 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
   const { store, runtime, cache } = ctx;
   const adapter = store.getAdapter();
 
-  // 0. Offices, before anything about agents: the page draws only the ones that sit in its office.
+  // 0. Offices, before anything about agents: the page draws only the ones that sit in its office (and only on
+  // its ground floor).
   const names = getMainOfficeNames();
+  const mainFloors = getFloors(MAIN_OFFICE);
   send({
     type: 'officesLoaded',
     current: officeOf(ctx),
+    floor: floorOf(ctx),
     offices: getOffices().map((o) => ({ ...o })),
+    ...(mainFloors.length ? { mainFloors } : {}),
     ...(names.label ? { mainLabel: names.label } : {}),
     ...(names.title ? { mainTitle: names.title } : {}),
   });
@@ -601,9 +626,14 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
 
   // 7. Layout last (see step 3): flushes the webview's buffered existingAgents
   // into characters once seats are rebuilt.
-  const savedLayout = readLayoutFromFile(office);
+  const floor = floorOf(ctx);
+  const savedLayout = readLayoutFromFile(office, floor);
   const officeDefault =
-    office === MAIN_OFFICE ? cache?.defaultLayout : cache?.officeLayouts?.[office];
+    floor !== GROUND_FLOOR
+      ? floorDefaultLayout(office, floor)
+      : office === MAIN_OFFICE
+        ? cache?.defaultLayout
+        : cache?.officeLayouts?.[office];
   send({ type: 'layoutLoaded', layout: savedLayout ?? officeDefault ?? null });
 
   // 8. Agent state, AFTER layoutLoaded -- the characters they target only

@@ -132,6 +132,8 @@ components:
         - $ref: '#/components/schemas/GithubStatus'
         # Upcoming concerts (feature: features/conciertos)
         - $ref: '#/components/schemas/ConcertsStatus'
+        # Personal agenda (feature: features/agenda)
+        - $ref: '#/components/schemas/AgendaStatus'
         # Outside connections board (feature: features/conexiones)
         - $ref: '#/components/schemas/ConnectionsStatus'
       discriminator: type
@@ -173,6 +175,10 @@ components:
         - $ref: '#/components/schemas/SearchConcerts'
         - $ref: '#/components/schemas/AddConcert'
         - $ref: '#/components/schemas/DisconnectGoogle'
+        # Personal agenda (feature: features/agenda)
+        - $ref: '#/components/schemas/RefreshAgenda'
+        - $ref: '#/components/schemas/AddAgendaItem'
+        - $ref: '#/components/schemas/CompleteAgendaTask'
       discriminator: type
 
     # ── Server message variants ────────────────────────────────────
@@ -859,8 +865,9 @@ components:
     OfficesLoaded:
       description: >-
         The offices this server has (the main one plus the ones private packs
-        declare) and the one this page shows. Sent first on webviewReady, before
-        any agent, so the page knows whose agents to draw.
+        declare) and the one this page shows, with the floor of it this page
+        shows. Sent first on webviewReady, before any agent, so the page knows
+        whose agents to draw (agents are only drawn on the ground floor).
       type: object
       additionalProperties: false
       required: [type, current, offices]
@@ -869,6 +876,14 @@ components:
           const: officesLoaded
         current:
           type: string
+        floor:
+          type: string
+          description: Floor of the current office this page shows (core/src/offices.ts); the ground floor ("pb") when absent.
+        mainFloors:
+          type: array
+          description: Floors of the main office besides the ground floor, top floor first.
+          items:
+            $ref: '#/components/schemas/FloorInfo'
         mainLabel:
           type: string
         mainTitle:
@@ -899,6 +914,28 @@ components:
             type: string
         mainProfile:
           type: string
+        floors:
+          type: array
+          description: Floors of this office besides the ground floor, top floor first.
+          items:
+            $ref: '#/components/schemas/FloorInfo'
+
+    FloorInfo:
+      description: A floor of an office besides the ground floor (core/src/offices.ts FloorDef).
+      type: object
+      additionalProperties: false
+      required: [id, level, label]
+      properties:
+        id:
+          type: string
+        level:
+          type: integer
+          description: 1, 2… above the ground floor (0), -1, -2… below it.
+        button:
+          type: string
+          description: Short text on its elevator button (from the level when absent).
+        label:
+          type: string
 
     WebviewReady:
       description: Client signals it's ready to receive state.
@@ -911,6 +948,9 @@ components:
         office:
           type: string
           description: Office this page shows (core/src/offices.ts); the main office when absent or unknown.
+        floor:
+          type: string
+          description: Floor of that office this page shows; the ground floor when absent or unknown.
 
     LaunchAgent:
       description: Launch a new Claude agent in a new terminal.
@@ -963,7 +1003,7 @@ components:
             $ref: '#/components/schemas/SeatAssignment'
 
     SaveLayout:
-      description: Save the layout of this page's office to ~/.pixel-agents/ (layout.json for the main office).
+      description: Save the layout of this page's office and floor to ~/.pixel-agents/ (layout.json for the main office's ground floor).
       type: object
       additionalProperties: false
       required: [type, layout]
@@ -1280,6 +1320,115 @@ components:
         city:
           type: string
         url:
+          type: string
+
+    # ── Personal agenda (feature: features/agenda) ────────────────
+
+    AgendaStatus:
+      description: >-
+        Today and the next days: the events of the shared Google calendar and
+        the owner's own Google Tasks (pending ones due in that span, overdue or
+        without a date). Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, connected, from, days, items, saving]
+      properties:
+        type:
+          const: agendaStatus
+        connected:
+          type: boolean
+          description: There is a Google session to read the calendar and the tasks with.
+        from:
+          type: string
+          description: First day shown (YYYY-MM-DD, local), today.
+        days:
+          type: number
+          description: How many days are shown, starting at `from`.
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgendaItem'
+        saving:
+          type: boolean
+          description: Something is being added or marked done right now.
+        error:
+          type: string
+
+    AgendaItem:
+      type: object
+      additionalProperties: false
+      required: [id, kind, title, allDay]
+      properties:
+        id:
+          type: string
+        kind:
+          $ref: '#/components/schemas/AgendaItemKind'
+        title:
+          type: string
+          description: The whole title as written in Google, type prefix included.
+        start:
+          type: string
+          description: >-
+            ISO date-time, or YYYY-MM-DD for an all-day event or a task's day.
+            Absent for a task without a date.
+        end:
+          type: string
+          description: End of an event (ISO date-time, or YYYY-MM-DD exclusive for all-day ones).
+        allDay:
+          type: boolean
+        location:
+          type: string
+        link:
+          type: string
+
+    AgendaItemKind:
+      description: An event of the shared calendar, or a task of the owner's Google Tasks.
+      type: string
+      enum: [event, task]
+
+    RefreshAgenda:
+      description: Read the calendar and the tasks again now. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: refreshAgenda
+
+    AddAgendaItem:
+      description: >-
+        Add what the owner wrote and confirmed in the panel: an event to the
+        shared calendar or a task to Google Tasks. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, kind, title]
+      properties:
+        type:
+          const: addAgendaItem
+        kind:
+          $ref: '#/components/schemas/AgendaItemKind'
+        title:
+          type: string
+          description: The whole title, with the type prefix for events (Salida, Concierto…).
+        date:
+          type: string
+          description: YYYY-MM-DD (local). Required for events; optional for tasks.
+        time:
+          type: string
+          description: HH:MM (local) for an event with a time; absent = all-day.
+        endTime:
+          type: string
+          description: HH:MM (local) end of a timed event; absent = one hour later.
+
+    CompleteAgendaTask:
+      description: Mark a task (its id in agendaStatus.items) as done. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, id]
+      properties:
+        type:
+          const: completeAgendaTask
+        id:
           type: string
 
     # ── Outside connections (feature: features/conexiones) ────────

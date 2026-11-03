@@ -1,10 +1,10 @@
+import type { Fetcher } from '../../google/server/googleAccount.js';
 import {
   FETCH_TIMEOUT_MS,
   TICKETMASTER_COUNTRY,
   TICKETMASTER_EVENTS_URL,
   TICKETMASTER_GAP_MS,
 } from './constants.js';
-import type { Fetcher } from './googleCalendar.js';
 
 /** A concert on sale in Mexico (Ticketmaster México sells OCESA's). */
 export interface FoundConcert {

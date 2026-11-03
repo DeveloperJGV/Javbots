@@ -47,6 +47,7 @@ export type ServerMessage =
   | HerdrTabLabels
   | GithubStatus
   | ConcertsStatus
+  | AgendaStatus
   | ConnectionsStatus;
 
 export type ClientMessage =
@@ -82,7 +83,10 @@ export type ClientMessage =
   | RefreshConcerts
   | SearchConcerts
   | AddConcert
-  | DisconnectGoogle;
+  | DisconnectGoogle
+  | RefreshAgenda
+  | AddAgendaItem
+  | CompleteAgendaTask;
 
 export interface ProviderCapabilities {
   type: 'providerCapabilities';
@@ -220,9 +224,18 @@ export interface LayoutLoaded {
 export interface OfficesLoaded {
   type: 'officesLoaded';
   current: string;
+  floor?: string;
+  mainFloors?: FloorInfo[];
   mainLabel?: string;
   mainTitle?: string;
   offices: OfficeInfo[];
+}
+
+export interface FloorInfo {
+  id: string;
+  level: number;
+  button?: string;
+  label: string;
 }
 
 export interface OfficeInfo {
@@ -232,6 +245,7 @@ export interface OfficeInfo {
   profiles: string[];
   alsoInMain?: string[];
   mainProfile?: string;
+  floors?: FloorInfo[];
 }
 
 export interface FurnitureAssetsLoaded {
@@ -388,10 +402,10 @@ export interface MusicStatus {
   message?: string;
   spotifyConfigured?: boolean;
   spotifyConnected?: boolean;
-  source?: AnonymousSchema_233;
+  source?: AnonymousSchema_240;
 }
 
-export type AnonymousSchema_233 = 'extension' | 'spotify';
+export type AnonymousSchema_240 = 'extension' | 'spotify';
 
 export interface MusicLyrics {
   type: 'musicLyrics';
@@ -399,11 +413,11 @@ export interface MusicLyrics {
   artist?: string;
   loading?: boolean;
   synced?: boolean;
-  source?: AnonymousSchema_239;
+  source?: AnonymousSchema_246;
   lines?: MusicLyricLine[];
 }
 
-export type AnonymousSchema_239 = 'spotify' | 'lrclib';
+export type AnonymousSchema_246 = 'spotify' | 'lrclib';
 
 export interface MusicLyricLine {
   text: string;
@@ -511,6 +525,29 @@ export interface FoundConcert {
   url?: string;
 }
 
+export interface AgendaStatus {
+  type: 'agendaStatus';
+  connected: boolean;
+  from: string;
+  days: number;
+  items: AgendaItem[];
+  saving: boolean;
+  error?: string;
+}
+
+export interface AgendaItem {
+  id: string;
+  kind: AgendaItemKind;
+  title: string;
+  start?: string;
+  end?: string;
+  allDay: boolean;
+  location?: string;
+  link?: string;
+}
+
+export type AgendaItemKind = 'event' | 'task';
+
 export interface ConnectionsStatus {
   type: 'connectionsStatus';
   connections: ConnectionInfo[];
@@ -532,6 +569,7 @@ export type ConnectionState = 'ok' | 'warn' | 'off' | 'idea';
 export interface WebviewReady {
   type: 'webviewReady';
   office?: string;
+  floor?: string;
 }
 
 export interface LaunchAgent {
@@ -671,10 +709,10 @@ export interface InstallMusicExtension {
 
 export interface MusicControl {
   type: 'musicControl';
-  action: AnonymousSchema_373;
+  action: AnonymousSchema_395;
 }
 
-export type AnonymousSchema_373 = 'previous' | 'togglePlay' | 'next';
+export type AnonymousSchema_395 = 'previous' | 'togglePlay' | 'next';
 
 export interface DisconnectSpotify {
   type: 'disconnectSpotify';
@@ -695,4 +733,22 @@ export interface AddConcert {
 
 export interface DisconnectGoogle {
   type: 'disconnectGoogle';
+}
+
+export interface RefreshAgenda {
+  type: 'refreshAgenda';
+}
+
+export interface AddAgendaItem {
+  type: 'addAgendaItem';
+  kind: AgendaItemKind;
+  title: string;
+  date?: string;
+  time?: string;
+  endTime?: string;
+}
+
+export interface CompleteAgendaTask {
+  type: 'completeAgendaTask';
+  id: string;
 }

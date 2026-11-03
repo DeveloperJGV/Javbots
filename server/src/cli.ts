@@ -10,9 +10,12 @@
 
 import * as path from 'path';
 
+import { createAgendaFeature } from '../../features/agenda/server/agendaFeature.js';
+import { AGENDA_FLOOR_LAYOUT_FILE } from '../../features/agenda/server/constants.js';
 import { createConcertsFeature } from '../../features/conciertos/server/concertsFeature.js';
 import { createConnectionsFeature } from '../../features/conexiones/server/connectionsFeature.js';
 import { createGithubFeature } from '../../features/github/server/githubFeature.js';
+import { createGoogleFeature } from '../../features/google/server/googleFeature.js';
 import { createHerdrFeature } from '../../features/herdr/server/herdrFeature.js';
 import { createMusicFeature } from '../../features/musica/server/musicFeature.js';
 import { runUsageCommand } from '../../features/usage/server/usageCommand.js';
@@ -34,8 +37,8 @@ import {
 } from './configPersistence.js';
 import { MAX_PORT, MIN_PORT } from './constants.js';
 import { FileStateAdapter } from './fileStateAdapter.js';
-import { setOffices } from './officeRegistry.js';
-import { loadPacks } from './packLoader.js';
+import { addFloors, setOffices } from './officeRegistry.js';
+import { loadPacks, readLayoutFile } from './packLoader.js';
 import { PACK_SERVERS } from './packs.generated.js';
 import {
   claudeHooksEnabled,
@@ -142,6 +145,7 @@ async function main(): Promise<void> {
   // Private packs (privado/<name>/, copied to dist/packs/): extra offices, their layouts and art.
   const packs = loadPacks(distRoot);
   setOffices(packs.offices, packs.mainOffice);
+  addFloors(packs.floors, 'paquetes');
   const assetDirs = (): string[] => [...packs.assetDirs, ...readConfig().externalAssetDirectories];
   console.log('[Pixel Agents] Loading assets...');
   const assetCache: AssetCache = await buildAssetCache(distRoot, assetDirs());
@@ -262,15 +266,27 @@ async function main(): Promise<void> {
       serverUrl: () => (currentConfig ? `http://127.0.0.1:${currentConfig.port}` : null),
     });
 
+    // Optional feature: one Google session (Calendar + Tasks) for every feature that uses Google (features/google).
+    const google = createGoogleFeature({
+      officeToken: () => currentConfig?.token ?? null,
+      serverUrl: () => (currentConfig ? `http://127.0.0.1:${currentConfig.port}` : null),
+    });
+
     const features: ServerFeature[] = [
       music,
+      google,
+      // Optional feature: the agenda room, the shared calendar and the owner's Google Tasks (features/agenda).
+      createAgendaFeature({
+        google,
+        floorLayout: () =>
+          readLayoutFile(path.join(distRoot, 'agenda', 'planos', AGENDA_FLOOR_LAYOUT_FILE)),
+      }),
       createUsageFeature({ command: () => runUsageCommand() }),
       herdr,
       createGithubFeature(),
       // Optional feature: upcoming concerts from Google Calendar + Ticketmaster (features/conciertos).
       createConcertsFeature({
-        officeToken: () => currentConfig?.token ?? null,
-        serverUrl: () => (currentConfig ? `http://127.0.0.1:${currentConfig.port}` : null),
+        google,
         topArtists: () => music.topArtists(),
       }),
     ];
@@ -292,6 +308,15 @@ async function main(): Promise<void> {
     }
     // Optional feature: the board of outside connections, as every other feature reports them (features/conexiones).
     features.push(createConnectionsFeature({ features: () => features }));
+    // Floors the features add to the buildings (core/src/offices.ts), besides the packs' ones.
+    for (const feature of features) {
+      try {
+        const floors = feature.floors?.();
+        if (floors?.length) addFloors(floors, feature.name);
+      } catch (err) {
+        console.error(`[Pisos] ${feature.name} no pudo declarar sus pisos:`, err);
+      }
+    }
 
     const config = await server.start({
       store,

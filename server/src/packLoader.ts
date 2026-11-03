@@ -1,7 +1,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { isValidOfficeId, type OfficeDef } from '../../core/src/offices.js';
+import {
+  type FloorSpec,
+  isValidOfficeId,
+  MAIN_OFFICE,
+  type OfficeDef,
+} from '../../core/src/offices.js';
 
 /**
  * Private packs (privado/<name>/ in the repo, never committed; esbuild copies them to dist/packs/<name>/): what a
@@ -13,6 +18,8 @@ import { isValidOfficeId, type OfficeDef } from '../../core/src/offices.js';
  *     "mainOffice": { "label": "Casa", "title": "Javbots · Casa" },    // optional: names of the main office
  *     "offices": [{ "id": "estudio", "label": "Estudio", "profiles": ["estudio"], "defaultLayout": "planos/x.json" }]
  *   }
+ * Both "mainOffice" and each office may list "floors" besides the ground floor (core/src/offices.ts):
+ *     "floors": [{ "id": "azotea", "level": 2, "button": "A", "label": "Azotea", "defaultLayout": "planos/y.json" }]
  * dist/packs/<name>/assets/   characters, pets and furniture: the pack folder is loaded like an external asset dir.
  */
 export interface LoadedPacks {
@@ -20,6 +27,8 @@ export interface LoadedPacks {
   /** Starting layout of each pack office, by id. */
   officeLayouts: Record<string, Record<string, unknown> | null>;
   mainOffice: { label?: string; title?: string };
+  /** Floors the packs add to their offices and to the main office (officeRegistry.addFloors). */
+  floors: FloorSpec[];
   /** Asset folders of the packs (characters, pets, furniture). */
   assetDirs: string[];
   names: string[];
@@ -44,12 +53,48 @@ function readJson(file: string): unknown {
   }
 }
 
+/** A layout file shipped in dist (a feature's floor), or null when it is missing or not a JSON object. */
+export function readLayoutFile(file: string): Record<string, unknown> | null {
+  if (!fs.existsSync(file)) return null;
+  const raw = readJson(file);
+  return isObject(raw) ? raw : null;
+}
+
+/** A layout file of the pack (it must stay inside the pack folder), or null. */
+function readPackLayout(packDir: string, value: unknown): Record<string, unknown> | null {
+  const layout = str(value);
+  const file = layout ? path.resolve(packDir, layout) : null;
+  return file && file.startsWith(packDir + path.sep) && fs.existsSync(file)
+    ? (readJson(file) as Record<string, unknown> | null)
+    : null;
+}
+
+/** The "floors" of an office in pack.json (validated later, by officeRegistry.addFloors). */
+function readFloors(value: unknown, office: string, packDir: string): FloorSpec[] {
+  const out: FloorSpec[] = [];
+  for (const f of Array.isArray(value) ? value : []) {
+    if (!isObject(f) || typeof f.id !== 'string' || typeof f.level !== 'number') continue;
+    const floor: FloorSpec = {
+      id: f.id,
+      level: f.level,
+      label: str(f.label) ?? f.id,
+      office,
+      defaultLayout: readPackLayout(packDir, f.defaultLayout),
+    };
+    const button = str(f.button);
+    if (button) floor.button = button;
+    out.push(floor);
+  }
+  return out;
+}
+
 /** Reads every pack under `<distRoot>/packs/`. Nothing there = no packs (the public build). */
 export function loadPacks(distRoot: string): LoadedPacks {
   const out: LoadedPacks = {
     offices: [],
     officeLayouts: {},
     mainOffice: {},
+    floors: [],
     assetDirs: [],
     names: [],
   };
@@ -65,6 +110,7 @@ export function loadPacks(distRoot: string): LoadedPacks {
         label: str(raw.mainOffice.label) ?? out.mainOffice.label,
         title: str(raw.mainOffice.title) ?? out.mainOffice.title,
       };
+      out.floors.push(...readFloors(raw.mainOffice.floors, MAIN_OFFICE, packDir));
     }
     for (const o of Array.isArray(raw.offices) ? raw.offices : []) {
       if (!isObject(o) || !isValidOfficeId(o.id) || out.offices.some((x) => x.id === o.id))
@@ -81,13 +127,8 @@ export function loadPacks(distRoot: string): LoadedPacks {
       const mainProfile = str(o.mainProfile);
       if (mainProfile) office.mainProfile = mainProfile;
       out.offices.push(office);
-      const layout = str(o.defaultLayout);
-      // The layout must stay inside the pack folder
-      const file = layout ? path.resolve(packDir, layout) : null;
-      out.officeLayouts[office.id] =
-        file && file.startsWith(packDir + path.sep) && fs.existsSync(file)
-          ? (readJson(file) as Record<string, unknown> | null)
-          : null;
+      out.officeLayouts[office.id] = readPackLayout(packDir, o.defaultLayout);
+      out.floors.push(...readFloors(o.floors, office.id, packDir));
     }
     const assets = path.join(packDir, 'assets');
     if (fs.existsSync(assets)) out.assetDirs.push(packDir); // loaded like an external dir: <dir>/assets/…

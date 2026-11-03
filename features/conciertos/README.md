@@ -18,49 +18,44 @@ cualquiera que agregue eventos a tu calendario.
 
 ## Configurar
 
-Todo va en `~/.pixel-agents/conciertos.json` (se edita a mano; la oficina lo vuelve a leer sin reiniciar):
+Las llaves van en `~/.pixel-agents/conciertos.json` (se edita a mano; la oficina lo vuelve a leer sin reiniciar):
 
 ```json
 {
-  "googleClientId": "…",
-  "googleClientSecret": "…",
   "ticketmasterKey": "…",
   "setlistfmKey": "…",
   "calendario": "Conciertos"
 }
 ```
 
-1. **Google Calendar:** en [Google Cloud](https://console.cloud.google.com) crea un proyecto, activa **Google
-   Calendar API**, configura **Google Auth Platform** (público externo) y crea un cliente de tipo **App de
-   escritorio**. Copia su ID y su secreto. Mientras la app esté en "Prueba", agrégate como usuario de prueba; en ese
-   estado Google corta la sesión a los 7 días y el panel avisa un día antes con un enlace para **Reconectar**.
+1. **Google:** la sesión es la de [features/google](../google/README.md) (`google.json`), la misma para todas las
+   funciones que usan Google.
 2. **Calendario:** `calendario` es el nombre de un calendario tuyo que **ya existe** (por defecto `Conciertos`). La
    oficina no crea ni comparte calendarios.
 3. **Ticketmaster:** regístrate en [developer.ticketmaster.com](https://developer.ticketmaster.com) y copia la
    _Consumer Key_ de tu app (la _callback URL_ puede ser `http://127.0.0.1:3100/`; no se usa).
 4. **Spotify:** los artistas más escuchados salen de la cuenta conectada en Ajustes → Música (permiso
    `user-top-read`). Si la conectaste antes de que existiera este feature, desconéctala y vuelve a conectarla.
-5. Abre la oficina con su enlace con token, haz clic en los boletos y en **Conectar con Google**. Como la app no está
-   verificada, Google avisa: dale **Continuar**.
+5. Abre la oficina con su enlace con token, haz clic en los boletos y en **Conectar con Google**.
 
 `setlistfmKey` ([setlist.fm](https://www.setlist.fm/settings/api), uso no comercial) es para la playlist del
 setlist probable de cada concierto, que todavía no está.
 
 ## Privacidad
 
-Todo se queda en tu computadora: las llaves y la sesión de Google viven en `conciertos.json`. La oficina solo habla
+Todo se queda en tu computadora: las llaves viven en `conciertos.json` y la sesión de Google en `google.json`. La oficina solo habla
 con Google Calendar (tu calendario), Ticketmaster (nombres de artistas, para buscar) y Spotify (tus artistas más
-escuchados). Solo quien abrió la oficina con su token ve el panel y puede conectar Google.
+escuchados). Solo quien abrió la oficina con su token ve el panel.
 
 ## Carpetas
 
-| Carpeta    | Qué hay                                                                                                                          |
-| ---------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `server/`  | `concertsFeature.ts` (rutas, estado, acciones), `googleCalendar.ts` (OAuth + calendario), `ticketmaster.ts`, `concertsConfig.ts` |
-| `webview/` | `ConcertsPanel.tsx` (el panel), `concertsStore.ts`, `concertsText.ts` (fechas y días que faltan)                                 |
-| `test/`    | Pruebas del servidor (corren con `npm test`)                                                                                     |
+| Carpeta    | Qué hay                                                                                                                                                 |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `server/`  | `concertsFeature.ts` (estado y acciones), `googleCalendar.ts` (el calendario, con la sesión de features/google), `ticketmaster.ts`, `concertsConfig.ts` |
+| `webview/` | `ConcertsPanel.tsx` (el panel), `concertsStore.ts`, `concertsText.ts` (fechas y días que faltan)                                                        |
+| `test/`    | Pruebas del servidor (corren con `npm test`)                                                                                                            |
 
 Toca al resto del proyecto en: mensajes en `core/asyncapi.yaml` (`concertsStatus`, `refreshConcerts`,
-`searchConcerts`, `addConcert`, `disconnectGoogle`), el registro en `server/src/cli.ts`, `topArtists()` en
-`features/musica/server`, el clic en los boletos (`officeState.ts`, `OfficeCanvas.tsx`), el panel en `App.tsx` y la
-configuración de compilación (`tsconfig`, lint).
+`searchConcerts`, `addConcert`), la sesión de `features/google`, el registro en `server/src/cli.ts`, `topArtists()` en
+`features/musica/server`, el clic en los boletos (`officeState.ts`, `OfficeCanvas.tsx`) y el panel en `App.tsx`. La compilación, el lint y
+las pruebas lo toman solos (`features/*/`).

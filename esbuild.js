@@ -74,7 +74,7 @@ function copyPackFiles() {
 /**
  * Optional features (features/<name>/) bring their own furniture and support
  * files: furniture joins dist/assets/furniture (the server loads it like any
- * other), support files go to dist/<name>/.
+ * other), support files (and the layouts of the floors they bring, planos/) go to dist/<name>/.
  */
 function copyFeatureFiles() {
   const featuresDir = path.join(__dirname, 'features');
@@ -85,6 +85,10 @@ function copyFeatureFiles() {
       fs.cpSync(furniture, path.join(__dirname, 'dist', 'assets', 'furniture'), {
         recursive: true,
       });
+    }
+    const planos = path.join(featuresDir, name, 'planos');
+    if (fs.existsSync(planos)) {
+      fs.cpSync(planos, path.join(__dirname, 'dist', name, 'planos'), { recursive: true });
     }
     const spicetify = path.join(featuresDir, name, 'spicetify');
     if (fs.existsSync(spicetify)) {

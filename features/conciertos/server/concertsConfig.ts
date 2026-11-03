@@ -6,18 +6,13 @@ import { CONCERTS_CONFIG_FILE, LOG_PREFIX } from './constants.js';
 
 /**
  * ~/.pixel-agents/conciertos.json. The keys are filled by hand (field names in Spanish, as the user edits them);
- * the Google session is written by the server. Unknown fields are kept as they are.
+ * the server remembers the calendar's id. The Google session is features/google's (google.json). Unknown fields are kept as they are.
  */
 export interface ConcertsConfig {
-  googleClientId?: string;
-  googleClientSecret?: string;
   ticketmasterKey?: string;
   setlistfmKey?: string;
   /** Name of the Google calendar to read and add concerts to (default "Conciertos"; it must already exist). */
   calendario?: string;
-  googleRefreshToken?: string;
-  /** ISO time of the login that issued the refresh token (Testing apps lose it 7 days later). */
-  googleConnectedAt?: string;
   /** Id of that calendar once found (so a rename doesn't lose it). */
   calendarId?: string;
 }
@@ -43,13 +38,9 @@ export function readConcertsConfig(file = concertsConfigPath()): {
       console.warn(`${LOG_PREFIX} No pude leer ${file}:`, (err as Error).message);
   }
   const config: ConcertsConfig = {
-    googleClientId: text(raw.googleClientId),
-    googleClientSecret: text(raw.googleClientSecret),
     ticketmasterKey: text(raw.ticketmasterKey),
     setlistfmKey: text(raw.setlistfmKey),
     calendario: text(raw.calendario),
-    googleRefreshToken: text(raw.googleRefreshToken),
-    googleConnectedAt: text(raw.googleConnectedAt),
     calendarId: text(raw.calendarId),
   };
   return { config, raw };

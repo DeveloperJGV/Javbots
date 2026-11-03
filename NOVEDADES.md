@@ -5,6 +5,12 @@ Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
 
 ## 3 de noviembre de 2026
 
+- **Pisos y elevador.** Cada oficina es un edificio con pisos: el plano de siempre es la **Planta baja**, donde viven
+  los agentes, y una función o un paquete puede agregar pisos con su propio plano (sin agentes). Un **elevador** a la
+  izquierda, con botones como los de uno de verdad (S, PB, 1, 2… y el nombre del piso), lleva de un piso a otro: el
+  piso donde estás se ve prendido y los edificios van arriba del panel (reemplaza los botones de oficina de arriba a
+  la derecha). La página pide un piso con `?piso=` y el navegador recuerda el último de cada oficina; el editor
+  guarda el piso que estás viendo. Con un solo edificio y un solo piso, el elevador no sale y todo se ve como antes.
 - **Javbots 2.0.** La esquina de la oficina ya dice v2.0 y, al darle clic, las novedades salen en español: varias
   oficinas con sus perfiles, paquetes privados, agentes que trabajan en su escritorio, uso de Claude, música y
   conexiones. "Ver en GitHub" lleva a esta página.
@@ -26,6 +32,13 @@ Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
   (los eventos cuyo título empieza con `Concierto:`) y cuántos días faltan. El botón **Buscar conciertos** revisa
   Ticketmaster México con tus artistas más escuchados en Spotify, y lo que encuentra se agrega al calendario con un
   clic. Detalles en [features/conciertos](features/conciertos/README.md).
+- **Una sola conexión con Google** para toda la oficina: te conectas una vez y aceptas Calendar y Tasks. Detalles
+  en [features/google](features/google/README.md).
+- **Cuarto de agenda** (centro de mando): un clic en la consola o en sus pantallas abre **Hoy y esta semana**, con
+  los eventos de un calendario compartido de Google y tus tareas de Google Tasks, por día. Se agregan escribiendo
+  (con botones para `Concierto:`, `Salida:`, evento o tarea) y siempre se confirma antes de guardar; las tareas se
+  marcan como hechas con un clic y los choques de horario se avisan. El mapa de la semana, la lista de tareas y el
+  radar del cuarto se prenden con tu agenda. Detalles en [features/agenda](features/agenda/README.md).
 
 ## 2 de noviembre de 2026
 

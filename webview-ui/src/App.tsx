@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { AgendaPanel } from '../../features/agenda/webview/AgendaPanel.js';
+import { useAgenda } from '../../features/agenda/webview/useAgenda.js';
 import { BodegaPanel } from '../../features/bodega/webview/BodegaPanel.js';
 import { bodegaStore } from '../../features/bodega/webview/bodegaStore.js';
 import { ConcertsPanel } from '../../features/conciertos/webview/ConcertsPanel.js';
@@ -21,9 +23,9 @@ import { ChangelogModal } from './components/ChangelogModal.js';
 import { ConnectionIndicator } from './components/ConnectionIndicator.js';
 import { DebugView } from './components/DebugView.js';
 import { EditActionBar } from './components/EditActionBar.js';
+import { Elevator } from './components/Elevator.js';
 import { IntroBubble } from './components/IntroBubble.js';
 import { MigrationNotice } from './components/MigrationNotice.js';
-import { OfficeSwitch } from './components/OfficeSwitch.js';
 import { SettingsModal } from './components/SettingsModal.js';
 import { Tooltip } from './components/Tooltip.js';
 import { Modal } from './components/ui/Modal.js';
@@ -74,6 +76,7 @@ function App() {
   const usage = useUsage(transport);
   // Optional feature (features/conexiones): listen from the start, the board is sent once when the page opens
   useConnections(transport);
+  useAgenda(transport);
   // Optional feature (features/herdr): each character named after its herdr terminal tab
   useHerdrTabs(transport, getOfficeState());
   // Browser runtime (dev or static dist): dispatch mock messages after the
@@ -663,8 +666,8 @@ function App() {
 
         <ConnectionIndicator />
 
-        {/* Offices (core/src/offices.ts): the switch shows only when a pack adds one */}
-        <OfficeSwitch />
+        {/* Buildings and floors (core/src/offices.ts): the elevator shows once there's more than one */}
+        <Elevator />
 
         {/* Optional feature (features/usage): Claude plan limits and cost per agent */}
         <UsageBar usage={usage} />
@@ -672,6 +675,8 @@ function App() {
         <GithubPanel transport={transport} />
         {/* Optional feature (features/conciertos): upcoming concerts from the tickets on the counter */}
         <ConcertsPanel transport={transport} />
+        {/* Optional feature (features/agenda): today and this week, from the agenda room's furniture */}
+        <AgendaPanel transport={transport} />
         {/* Optional feature (features/conexiones): the outside services the office talks to, from the rack */}
         <ConnectionsPanel />
         {/* Optional feature (features/bodega): every piece of furniture not in the office, with thumbnails */}

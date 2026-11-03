@@ -26,9 +26,7 @@ export function ConcertsPanel({ transport }: { transport: MessageTransport }) {
   const { status, open } = useSyncExternalStore(concertsStore.subscribe, concertsStore.get);
   if (!open || !status) return null;
   const token = officeToken();
-  const loginHref = token
-    ? `/api/conciertos/google/login?token=${encodeURIComponent(token)}`
-    : null;
+  const loginHref = token ? `/api/google/login?token=${encodeURIComponent(token)}` : null;
   const now = new Date();
 
   return (
@@ -41,8 +39,8 @@ export function ConcertsPanel({ transport }: { transport: MessageTransport }) {
       <div className="max-h-[70vh] overflow-y-auto px-10 pb-6 flex flex-col gap-8 text-sm text-text">
         {!status.googleConfigured && (
           <p className="text-text-muted">
-            Falta configurar Google: pon <code>googleClientId</code> y{' '}
-            <code>googleClientSecret</code> en <code>~/.pixel-agents/conciertos.json</code>.
+            Falta configurar Google: pon <code>clientId</code> y <code>clientSecret</code> en{' '}
+            <code>~/.pixel-agents/google.json</code>.
           </p>
         )}
         {status.googleConfigured && !status.googleConnected && (

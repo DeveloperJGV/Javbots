@@ -1,0 +1,13 @@
+{
+  "id": "FREELANCE_NEON_PROMPT",
+  "name": "Ne\u00f3n >_",
+  "category": "wall",
+  "type": "asset",
+  "canPlaceOnWalls": true,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 0,
+  "width": 32,
+  "height": 16,
+  "footprintW": 2,
+  "footprintH": 1
+}

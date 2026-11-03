@@ -6,12 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { ConcertsStatus } from '../../../../core/src/messages.js';
 import type { ConcertsConfig } from '../../server/concertsConfig.js';
 import { createConcertsFeature } from '../../server/concertsFeature.js';
-import {
-  type CalendarConcert,
-  type GoogleCalendar,
-  parseConcertEvents,
-  parseConcertTitle,
-} from '../../server/googleCalendar.js';
+import { parseConcertEvents, parseConcertTitle } from '../../server/googleCalendar.js';
 import { normalizeName, parseTicketmasterEvents } from '../../server/ticketmaster.js';
 
 describe('the "Concierto:" rule', () => {
@@ -124,33 +119,41 @@ describe('concerts feature', () => {
     dir = fs.mkdtempSync(path.join(os.tmpdir(), 'conciertos-'));
     const file = path.join(dir, 'conciertos.json');
     fs.writeFileSync(file, JSON.stringify(config));
-    const calendar: CalendarConcert[] = [
-      {
-        id: 'a',
-        title: 'Daft Punk – Tour',
-        artist: 'Daft Punk',
-        start: '2027-06-12T20:30:00-06:00',
-        allDay: false,
-      },
-    ];
     const calls: string[] = [];
+    // A fake Google session: it answers the Calendar API like Google would.
     const google = {
+      configured: true,
       connected: true,
-      authorizeUrl: () => 'https://accounts.google.com/x',
-      finishLogin: async () => true,
+      hasScope: () => true,
+      reconnectInDays: () => undefined,
       forget: () => calls.push('forget'),
-      findCalendar: async (name: string) => (calls.push(`find ${name}`), 'cal-1'),
-      listConcerts: async () => calendar,
-      addConcert: async (_id: string, c: { title: string }) => void calls.push(`add ${c.title}`),
-    } as unknown as GoogleCalendar;
+      onChange: () => () => {},
+      api: async (url: string, init?: { method?: string; body?: unknown }) => {
+        if (url.includes('/calendarList')) {
+          calls.push('find');
+          return { items: [{ id: 'cal-1', summary: 'Conciertos' }] };
+        }
+        if (init?.method === 'POST') {
+          calls.push(`add ${(init.body as { summary: string }).summary}`);
+          return {};
+        }
+        return {
+          items: [
+            {
+              id: 'a',
+              summary: 'Concierto: Daft Punk – Tour',
+              start: { dateTime: '2027-06-12T20:30:00-06:00' },
+            },
+          ],
+        };
+      },
+    };
     const sent: ConcertsStatus[] = [];
     const feature = createConcertsFeature({
-      officeToken: () => 'tok',
-      serverUrl: () => 'http://127.0.0.1:3100',
+      google,
       topArtists: async () => ['Daft Punk', 'Muse'],
       configFile: file,
       now: () => Date.parse('2026-11-03T00:00:00Z'),
-      google: () => google,
       search: async (_key, artists) => {
         calls.push(`search ${artists.join(',')}`);
         return [
@@ -183,7 +186,7 @@ describe('concerts feature', () => {
   it('reads the configured calendar (by default "Conciertos") and remembers its id', async () => {
     const { feature, sent, calls, file } = setup({ ticketmasterKey: 'k' });
     await feature.refresh();
-    expect(calls).toContain('find Conciertos');
+    expect(calls).toContain('find');
     const saved = JSON.parse(fs.readFileSync(file, 'utf8'));
     expect(saved).toMatchObject({ calendarId: 'cal-1', ticketmasterKey: 'k' });
     expect(sent.at(-1)?.concerts.map((c) => c.artist)).toEqual(['Daft Punk']);
@@ -198,7 +201,7 @@ describe('concerts feature', () => {
     expect(sent.at(-1)?.found.map((c) => c.id)).toEqual(['tm2']);
     feature.handleClientMessage?.({ type: 'addConcert', id: 'tm2' }, client);
     await new Promise((r) => setTimeout(r, 10));
-    expect(calls).toContain('add Muse en México');
+    expect(calls).toContain('add Concierto: Muse en México');
     expect(sent.at(-1)?.found).toEqual([]);
   });
 

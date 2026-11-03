@@ -13,6 +13,7 @@
  */
 import type { ComponentType, RefObject } from 'react';
 
+import { GROUND_FLOOR } from '../../../core/src/offices.js';
 import type { MessageTransport } from '../../../core/src/transport.js';
 import type { OfficeState } from '../office/engine/officeState.js';
 import type { LeisureActivityDef } from '../office/leisure/leisure.js';
@@ -27,6 +28,8 @@ export interface PackOverlayProps {
   panRef: RefObject<{ x: number; y: number }>;
   /** The office this page shows. */
   office: string;
+  /** The floor of that office this page shows (core/src/offices.ts). */
+  floor: string;
 }
 
 /**
@@ -63,6 +66,8 @@ export interface WebviewPack {
   name: string;
   /** Only active in these offices (all of them when absent). */
   offices?: string[];
+  /** Only active on these floors of those offices (core/src/offices.ts; every floor when absent). */
+  floors?: string[];
   /** Drawn over the office (rooms, signs, panels). */
   Overlay?: ComponentType<PackOverlayProps>;
   /** Swaps furniture sprites or adds sprites, every furniture tick (`timeSec` = the furniture clock). */
@@ -96,6 +101,7 @@ export interface WebviewPack {
 
 const packs: WebviewPack[] = [];
 let currentOffice: string | undefined;
+let currentFloor: string = GROUND_FLOOR;
 /** Goes up whenever the active packs may have changed (the office state rebuilds what depends on them). */
 let version = 0;
 
@@ -105,10 +111,11 @@ export function registerPack(pack: WebviewPack): void {
   version++;
 }
 
-/** Set once the server says which office this page shows. */
-export function setPackOffice(office: string): void {
-  if (office === currentOffice) return;
+/** Set once the server says which office (and floor of it) this page shows. */
+export function setPackOffice(office: string, floor: string = GROUND_FLOOR): void {
+  if (office === currentOffice && floor === currentFloor) return;
   currentOffice = office;
+  currentFloor = floor;
   version++;
 }
 
@@ -120,13 +127,16 @@ export function packsVersion(): number {
 export function resetPacksForTests(): void {
   packs.length = 0;
   currentOffice = undefined;
+  currentFloor = GROUND_FLOOR;
   version++;
 }
 
-/** The packs active in this page's office. */
+/** The packs active in this page's office and floor. */
 export function activePacks(): readonly WebviewPack[] {
   return packs.filter(
-    (p) => !p.offices || (currentOffice !== undefined && p.offices.includes(currentOffice)),
+    (p) =>
+      (!p.offices || (currentOffice !== undefined && p.offices.includes(currentOffice))) &&
+      (!p.floors || p.floors.includes(currentFloor)),
   );
 }
 

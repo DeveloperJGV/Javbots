@@ -1,4 +1,6 @@
 import { pickDiversePalette } from '../../../../core/src/paletteUtils.js';
+import { applyAgendaFurniture } from '../../../../features/agenda/webview/agendaFurniture.js';
+import { agendaStore, isAgendaFurniture } from '../../../../features/agenda/webview/agendaStore.js';
 import { BODEGA_EMPTY_TYPE, BODEGA_TYPE } from '../../../../features/bodega/webview/constants.js';
 import { baseType as bodegaBaseType } from '../../../../features/bodega/webview/storedItems.js';
 import { isConcertTickets } from '../../../../features/conciertos/webview/concertsStore.js';
@@ -1186,8 +1188,14 @@ export class OfficeState {
       connectionsStore.get().connections,
       this.furnitureAnimTimer,
     );
+    // Optional feature: the week, the tasks and the clashes on the agenda room's screens (features/agenda)
+    const withAgenda = applyAgendaFurniture(
+      withConnections,
+      agendaStore.get().status,
+      this.furnitureAnimTimer,
+    );
     // Private packs (webview-ui/src/packs/registry.ts)
-    const withPacks = applyPackFurniture(withConnections, {
+    const withPacks = applyPackFurniture(withAgenda, {
       timeSec: this.furnitureAnimTimer,
       officeState: this,
     });
@@ -1321,6 +1329,13 @@ export class OfficeState {
   isConcertTicketsAt(worldX: number, worldY: number): boolean {
     return this.furniture.some(
       (f) => isConcertTickets(f.type) && hitsPaintedPixel(f, worldX, worldY),
+    );
+  }
+
+  /** Whether a world point lands on a piece of the agenda room (features/agenda). */
+  isAgendaAt(worldX: number, worldY: number): boolean {
+    return this.furniture.some(
+      (f) => isAgendaFurniture(f.type) && hitsPaintedPixel(f, worldX, worldY),
     );
   }
 
