@@ -361,6 +361,7 @@ async function main(): Promise<void> {
     function shutdown(): void {
       console.log('\nShutting down...');
       runtime.dispose();
+      for (const feature of features) feature.dispose?.();
       server.stop();
       process.exit(0);
     }

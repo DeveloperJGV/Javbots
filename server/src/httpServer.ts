@@ -58,6 +58,11 @@ export interface HttpServerHandle {
 
 const startTime = Date.now();
 
+/** `/ws?token=abc&x=1` → `/ws?token=…&x=1` (log lines only). */
+export function redactToken(url: string): string {
+  return url.replace(/([?&]token=)[^&#]*/gi, '$1…');
+}
+
 /**
  * Create a Fastify server with hook endpoint, health check, and WebSocket support.
  *
@@ -66,7 +71,17 @@ const startTime = Date.now();
  */
 export async function createHttpServer(options: HttpServerOptions): Promise<HttpServerHandle> {
   const app = Fastify({
-    logger: !options.embedded,
+    // The standalone page and its /ws carry the server token in `?token=`: never write it to the log.
+    logger: options.embedded
+      ? false
+      : {
+          serializers: {
+            req: (req: { method?: string; url?: string }) => ({
+              method: req.method,
+              url: redactToken(req.url ?? ''),
+            }),
+          },
+        },
     bodyLimit: MAX_HOOK_BODY_SIZE,
   });
 
