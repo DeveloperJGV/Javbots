@@ -471,14 +471,31 @@ export function sendFloorTilesToWebview(
 export interface LoadedCharacterSprites {
   /** Pre-colored characters, each with 7 frames per direction */
   characters: CharacterDirectionSprites[];
+  /**
+   * Named sheets (an external dir's or a private pack's `assets/characters/<name>.png`): name -> index in
+   * `characters`. They come after the numbered ones, so they never take the place of a bundled char_N.
+   */
+  names?: Record<string, number>;
 }
 
 export function mergeCharacterSprites(
   a: LoadedCharacterSprites,
   b: LoadedCharacterSprites,
 ): LoadedCharacterSprites {
-  return { characters: [...a.characters, ...b.characters] };
+  const characters = [...a.characters, ...b.characters];
+  const names: Record<string, number> = { ...a.names };
+  for (const [name, i] of Object.entries(b.names ?? {})) {
+    if (name in names) {
+      console.warn(`  [AssetLoader] Character sheet "${name}" loaded twice; the first one stays`);
+      continue;
+    }
+    names[name] = a.characters.length + i;
+  }
+  return Object.keys(names).length ? { characters, names } : { characters };
 }
+
+/** File name of a named character sheet (anything that is not char_N.png): lowercase, digits, - and _. */
+const NAMED_SHEET = /^([a-z0-9][a-z0-9_-]{0,39})\.png$/;
 
 /**
  * Load pre-colored character sprites from assets/characters/ (char_0.png, char_1.png, … each 192×132).
@@ -519,7 +536,8 @@ export async function loadCharacterSprites(
 
 /**
  * Load character sprites from an external asset directory.
- * Scans assets/characters/ for char_N.png files (any N, sorted numerically).
+ * Scans assets/characters/ for char_N.png files (any N, sorted numerically), then for named sheets
+ * (<name>.png, sorted by name; see LoadedCharacterSprites.names).
  * Returns null if no characters found.
  */
 export async function loadExternalCharacterSprites(
@@ -533,21 +551,31 @@ export async function loadExternalCharacterSprites(
 
     const entries = fs.readdirSync(charDir);
     const charFiles: { index: number; filename: string }[] = [];
+    const namedFiles: { name: string; filename: string }[] = [];
     for (const entry of entries) {
       const match = /^char_(\d+)\.png$/i.exec(entry);
       if (match) {
         charFiles.push({ index: parseInt(match[1], 10), filename: entry });
+        continue;
       }
+      const named = NAMED_SHEET.exec(entry);
+      if (named) namedFiles.push({ name: named[1], filename: entry });
     }
 
-    if (charFiles.length === 0) {
+    if (charFiles.length === 0 && namedFiles.length === 0) {
       return null;
     }
 
     charFiles.sort((a, b) => a.index - b.index);
+    namedFiles.sort((a, b) => a.name.localeCompare(b.name));
 
     const characters: CharacterDirectionSprites[] = [];
-    for (const { filename } of charFiles) {
+    const names: Record<string, number> = {};
+    const files = [
+      ...charFiles.map((f) => ({ filename: f.filename, name: undefined as string | undefined })),
+      ...namedFiles,
+    ];
+    for (const { filename, name } of files) {
       const filePath = path.join(charDir, filename);
       const resolvedFile = path.resolve(filePath);
       const resolvedDir = path.resolve(charDir);
@@ -558,6 +586,7 @@ export async function loadExternalCharacterSprites(
       try {
         const pngBuffer = fs.readFileSync(filePath);
         characters.push(decodeCharacterPng(pngBuffer));
+        if (name !== undefined) names[name] = characters.length - 1;
       } catch (err) {
         console.warn(
           `  [AssetLoader] ⚠️  Error loading character ${filename}: ${err instanceof Error ? err.message : err}`,
@@ -572,7 +601,7 @@ export async function loadExternalCharacterSprites(
     console.log(
       `[AssetLoader] ✅ Loaded ${characters.length} external character sprites from ${externalRoot}`,
     );
-    return { characters };
+    return Object.keys(names).length ? { characters, names } : { characters };
   } catch (err) {
     console.error(
       `[AssetLoader] ❌ Error loading external character sprites: ${err instanceof Error ? err.message : err}`,
@@ -591,6 +620,7 @@ export function sendCharacterSpritesToWebview(
   webview.postMessage({
     type: 'characterSpritesLoaded',
     characters: charSprites.characters,
+    ...(charSprites.names ? { names: charSprites.names } : {}),
   });
   console.log(`📤 Sent ${charSprites.characters.length} character sprites to webview`);
 }

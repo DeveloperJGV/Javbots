@@ -45,12 +45,24 @@ interface LoadedCharacterData {
 }
 
 let loadedCharacters: LoadedCharacterData[] | null = null;
+/** Named sheets (a private pack's assets/characters/<name>.png) → index in loadedCharacters. */
+let sheetNames: Readonly<Record<string, number>> = {};
 
 /** Set pre-colored character sprites loaded from PNG assets. Call this when characterSpritesLoaded message arrives. */
-export function setCharacterTemplates(data: LoadedCharacterData[]): void {
+export function setCharacterTemplates(
+  data: LoadedCharacterData[],
+  names: Readonly<Record<string, number>> = {},
+): void {
   loadedCharacters = data;
+  sheetNames = names;
   // Clear cache so sprites are rebuilt from loaded data
   spriteCache.clear();
+}
+
+/** Index of a named sheet (characterSpritesLoaded.names), or undefined when it isn't loaded. */
+export function characterSheetIndex(name: string): number | undefined {
+  const i = sheetNames[name];
+  return i !== undefined && i < getLoadedCharacterCount() ? i : undefined;
 }
 
 /** Return the number of loaded character palettes, or PALETTE_COUNT as fallback. */

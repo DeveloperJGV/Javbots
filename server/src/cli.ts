@@ -232,7 +232,11 @@ async function main(): Promise<void> {
       assetCache.pets = pets;
       assetCache.furniture = furniture;
       if (characters) {
-        send({ type: 'characterSpritesLoaded', characters: characters.characters });
+        send({
+          type: 'characterSpritesLoaded',
+          characters: characters.characters,
+          ...(characters.names ? { names: characters.names } : {}),
+        });
       }
       if (pets) {
         send({

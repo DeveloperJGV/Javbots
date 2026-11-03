@@ -710,7 +710,7 @@ export function useExtensionMessages(
           right: string[][][];
         }>;
         console.log(`[Webview] Received ${characters.length} pre-colored character sprites`);
-        setCharacterTemplates(characters);
+        setCharacterTemplates(characters, (msg.names ?? {}) as Record<string, number>);
       } else if (msg.type === 'petSpritesLoaded') {
         const pets = msg.pets;
         if (!Array.isArray(pets)) {

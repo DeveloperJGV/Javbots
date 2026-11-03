@@ -266,6 +266,7 @@ export interface FurnitureAssetMessage {
 export interface CharacterSpritesLoaded {
   type: 'characterSpritesLoaded';
   characters: CharacterSpriteSet[];
+  names?: Record<string, number>;
 }
 
 export interface CharacterSpriteSet {
@@ -387,10 +388,10 @@ export interface MusicStatus {
   message?: string;
   spotifyConfigured?: boolean;
   spotifyConnected?: boolean;
-  source?: AnonymousSchema_231;
+  source?: AnonymousSchema_233;
 }
 
-export type AnonymousSchema_231 = 'extension' | 'spotify';
+export type AnonymousSchema_233 = 'extension' | 'spotify';
 
 export interface MusicLyrics {
   type: 'musicLyrics';
@@ -398,11 +399,11 @@ export interface MusicLyrics {
   artist?: string;
   loading?: boolean;
   synced?: boolean;
-  source?: AnonymousSchema_237;
+  source?: AnonymousSchema_239;
   lines?: MusicLyricLine[];
 }
 
-export type AnonymousSchema_237 = 'spotify' | 'lrclib';
+export type AnonymousSchema_239 = 'spotify' | 'lrclib';
 
 export interface MusicLyricLine {
   text: string;
@@ -670,10 +671,10 @@ export interface InstallMusicExtension {
 
 export interface MusicControl {
   type: 'musicControl';
-  action: AnonymousSchema_371;
+  action: AnonymousSchema_373;
 }
 
-export type AnonymousSchema_371 = 'previous' | 'togglePlay' | 'next';
+export type AnonymousSchema_373 = 'previous' | 'togglePlay' | 'next';
 
 export interface DisconnectSpotify {
   type: 'disconnectSpotify';

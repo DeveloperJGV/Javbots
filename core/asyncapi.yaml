@@ -540,6 +540,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CharacterSpriteSet'
+        names:
+          type: object
+          description: Named sheets (an external dir's or a private pack's assets/characters/<name>.png) → index in `characters`.
+          additionalProperties:
+            type: integer
 
     PetSpritesLoaded:
       description: Pet sprite frame sets and display names, sent once after webviewReady (between characterSpritesLoaded and floorTilesLoaded).

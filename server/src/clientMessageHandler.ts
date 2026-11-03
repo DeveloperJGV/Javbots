@@ -443,7 +443,11 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
   // 2. Assets (from server cache, loaded at startup via pngjs)
   if (cache) {
     if (cache.characters) {
-      send({ type: 'characterSpritesLoaded', characters: cache.characters.characters });
+      send({
+        type: 'characterSpritesLoaded',
+        characters: cache.characters.characters,
+        ...(cache.characters.names ? { names: cache.characters.names } : {}),
+      });
     }
     if (cache.pets) {
       send({
