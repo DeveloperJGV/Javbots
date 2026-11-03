@@ -76,6 +76,7 @@ import {
   ZONE_ERROR_HOLD_SEC,
   ZONE_PER_TOOL,
 } from '../../constants.js';
+import { applyPackFurniture } from '../../packs/registry.js';
 import { ActivityLog } from '../board/activityLog.js';
 import { boardSprite } from '../board/boardSprite.js';
 import { applyAmbientAnimation } from '../effects/ambientFurniture.js';
@@ -1131,11 +1132,16 @@ export class OfficeState {
       ),
       githubStore.get(),
     );
-    return applyConnectionsFurniture(
+    const withConnections = applyConnectionsFurniture(
       withGithub,
       connectionsStore.get().connections,
       this.furnitureAnimTimer,
     );
+    // Private packs (webview-ui/src/packs/registry.ts)
+    return applyPackFurniture(withConnections, {
+      timeSec: this.furnitureAnimTimer,
+      officeState: this,
+    });
   }
 
   private withOfficeAnimation(instances: FurnitureInstance[]): FurnitureInstance[] {

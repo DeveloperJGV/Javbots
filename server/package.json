@@ -3,7 +3,8 @@
   "private": true,
   "scripts": {
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "pretest": "node ../scripts/generate-packs.mjs"
   },
   "devDependencies": {
     "@types/ws": "^8.18.2",

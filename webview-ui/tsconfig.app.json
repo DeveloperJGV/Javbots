@@ -25,5 +25,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src", "../features/*/webview", "../privado/*/features/*/webview"]
+  "include": ["src", "../features/*/webview", "../privado/*/features/*/webview", "../privado/*/webview.tsx"]
 }

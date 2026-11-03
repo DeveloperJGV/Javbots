@@ -33,6 +33,7 @@ allure-report/
 
 # Project-specific
 webview-ui/public/privado/
+server/src/packs.generated.ts
 .claude
 .mcp.json
 /sprites-export

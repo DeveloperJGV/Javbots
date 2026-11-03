@@ -15,6 +15,7 @@ import {
   ZOOM_SCROLL_THRESHOLD,
 } from '../../constants.js';
 import { playIsaacDanceSound, unlockAudio } from '../../notificationSound.js';
+import { packClick, packHover } from '../../packs/registry.js';
 import { transport } from '../../transport/index.js';
 import { onRenderScaleChange, renderDpr } from '../../viewScale.js';
 import { getColorizedSprite } from '../colorize.js';
@@ -540,6 +541,7 @@ export function OfficeCanvas({
               officeState.isBodegaAt(pos.worldX, pos.worldY) ||
               officeState.isConcertTicketsAt(pos.worldX, pos.worldY) ||
               officeState.isConnectionsRackAt(pos.worldX, pos.worldY) ||
+              packHover(pos.worldX, pos.worldY, officeState) ||
               officeState.musicPlayerUidAt(pos.worldX, pos.worldY) !== null ||
               officeState.isUsageMeterAt(pos.worldX, pos.worldY) ||
               github !== null),
@@ -801,6 +803,9 @@ export function OfficeCanvas({
         concertsStore.open();
         return;
       }
+
+      // Private packs (webview-ui/src/packs/registry.ts): their own furniture.
+      if (packClick(pos.worldX, pos.worldY, officeState)) return;
 
       // Connections rack (features/conexiones): which outside services the office talks to.
       if (officeState.isConnectionsRackAt(pos.worldX, pos.worldY)) {

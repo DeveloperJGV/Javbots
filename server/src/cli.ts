@@ -36,6 +36,7 @@ import { MAX_PORT, MIN_PORT } from './constants.js';
 import { FileStateAdapter } from './fileStateAdapter.js';
 import { setOffices } from './officeRegistry.js';
 import { loadPacks } from './packLoader.js';
+import { PACK_SERVERS } from './packs.generated.js';
 import {
   claudeHooksEnabled,
   claudeProvider,
@@ -269,6 +270,22 @@ async function main(): Promise<void> {
         topArtists: () => music.topArtists(),
       }),
     ];
+    // Private packs (privado/<pack>/server.ts, found by scripts/generate-packs.mjs): their own features.
+    const publicFeatures = [...features];
+    for (const pack of PACK_SERVERS) {
+      try {
+        features.push(
+          ...pack.create({
+            serverUrl: () => (currentConfig ? `http://127.0.0.1:${currentConfig.port}` : null),
+            officeToken: () => currentConfig?.token ?? null,
+            packDir: path.join(distRoot, 'packs', pack.name),
+            features: publicFeatures,
+          }),
+        );
+      } catch (err) {
+        console.error(`[Packs] ${pack.name} no arrancó:`, err);
+      }
+    }
     // Optional feature: the board of outside connections, as every other feature reports them (features/conexiones).
     features.push(createConnectionsFeature({ features: () => features }));
 

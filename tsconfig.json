@@ -19,7 +19,8 @@
 		"server/src",
 		"core/src",
 		"features/*/server",
-		"privado/*/features/*/server"
+		"privado/*/features/*/server",
+		"privado/*/server.ts"
 	],
 	"exclude": [
 		"node_modules",

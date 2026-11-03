@@ -30,6 +30,7 @@ import {
 import type { OfficeLayout, ToolActivity } from '../office/types.js';
 import { setWallSprites } from '../office/wallTiles.js';
 import { officesStore, requestedOffice } from '../offices.js';
+import { setPackOffice } from '../packs/registry.js';
 import { isBrowserRuntime, isE2E } from '../runtime.js';
 import { transport } from '../transport/index.js';
 
@@ -253,6 +254,7 @@ export function useExtensionMessages(
       }
 
       if (msg.type === 'officesLoaded') {
+        setPackOffice(msg.current);
         officesStore.set({
           current: msg.current,
           offices: msg.offices,
