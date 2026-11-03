@@ -13,6 +13,8 @@ interface ChangelogEntry {
   version: string;
   sections: ChangelogSection[];
   contributors: ChangelogContributor[];
+  /** Where "Ver en GitHub" goes for this version; without it, the original project's CHANGELOG. */
+  notesUrl?: string;
 }
 
 /** Extract "major.minor" from a semver string (e.g. "1.1.1" → "1.1") */
@@ -25,7 +27,54 @@ export const CHANGELOG_REPO_URL = 'https://github.com/pixel-agents-hq/pixel-agen
 
 export const DISCORD_INVITE_URL = 'https://discord.gg/Yk7jXebv9H';
 
+export const JAVBOTS_NOTES_URL = 'https://github.com/DeveloperJGV/Javbots/blob/main/NOVEDADES.md';
+
 export const changelogEntries: ChangelogEntry[] = [
+  {
+    version: '2.0',
+    notesUrl: JAVBOTS_NOTES_URL,
+    sections: [
+      {
+        title: 'Oficinas',
+        items: [
+          'Varias oficinas, con un botón arriba a la derecha para cambiar entre ellas; cada una ve sus propios perfiles de Claude Code',
+          'Paquetes privados (privado/<paquete>/): agregan oficinas, funciones, muebles y personajes sin tocar el motor',
+          'Nueve cuartos temáticos, ciclo de día y noche con luces, sombras y muebles animados',
+          'Bodega con todos los muebles que no están puestos; Captura y "ver toda la oficina"',
+          'En Mac, la app del Dock abre y apaga la oficina',
+        ],
+      },
+      {
+        title: 'Agentes',
+        items: [
+          'Trabajan todo el turno en su escritorio, con una etiqueta de lo que hacen y cuánto llevan',
+          'Estado "pensando", tiempo libre después de 45 s y fiesta cuando todos terminan',
+          'Personajes propios: cada jefe manda a sus becarios',
+          'Pizarrón con lo que hizo cada agente',
+        ],
+      },
+      {
+        title: 'Uso y conexiones',
+        items: [
+          'Barra de uso de Claude (5 horas, semana y Fable) con el detalle por agente y por modelo',
+          'Música de Spotify con letras, rockola de tres estilos y otras pantallas de la casa',
+          'Mis próximos conciertos (Google Calendar y Ticketmaster), Sala de GitHub y tablero de conexiones',
+        ],
+      },
+    ],
+    contributors: [
+      {
+        name: '@DeveloperJGV',
+        url: 'https://github.com/DeveloperJGV',
+        description: 'Javbots',
+      },
+      {
+        name: '@pablodelucca',
+        url: 'https://github.com/pablodelucca',
+        description: 'Pixel Agents, la base de Javbots',
+      },
+    ],
+  },
   {
     version: '1.4',
     sections: [

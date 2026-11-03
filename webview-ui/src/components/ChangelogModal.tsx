@@ -94,7 +94,7 @@ export function ChangelogModal({ isOpen, onClose, currentVersion }: ChangelogMod
       {/* Footer */}
       <div className="border-t border-border mt-4 flex">
         <a
-          href={`${CHANGELOG_REPO_URL}/blob/main/CHANGELOG.md`}
+          href={entry.notesUrl ?? `${CHANGELOG_REPO_URL}/blob/main/CHANGELOG.md`}
           target="_blank"
           rel="noopener noreferrer"
           className="flex-1 py-6 px-10 border-r border-border flex items-center justify-center gap-12 text-lg no-underline cursor-pointer transition-colors duration-200 hover:text-accent-bright"

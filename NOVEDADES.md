@@ -5,6 +5,9 @@ Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
 
 ## 3 de noviembre de 2026
 
+- **Javbots 2.0.** La esquina de la oficina ya dice v2.0 y, al darle clic, las novedades salen en español: varias
+  oficinas con sus perfiles, paquetes privados, agentes que trabajan en su escritorio, uso de Claude, música y
+  conexiones. "Ver en GitHub" lleva a esta página.
 - **Paquetes privados**: una carpeta `privado/<paquete>/` (fuera de git) puede agregar oficinas, funciones, muebles y
   personajes sin tocar el motor. Un paquete también puede poner personal que camina por la oficina, actividades de
   tiempo libre (hasta una siesta: la cama se ve con alguien dormido), luces de sus muebles y su propio elenco de jefes
