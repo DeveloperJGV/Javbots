@@ -38,7 +38,7 @@ const WAITING_INPUT_ACTIVITY_TEXT = 'Esperando instrucciones';
 const THINKING_ACTIVITY_TEXT = 'Pensando…';
 // Sub-agents are drawn as their spawner's interns; this names the boss.
 const INTERN_LABEL_PREFIX = 'Becario de';
-/** Between an agent's folder and its Claude Code profile: "mi-repo · trabajo". */
+/** Between an agent's folder and its Claude Code profile: "mi-repo · estudio". */
 const PROFILE_SEPARATOR = ' · ';
 const NEEDS_APPROVAL_TEXT = 'Necesita tu permiso';
 

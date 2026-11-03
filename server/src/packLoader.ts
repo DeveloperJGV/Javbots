@@ -11,7 +11,7 @@ import { isValidOfficeId, type OfficeDef } from '../../core/src/offices.js';
  *   {
  *     "name": "mi-paquete",
  *     "mainOffice": { "label": "Casa", "title": "Javbots · Casa" },    // optional: names of the main office
- *     "offices": [{ "id": "trabajo", "label": "Trabajo", "profiles": ["trabajo"], "defaultLayout": "planos/x.json" }]
+ *     "offices": [{ "id": "estudio", "label": "Estudio", "profiles": ["estudio"], "defaultLayout": "planos/x.json" }]
  *   }
  * dist/packs/<name>/assets/   characters, pets and furniture: the pack folder is loaded like an external asset dir.
  */

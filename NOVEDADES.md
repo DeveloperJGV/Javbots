@@ -5,6 +5,12 @@ Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
 
 ## 3 de noviembre de 2026
 
+- **Paquetes privados**: una carpeta `privado/<paquete>/` (fuera de git) puede agregar oficinas, funciones, muebles y
+  personajes sin tocar el motor. Un paquete también puede poner personal que camina por la oficina, actividades de
+  tiempo libre (hasta una siesta: la cama se ve con alguien dormido), luces de sus muebles y su propio elenco de jefes
+  y becarios. Sin paquete, Javbots se ve y funciona igual.
+- La **barra de uso** muestra solo los perfiles de Claude Code de la oficina que estás viendo, el suyo primero.
+- **Mac**: `scripts/mac/oficina.sh` abre y apaga la oficina, y `scripts/mac/crear-app.sh` crea la app del Dock.
 - **Tablero de conexiones** en el Sótano: un rack con un foco por cada servicio de fuera con el que habla la oficina
   (Spotify, LRCLIB, GitHub, Claude, Herdr…). Verde funciona, amarillo parpadea si hay que atenderlo, rojo si falta
   la llave o conectarlo y azul si es una idea. Un clic muestra la lista: para qué sirve cada uno, cómo entra y cuándo

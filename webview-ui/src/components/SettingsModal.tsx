@@ -246,7 +246,7 @@ function hooksProviderIds(hooksInstalled: Record<string, boolean>): string[] {
   );
 }
 
-/** "Detección instantánea (hooks)" for the default profile, "… · trabajo" for `claude-trabajo`. */
+/** "Detección instantánea (hooks)" for the default profile, "… · estudio" for `claude-estudio`. */
 function hooksLabel(providerId: string): string {
   return providerId.startsWith(CLAUDE_PROFILE_PREFIX)
     ? `${HOOKS_LABEL} · ${providerId.slice(CLAUDE_PROFILE_PREFIX.length)}`
