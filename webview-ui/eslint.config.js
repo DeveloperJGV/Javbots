@@ -50,6 +50,8 @@ export default defineConfig([
       'constants.ts',
       // ...and the same file when lint-staged lints it from the repo root
       'features/*/webview/constants.ts',
+      // ...and a private pack's (privado/<pack>/features/<name>/webview/constants.ts)
+      'privado/*/features/*/webview/constants.ts',
     ],
     rules: {
       'pixel-agents/no-inline-colors': 'off',
