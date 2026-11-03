@@ -1,5 +1,6 @@
 import type { UsageLimit } from '../../../core/src/messages.js';
 import type { FurnitureInstance, SpriteData } from '../../../webview-ui/src/office/types.js';
+import { officesStore } from '../../../webview-ui/src/offices.js';
 import {
   USAGE_COLOR_DANGER,
   USAGE_COLOR_EMPTY,
@@ -10,7 +11,13 @@ import {
   USAGE_METER_TYPE,
 } from './constants.js';
 import type { UsageState } from './usageStore.js';
-import { mainProfile, spotlightLimit, type UsageLevel, usageLevel } from './usageText.js';
+import {
+  mainProfile,
+  officeUsage,
+  spotlightLimit,
+  type UsageLevel,
+  usageLevel,
+} from './usageText.js';
 
 const LEVEL_COLOR: Record<UsageLevel, string> = {
   ok: USAGE_COLOR_OK,
@@ -75,7 +82,9 @@ export function applyUsageFurniture(
   state: UsageState,
 ): FurnitureInstance[] {
   if (!instances.some(isUsageMeter)) return instances;
-  const main = state.profiles ? mainProfile(state.profiles) : undefined;
+  const { current, offices } = officesStore.get();
+  const here = state.profiles ? officeUsage(state.profiles, current, offices) : undefined;
+  const main = here ? mainProfile(here.profiles, here.preferred) : undefined;
   const limits = [main?.fiveHour, main?.sevenDay, spotlightLimit(main)];
   return instances.map((f) =>
     isUsageMeter(f) ? { ...f, sprite: meterSprite(f.sprite, limits) } : f,

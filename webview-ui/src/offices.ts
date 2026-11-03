@@ -9,7 +9,7 @@ import { OFFICE_STORAGE_KEY, OFFICE_URL_PARAM } from './constants.js';
 import { isBrowserRuntime } from './runtime.js';
 
 function readRequested(): string {
-  if (!isBrowserRuntime) return MAIN_OFFICE;
+  if (!isBrowserRuntime || typeof window === 'undefined') return MAIN_OFFICE; // VS Code, Node tests
   const fromUrl = new URLSearchParams(window.location.search).get(OFFICE_URL_PARAM);
   if (fromUrl) return fromUrl;
   try {

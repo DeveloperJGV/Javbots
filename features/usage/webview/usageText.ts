@@ -1,4 +1,5 @@
 import type { UsageLimit, UsageProfile } from '../../../core/src/messages.js';
+import { MAIN_OFFICE, type OfficeDef, sitsInOffice } from '../../../core/src/offices.js';
 import { SPOTLIGHT_MODEL } from './constants.js';
 
 export const PROFILE_LABELS: Record<string, string> = {
@@ -41,14 +42,34 @@ export function limitText(label: string, l: UsageLimit | undefined, now?: Date):
   return `${label} ${Math.round(l.pct)}%${until ? ` · se reinicia en ${until}` : ''}`;
 }
 
-/** The profile for the bar: the personal one if it has limits, else the first one with limits, else any. */
-export function mainProfile(profiles: readonly UsageProfile[]): UsageProfile | undefined {
+/** The profile for the bar: `preferred` (the personal one) if it has limits, else the first one with limits, else
+ *  any. */
+export function mainProfile(
+  profiles: readonly UsageProfile[],
+  preferred = 'personal',
+): UsageProfile | undefined {
   return (
-    profiles.find((p) => p.profile === 'personal' && (p.fiveHour || p.sevenDay)) ??
+    profiles.find((p) => p.profile === preferred && (p.fiveHour || p.sevenDay)) ??
     profiles.find((p) => p.fiveHour || p.sevenDay) ??
-    profiles.find((p) => p.profile === 'personal') ??
+    profiles.find((p) => p.profile === preferred) ??
     profiles[0]
   );
+}
+
+/**
+ * What the page shows of the usage in its office (core/src/offices.ts): only the profiles whose agents sit there
+ * (nothing of another office shows), and the office's own profile first. Without extra offices, everything.
+ */
+export function officeUsage(
+  profiles: readonly UsageProfile[],
+  office: string = MAIN_OFFICE,
+  offices: readonly OfficeDef[] = [],
+): { profiles: UsageProfile[]; preferred: string } {
+  const here = profiles.filter((p) => sitsInOffice(p.profile, office, offices));
+  return {
+    profiles: here,
+    preferred: offices.find((o) => o.id === office)?.mainProfile ?? 'personal',
+  };
 }
 
 const WINDOW_LABELS: Record<string, string> = { five_hour: '5 horas', seven_day: 'Semana' };

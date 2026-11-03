@@ -8,6 +8,7 @@ import {
   limitLabel,
   limitText,
   mainProfile,
+  officeUsage,
   spotlightLimit,
   untilText,
 } from '../../webview/usageText.js';
@@ -33,6 +34,31 @@ describe('usage text', () => {
     expect(mainProfile([{ ...personal, sevenDay: { pct: 3 } }, trabajo])?.profile).toBe('personal');
     expect(mainProfile([personal])).toBe(personal);
     expect(mainProfile([])).toBeUndefined();
+  });
+
+  it('each office shows only its own profiles, its main one first', () => {
+    const personal = { profile: 'personal', sessions: [], fiveHour: { pct: 5 } };
+    const otro = { profile: 'otro', sessions: [], fiveHour: { pct: 9 } };
+    const ambos = { profile: 'ambos', sessions: [] };
+    const offices = [
+      {
+        id: 'taller',
+        label: 'Taller',
+        profiles: ['otro', 'ambos'],
+        alsoInMain: ['ambos'],
+        mainProfile: 'otro',
+      },
+    ];
+    // No extra offices: everything, personal first
+    expect(officeUsage([personal, otro])).toEqual({
+      profiles: [personal, otro],
+      preferred: 'personal',
+    });
+    const main = officeUsage([personal, otro, ambos], 'principal', offices);
+    expect(main.profiles).toEqual([personal, ambos]);
+    const taller = officeUsage([personal, otro, ambos], 'taller', offices);
+    expect(taller).toEqual({ profiles: [otro, ambos], preferred: 'otro' });
+    expect(mainProfile(taller.profiles, taller.preferred)).toBe(otro);
   });
 });
 

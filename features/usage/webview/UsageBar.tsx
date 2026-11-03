@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 
 import type { UsageLimit, UsageProfile } from '../../../core/src/messages.js';
 import { Modal } from '../../../webview-ui/src/components/ui/Modal.js';
+import { officesStore } from '../../../webview-ui/src/offices.js';
 import { CLOCK_MS, SPOTLIGHT_MODEL } from './constants.js';
 import { type UsageState, usageStore } from './usageStore.js';
 import {
@@ -10,6 +11,7 @@ import {
   limitLabel,
   limitText,
   mainProfile,
+  officeUsage,
   PROFILE_LABELS,
   spotlightLimit,
   tokensText,
@@ -116,10 +118,12 @@ export function UsageBar({ usage }: { usage: UsageState }) {
     const t = setInterval(() => setNow(new Date()), CLOCK_MS);
     return () => clearInterval(t);
   }, []);
-  const profiles = usage.profiles;
-  if (!profiles) return null;
-  const main = mainProfile(profiles);
-  const shown = main?.profile ?? 'personal';
+  const offices = useSyncExternalStore(officesStore.subscribe, officesStore.get);
+  if (!usage.profiles) return null;
+  // Only this office's profiles (core/src/offices.ts), its own one first
+  const { profiles, preferred } = officeUsage(usage.profiles, offices.current, offices.offices);
+  const main = mainProfile(profiles, preferred);
+  const shown = main?.profile ?? preferred;
   const fable = spotlightLimit(main);
 
   return (
