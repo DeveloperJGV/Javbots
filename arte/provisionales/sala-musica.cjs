@@ -1,9 +1,9 @@
 // Sala de música (2026-11-02): tienda de discos retro donde estaba el laboratorio Aperture.
 //   - Cols 15-24, filas 18-28; puerta arriba (cols 19-20). Piso de madera oscura y tapete al centro.
-//   - Izquierda, la tienda: estante de discos, casetes, tres cajas de discos, sillón con audífonos y mostrador.
-//   - Derecha, el escenario: bocinas, tele de karaoke, batería, micrófono, piano, amplificador de Marty y rockola.
+//   - Izquierda, la tienda: estante de discos, casetes, sillón con audífonos y mostrador con boletos y radio.
+//   - Derecha, el escenario: bocinas, tele de karaoke, micrófono y el amplificador de Marty.
 //   - Guiños: guitarra de Guitar Hero en la pared, radio de Portal sobre el mostrador.
-//   - Abajo al centro, la cabina de DJ con el tocadiscos (se muda de Becarios, junto con el cuadro de la carátula).
+//   - Abajo al centro, el reproductor: tocadiscos (se muda de Becarios, junto con el cuadro de la carátula) o rockola.
 //   - Aperture se quita (sus muebles quedan en la bodega). El Pensador se va a Cómputo y la bodega va al Sótano.
 // Uso: node arte/provisionales/sala-musica.cjs <layout.json> [<otro.json> ...]   (si ya se aplicó, no hace nada)
 'use strict';
@@ -54,24 +54,18 @@ function apply(file) {
   // Tienda
   put('estante-discos', 'RECORD_SHELF', 15, 18);
   put('estante-casetes', 'CASSETTE_SHELF', 17, 18);
-  put('caja-1', 'RECORD_CRATE', 15, 21);
-  put('caja-2', 'RECORD_CRATE_B', 15, 22);
-  put('caja-3', 'RECORD_CRATE_C', 15, 23);
   put('sillon', 'LISTENING_CHAIR', 17, 23);
   put('mostrador', 'RECORD_COUNTER', 15, 26);
   put('radio-portal', 'PORTAL_RADIO', 17, 26); // sobre el mostrador: la que toca "Still Alive"
+  put('boletos', 'CONCERT_TICKETS', 16, 26); // "Mis próximos conciertos"
   // Escenario
   put('bocina-1', 'STAGE_SPEAKER', 21, 18);
   put('karaoke', 'KARAOKE_TV', 22, 18);
   put('bocina-2', 'STAGE_SPEAKER', 24, 18);
   put('microfono', 'MIC_STAND', 22, 21);
-  put('bateria', 'DRUM_KIT', 23, 21);
-  put('piano', 'UPRIGHT_PIANO', 23, 24);
-  put('amplificador', 'MARTY_AMP', 21, 24); // el de Marty en Volver al futuro
-  put('rockola', 'JUKEBOX_CLASSIC', 23, 27);
-  // Cabina con el tocadiscos encima (su orilla de abajo a media cabina)
-  put('cabina', 'DJ_BOOTH', 19, 27);
-  put('tocadiscos', 'TURNTABLE', 19, 26);
+  put('amplificador', 'MARTY_AMP', 23, 24); // el de Marty en Volver al futuro
+  // El reproductor, al centro: tocadiscos o una de las tres rockolas (se escoge con un clic)
+  put('reproductor', 'TURNTABLE', 19, 27);
   // Bodega en el Sótano
   l.furniture.push({ uid: 'sotano-bodega', type: 'STORAGE_SHELF', col: 41, row: 22 });
 

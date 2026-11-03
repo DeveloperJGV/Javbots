@@ -44,7 +44,9 @@ export type ServerMessage =
   | MusicLyrics
   | UsageStatus
   | HerdrTabLabels
-  | GithubStatus;
+  | GithubStatus
+  | ConcertsStatus
+  | ConnectionsStatus;
 
 export type ClientMessage =
   | WebviewReady
@@ -75,7 +77,11 @@ export type ClientMessage =
   | SetMusicEnabled
   | InstallMusicExtension
   | MusicControl
-  | DisconnectSpotify;
+  | DisconnectSpotify
+  | RefreshConcerts
+  | SearchConcerts
+  | AddConcert
+  | DisconnectGoogle;
 
 export interface ProviderCapabilities {
   type: 'providerCapabilities';
@@ -451,6 +457,57 @@ export interface GithubPullRequest {
   author?: string;
 }
 
+export interface ConcertsStatus {
+  type: 'concertsStatus';
+  googleConfigured: boolean;
+  googleConnected: boolean;
+  reconnectInDays?: number;
+  ticketmasterConfigured: boolean;
+  concerts: CalendarConcert[];
+  found: FoundConcert[];
+  searching: boolean;
+  error?: string;
+}
+
+export interface CalendarConcert {
+  id: string;
+  title: string;
+  artist: string;
+  start: string;
+  allDay: boolean;
+  location?: string;
+  link?: string;
+}
+
+export interface FoundConcert {
+  id: string;
+  artist: string;
+  name: string;
+  start: string;
+  allDay: boolean;
+  venue?: string;
+  city?: string;
+  url?: string;
+}
+
+export interface ConnectionsStatus {
+  type: 'connectionsStatus';
+  connections: ConnectionInfo[];
+}
+
+export interface ConnectionInfo {
+  id: string;
+  name: string;
+  feature: string;
+  purpose: string;
+  auth: string;
+  state: ConnectionState;
+  detail?: string;
+  lastUsedAt?: string;
+}
+
+export type ConnectionState = 'ok' | 'warn' | 'off' | 'idea';
+
 export interface WebviewReady {
   type: 'webviewReady';
 }
@@ -592,11 +649,28 @@ export interface InstallMusicExtension {
 
 export interface MusicControl {
   type: 'musicControl';
-  action: AnonymousSchema_321;
+  action: AnonymousSchema_354;
 }
 
-export type AnonymousSchema_321 = 'previous' | 'togglePlay' | 'next';
+export type AnonymousSchema_354 = 'previous' | 'togglePlay' | 'next';
 
 export interface DisconnectSpotify {
   type: 'disconnectSpotify';
+}
+
+export interface RefreshConcerts {
+  type: 'refreshConcerts';
+}
+
+export interface SearchConcerts {
+  type: 'searchConcerts';
+}
+
+export interface AddConcert {
+  type: 'addConcert';
+  id: string;
+}
+
+export interface DisconnectGoogle {
+  type: 'disconnectGoogle';
 }

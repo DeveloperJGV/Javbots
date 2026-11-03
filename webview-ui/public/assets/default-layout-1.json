@@ -17289,24 +17289,6 @@
       "row": 18
     },
     {
-      "uid": "musica-caja-1",
-      "type": "RECORD_CRATE",
-      "col": 15,
-      "row": 21
-    },
-    {
-      "uid": "musica-caja-2",
-      "type": "RECORD_CRATE_B",
-      "col": 15,
-      "row": 22
-    },
-    {
-      "uid": "musica-caja-3",
-      "type": "RECORD_CRATE_C",
-      "col": 15,
-      "row": 23
-    },
-    {
       "uid": "musica-sillon",
       "type": "LISTENING_CHAIR",
       "col": 17,
@@ -17349,45 +17331,33 @@
       "row": 21
     },
     {
-      "uid": "musica-bateria",
-      "type": "DRUM_KIT",
-      "col": 23,
-      "row": 21
-    },
-    {
-      "uid": "musica-piano",
-      "type": "UPRIGHT_PIANO",
-      "col": 23,
-      "row": 24
-    },
-    {
       "uid": "musica-amplificador",
       "type": "MARTY_AMP",
-      "col": 21,
-      "row": 24
-    },
-    {
-      "uid": "musica-rockola",
-      "type": "JUKEBOX_CLASSIC",
       "col": 23,
-      "row": 27
-    },
-    {
-      "uid": "musica-cabina",
-      "type": "DJ_BOOTH",
-      "col": 19,
-      "row": 27
-    },
-    {
-      "uid": "musica-tocadiscos",
-      "type": "TURNTABLE",
-      "col": 19,
-      "row": 26
+      "row": 24
     },
     {
       "uid": "sotano-bodega",
       "type": "STORAGE_SHELF",
       "col": 41,
+      "row": 22
+    },
+    {
+      "uid": "musica-reproductor",
+      "type": "TURNTABLE",
+      "col": 19,
+      "row": 27
+    },
+    {
+      "uid": "musica-boletos",
+      "type": "CONCERT_TICKETS",
+      "col": 16,
+      "row": 26
+    },
+    {
+      "uid": "sotano-conexiones",
+      "type": "CONNECTIONS_RACK",
+      "col": 37,
       "row": 22
     }
   ],

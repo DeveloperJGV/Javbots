@@ -2,7 +2,6 @@ import type { FurnitureInstance, SpriteData } from '../../../webview-ui/src/offi
 import {
   ALBUM_FRAME_TYPE,
   JUKEBOX_SCREEN,
-  JUKEBOX_STYLES,
   MUSIC_COVER_SIZE,
   MUSIC_COVER_X,
   MUSIC_COVER_Y,
@@ -12,6 +11,7 @@ import {
   MUSIC_NOTE_PIXELS,
   MUSIC_NOTE_RISE_PX_PER_SEC,
   MUSIC_NOTE_SPAWN_SEC,
+  PLAYER_STYLES,
   TURNTABLE_GLINT,
   TURNTABLE_GLINT_DIM,
   TURNTABLE_RECORD,
@@ -129,11 +129,11 @@ export function screenCover(jukebox: SpriteData, cover: SpriteData): SpriteData 
   return out;
 }
 
-const JUKEBOX_TYPES = new Set(JUKEBOX_STYLES.map((s) => s.type));
+const PLAYER_TYPES = new Set(PLAYER_STYLES.map((s) => s.type));
 
-/** Whether a furniture instance is a jukebox (any style): a click opens the style menu. */
-export function isJukebox(f: FurnitureInstance): boolean {
-  return JUKEBOX_TYPES.has(baseType(f.type));
+/** Whether a furniture instance is the music player (any style): a click opens the style menu. */
+export function isMusicPlayer(f: FurnitureInstance): boolean {
+  return PLAYER_TYPES.has(baseType(f.type));
 }
 
 /** Whether a furniture instance is the album frame. */
@@ -156,11 +156,6 @@ export function lyricAnchorY(turntable: FurnitureInstance, furniture: FurnitureI
     if (overlaps && justAbove) top = Math.min(top, f.y);
   }
   return top;
-}
-
-/** Whether a furniture instance is the turntable (a click on it shows / hides the music column). */
-export function isTurntable(f: FurnitureInstance): boolean {
-  return baseType(f.type) === TURNTABLE_TYPE;
 }
 
 /** Turntable spinning while music plays; album frame showing the current cover. */
@@ -199,7 +194,7 @@ export class MusicNotes {
       return;
     }
     for (const f of furniture) {
-      if (baseType(f.type) !== TURNTABLE_TYPE) continue;
+      if (!isMusicPlayer(f)) continue;
       const key = `${f.x},${f.y}`;
       const t = (this.timers.get(key) ?? this.rand() * MUSIC_NOTE_SPAWN_SEC) - dt;
       if (t > 0) {

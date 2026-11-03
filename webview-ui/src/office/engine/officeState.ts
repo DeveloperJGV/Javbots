@@ -1,6 +1,12 @@
 import { pickDiversePalette } from '../../../../core/src/paletteUtils.js';
 import { BODEGA_EMPTY_TYPE, BODEGA_TYPE } from '../../../../features/bodega/webview/constants.js';
 import { baseType as bodegaBaseType } from '../../../../features/bodega/webview/storedItems.js';
+import { isConcertTickets } from '../../../../features/conciertos/webview/concertsStore.js';
+import { connectionsStore } from '../../../../features/conexiones/webview/connectionsStore.js';
+import {
+  applyConnectionsFurniture,
+  isConnectionsRack,
+} from '../../../../features/conexiones/webview/rackFurniture.js';
 import {
   applyGithubFurniture,
   isCabinet,
@@ -11,8 +17,7 @@ import {
 import { githubStore } from '../../../../features/github/webview/githubStore.js';
 import {
   applyMusicFurniture,
-  isJukebox,
-  isTurntable,
+  isMusicPlayer,
   MusicNotes,
 } from '../../../../features/musica/webview/musicFurniture.js';
 import { musicStore } from '../../../../features/musica/webview/musicStore.js';
@@ -1110,8 +1115,9 @@ export class OfficeState {
 
   private withAmbientAnimation(instances: FurnitureInstance[]): FurnitureInstance[] {
     // Optional features: spinning turntable and album cover (features/musica), plan limits on the meter
-    // (features/usage), repositories in the GitHub room (features/github)
-    return applyGithubFurniture(
+    // (features/usage), repositories in the GitHub room (features/github), lights on the connections rack
+    // (features/conexiones)
+    const withGithub = applyGithubFurniture(
       applyUsageFurniture(
         applyMusicFurniture(
           this.withOfficeAnimation(instances),
@@ -1121,6 +1127,11 @@ export class OfficeState {
         usageStore.get(),
       ),
       githubStore.get(),
+    );
+    return applyConnectionsFurniture(
+      withGithub,
+      connectionsStore.get().connections,
+      this.furnitureAnimTimer,
     );
   }
 
@@ -1159,14 +1170,9 @@ export class OfficeState {
     return this.furniture.some((f) => isBoard(f) && hitsPaintedPixel(f, worldX, worldY));
   }
 
-  /** Whether a world point lands on the turntable (features/musica: a click shows / hides the music column). */
-  isTurntableAt(worldX: number, worldY: number): boolean {
-    return this.furniture.some((f) => isTurntable(f) && hitsPaintedPixel(f, worldX, worldY));
-  }
-
-  /** The layout uid of the jukebox under a world point (features/musica: a click opens its style menu). */
-  jukeboxUidAt(worldX: number, worldY: number): string | null {
-    const hit = this.furniture.find((f) => isJukebox(f) && hitsPaintedPixel(f, worldX, worldY));
+  /** The layout uid of the music player under a world point (features/musica: a click opens its menu). */
+  musicPlayerUidAt(worldX: number, worldY: number): string | null {
+    const hit = this.furniture.find((f) => isMusicPlayer(f) && hitsPaintedPixel(f, worldX, worldY));
     if (!hit) return null;
     const col = Math.round(hit.x / TILE_SIZE);
     const bottomRow = Math.round((hit.y + hit.sprite.length) / TILE_SIZE);
@@ -1184,6 +1190,20 @@ export class OfficeState {
   /** Whether a world point lands on the storage shelf (features/bodega: a click opens the stored furniture). */
   isBodegaAt(worldX: number, worldY: number): boolean {
     return this.furniture.some((f) => isBodega(f) && hitsPaintedPixel(f, worldX, worldY));
+  }
+
+  /** Whether a world point lands on the concert tickets (features/conciertos). */
+  isConcertTicketsAt(worldX: number, worldY: number): boolean {
+    return this.furniture.some(
+      (f) => isConcertTickets(f.type) && hitsPaintedPixel(f, worldX, worldY),
+    );
+  }
+
+  /** Whether a world point lands on the connections rack (features/conexiones). */
+  isConnectionsRackAt(worldX: number, worldY: number): boolean {
+    return this.furniture.some(
+      (f) => isConnectionsRack(f.type) && hitsPaintedPixel(f, worldX, worldY),
+    );
   }
 
   /** Whether a world point lands on the usage meter (features/usage). */

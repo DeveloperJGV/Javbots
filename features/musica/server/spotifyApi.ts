@@ -62,7 +62,11 @@ export function createSpotifyApi(opts: SpotifyApiOptions) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), SPOTIFY_FETCH_TIMEOUT_MS);
     try {
-      return await fetcher(url, { ...init, headers: init.headers ?? {}, signal: controller.signal });
+      return await fetcher(url, {
+        ...init,
+        headers: init.headers ?? {},
+        signal: controller.signal,
+      });
     } finally {
       clearTimeout(timer);
     }
@@ -74,12 +78,17 @@ export function createSpotifyApi(opts: SpotifyApiOptions) {
     opts.onRefreshToken(token);
   }
 
-  function saveTokens(json: { access_token?: unknown; expires_in?: unknown; refresh_token?: unknown }): void {
+  function saveTokens(json: {
+    access_token?: unknown;
+    expires_in?: unknown;
+    refresh_token?: unknown;
+  }): void {
     if (typeof json.access_token !== 'string') throw new Error('spotify: sin access_token');
     accessToken = json.access_token;
     const seconds = typeof json.expires_in === 'number' ? json.expires_in : 3600;
     expiresAt = now() + (seconds - 60) * 1000;
-    if (typeof json.refresh_token === 'string' && json.refresh_token) setRefreshToken(json.refresh_token);
+    if (typeof json.refresh_token === 'string' && json.refresh_token)
+      setRefreshToken(json.refresh_token);
   }
 
   /** The URL to send the browser to; the verifier waits for the callback with the same `state`. */
@@ -151,7 +160,10 @@ export function createSpotifyApi(opts: SpotifyApiOptions) {
   async function api(path: string, method = 'GET'): Promise<Response | undefined> {
     const t = await token();
     if (!t) return undefined;
-    const res = await call(`${SPOTIFY_API_URL}${path}`, { method, headers: { Authorization: `Bearer ${t}` } });
+    const res = await call(`${SPOTIFY_API_URL}${path}`, {
+      method,
+      headers: { Authorization: `Bearer ${t}` },
+    });
     if (res.status === 401) accessToken = undefined;
     return res;
   }
@@ -207,11 +219,29 @@ export function createSpotifyApi(opts: SpotifyApiOptions) {
     }
   }
 
+  /**
+   * The artists the account listens to most (last ~6 months), most listened first. Empty without a session, or
+   * when the session predates the user-top-read permission (403: connect Spotify again).
+   */
+  async function topArtists(limit = 20): Promise<string[]> {
+    try {
+      const res = await api(`/me/top/artists?limit=${limit}&time_range=medium_term`);
+      if (!res?.ok) return [];
+      const json = (await res.json()) as { items?: { name?: unknown }[] };
+      return (json.items ?? [])
+        .map((a) => a.name)
+        .filter((n): n is string => typeof n === 'string');
+    } catch {
+      return [];
+    }
+  }
+
   return {
     authorizeUrl,
     exchangeCode,
     playback,
     control,
+    topArtists,
     /** There is a session (a refresh token) to poll with. */
     connected: () => Boolean(refreshToken),
     /** Forget the session (the user disconnects). */
@@ -230,12 +260,16 @@ export function toPlayback(json: Record<string, unknown>): SpotifyPlayback {
   const item = json.item as Record<string, unknown> | null | undefined;
   if (!item || typeof item.name !== 'string') return { track: null };
   const artists = Array.isArray(item.artists)
-    ? (item.artists as { name?: unknown }[]).map((a) => a.name).filter((n): n is string => typeof n === 'string')
+    ? (item.artists as { name?: unknown }[])
+        .map((a) => a.name)
+        .filter((n): n is string => typeof n === 'string')
     : [];
-  const album = item.album as { name?: unknown; images?: { url?: unknown; width?: unknown }[] } | undefined;
+  const album = item.album as
+    { name?: unknown; images?: { url?: unknown; width?: unknown }[] } | undefined;
   // Spotify lists covers from largest to smallest.
   const image = album?.images?.[0]?.url;
-  const device = json.device as { name?: unknown; type?: unknown; volume_percent?: unknown } | undefined;
+  const device = json.device as
+    { name?: unknown; type?: unknown; volume_percent?: unknown } | undefined;
   const isComputer = typeof device?.type === 'string' && device.type.toLowerCase() === 'computer';
   return {
     track: {
@@ -247,7 +281,9 @@ export function toPlayback(json: Record<string, unknown>): SpotifyPlayback {
       positionMs: typeof json.progress_ms === 'number' ? json.progress_ms : 0,
       durationMs: typeof item.duration_ms === 'number' ? item.duration_ms : 0,
       ...(typeof device?.name === 'string' && !isComputer ? { device: device.name } : {}),
-      ...(typeof device?.volume_percent === 'number' ? { volume: device.volume_percent / 100 } : {}),
+      ...(typeof device?.volume_percent === 'number'
+        ? { volume: device.volume_percent / 100 }
+        : {}),
     },
   };
 }

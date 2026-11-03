@@ -1,9 +1,11 @@
 # Música (feature opcional)
 
 La oficina muestra lo que suena en **Spotify**: una columna a la derecha con la carátula, la canción, el
-artista, el álbum y el tiempo; un **tocadiscos** en Becarios que gira y suelta notitas mientras suena, y un
-**cuadro** arriba de él con la carátula en pixel art. Sin música, todo se queda quieto y la columna se quita.
-**Un clic en el tocadiscos** esconde o muestra la columna (el navegador lo recuerda).
+artista, el álbum y el tiempo; un **reproductor** en la sala de música que suelta notitas mientras suena, y un
+**cuadro** en la pared con la carátula en pixel art. Sin música, todo se queda quieto y la columna se quita.
+
+**Un clic en el reproductor** abre su menú: escoges cómo se ve (tocadiscos, que gira; rockola clásica, setentera o
+digital, que muestra la carátula en su pantalla) y escondes o muestras la columna (el navegador lo recuerda).
 
 **Letras:** karaoke en la columna (línea anterior, la que se canta y la siguiente) y la línea actual en un globito
 arriba del tocadiscos. La extensión manda la letra de Spotify (la misma de la app, endpoint no oficial que puede
@@ -55,9 +57,9 @@ La oficina puede preguntarle directamente a tu cuenta de Spotify qué suena (en 
 computadora…) con la API web de Spotify. Hace falta una app en el
 [panel de desarrollador de Spotify](https://developer.spotify.com/dashboard) (gratis, con tu misma cuenta):
 
-1. Crea la app (Web API) y en sus *Redirect URIs* agrega `http://127.0.0.1:3100/api/music/spotify/callback`
+1. Crea la app (Web API) y en sus _Redirect URIs_ agrega `http://127.0.0.1:3100/api/music/spotify/callback`
    (con el puerto en que corre la oficina).
-2. Pon su *Client ID* en `~/.pixel-agents/music.json` y reinicia la oficina:
+2. Pon su _Client ID_ en `~/.pixel-agents/music.json` y reinicia la oficina:
 
    ```json
    { "enabled": true, "token": "…", "spotifyClientId": "…" }
@@ -66,7 +68,7 @@ computadora…) con la API web de Spotify. Hace falta una app en el
 3. En Ajustes → Música, **Conectar con Spotify**: se abre la página de Spotify, aceptas y listo. La sesión queda
    en `music.json` (`spotifyRefreshToken`); **Desconectar de Spotify** la borra.
 
-No hay *client secret*: el inicio de sesión usa PKCE, así que nada de la app queda expuesto. Mientras el Spotify de
+No hay _client secret_: el inicio de sesión usa PKCE, así que nada de la app queda expuesto. Mientras el Spotify de
 la computadora esté abierto y sonando, la extensión sigue siendo la fuente (trae la letra de Spotify, el tempo y
 avisa al instante); la cuenta se consulta cada 4 s solo cuando la extensión no reporta nada o reporta pausa, y si
 en otro aparato sí suena algo, gana ese. La letra entonces viene de LRCLIB. Los botones de la música (también los
@@ -82,11 +84,11 @@ canción, la letra y la carátula, y recibe los botones de reproducción. Viene 
 { "enabled": true, "token": "…", "screenPort": 3101 }
 ```
 
-| Ruta                       | Qué hace                                                                                         |
-| -------------------------- | ------------------------------------------------------------------------------------------------ |
-| `GET /api/music/now`       | `{ track, lyrics, lyricsLoading }`. `track.positionMs` ya viene adelantada al momento de pedirla; `track.volume` (0..1) y `track.tempo` (pulsos por minuto) si la fuente los sabe |
-| `GET /api/music/cover`     | La carátula (imagen)                                                                             |
-| `POST /api/music/control`  | `{ "action": "previous" \| "togglePlay" \| "next" \| "volumeUp" \| "volumeDown" }`. 409 si no hay extensión conectada ni cuenta de Spotify |
+| Ruta                      | Qué hace                                                                                                                                                                          |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/music/now`      | `{ track, lyrics, lyricsLoading }`. `track.positionMs` ya viene adelantada al momento de pedirla; `track.volume` (0..1) y `track.tempo` (pulsos por minuto) si la fuente los sabe |
+| `GET /api/music/cover`    | La carátula (imagen)                                                                                                                                                              |
+| `POST /api/music/control` | `{ "action": "previous" \| "togglePlay" \| "next" \| "volumeUp" \| "volumeDown" }`. 409 si no hay extensión conectada ni cuenta de Spotify                                        |
 
 Todas piden `Authorization: Bearer <token de música>`. Cualquiera en tu red que tenga ese token puede ver qué
 escuchas y cambiar de canción o de volumen (nada más): no lo compartas. Windows puede pedir permiso en el firewall la primera vez.
@@ -97,14 +99,14 @@ botones de volumen. Para tenerlo, vuelve a instalar la extensión desde Ajustes.
 
 ## Carpetas
 
-| Carpeta             | Qué hay                                                                                                     |
-| ------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Carpeta             | Qué hay                                                                                                                                      |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | `server/`           | Ruta `/api/music`, token, carátulas, instalación en Spicetify, puerto de pantallas (`screenServer.ts`), API web de Spotify (`spotifyApi.ts`) |
-| `webview/`          | Columna, sección de Ajustes, estado, tocadiscos que gira, cuadro y notas                                    |
-| `spicetify/`        | La extensión que corre dentro de Spotify                                                                    |
-| `assets/furniture/` | Muebles `TURNTABLE` y `ALBUM_FRAME` (esbuild los copia a `dist/assets`)                                     |
-| `arte/`             | Originales de PixelLab, `armar.py` (muebles) y `poner-en-plano.cjs` (los pone en un `layout.json`)          |
-| `test/`             | Pruebas del servidor y de la página (corren con `npm test`)                                                 |
+| `webview/`          | Columna, sección de Ajustes, estado, tocadiscos que gira, cuadro y notas                                                                     |
+| `spicetify/`        | La extensión que corre dentro de Spotify                                                                                                     |
+| `assets/furniture/` | Muebles `TURNTABLE` y `ALBUM_FRAME` (esbuild los copia a `dist/assets`)                                                                      |
+| `arte/`             | Originales de PixelLab, `armar.py` (muebles) y `poner-en-plano.cjs` (los pone en un `layout.json`)                                           |
+| `test/`             | Pruebas del servidor y de la página (corren con `npm test`)                                                                                  |
 
 Puntos donde toca al resto del proyecto (todos chicos y marcados con `features/musica`): mensajes en
 `core/asyncapi.yaml`, `features` en `server/src/httpServer.ts` + `cli.ts`, la columna en `App.tsx`, la sección

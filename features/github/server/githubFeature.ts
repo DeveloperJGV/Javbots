@@ -1,6 +1,11 @@
 import { execFile } from 'child_process';
 
-import type { GithubPullRequest, GithubRepo, GithubStatus } from '../../../core/src/messages.js';
+import type {
+  ConnectionInfo,
+  GithubPullRequest,
+  GithubRepo,
+  GithubStatus,
+} from '../../../core/src/messages.js';
 import { createPollingFeature } from '../../../server/src/pollingFeature.js';
 import {
   ghBins,
@@ -123,11 +128,13 @@ export function runGithubQuery(bins: string[] = ghBins()): Promise<unknown> {
  */
 export function createGithubFeature(
   opts: { query?: () => Promise<unknown>; now?: () => Date; tickMs?: number } = {},
-): ReturnType<typeof createPollingFeature<GithubStatus>> {
+): ReturnType<typeof createPollingFeature<GithubStatus>> & { connections(): ConnectionInfo[] } {
   const query = opts.query ?? (() => runGithubQuery());
   const now = opts.now ?? (() => new Date());
   let latest: GithubStatus | null = null;
   let askedAt = -Infinity;
+  let okAt = 0;
+  let failed = false;
   let feature: ReturnType<typeof createPollingFeature<GithubStatus>> | null = null;
   feature = createPollingFeature({
     name: 'github',
@@ -137,7 +144,9 @@ export function createGithubFeature(
       if (!feature?.listeners || now().getTime() - askedAt < GITHUB_REFRESH_MS) return null;
       askedAt = now().getTime();
       const status = parseGithub(await query(), now());
+      failed = !status;
       if (!status) return null;
+      okAt = now().getTime();
       latest = status;
       return status;
     },
@@ -151,5 +160,22 @@ export function createGithubFeature(
     if (msg.type === 'webviewReady' && client.privileged) void feature?.poll();
     return handled;
   };
-  return feature;
+  return Object.assign(feature, {
+    connections: (): ConnectionInfo[] => [
+      {
+        id: 'github',
+        name: 'GitHub (gh)',
+        feature: 'Sala de GitHub',
+        purpose: 'Repositorios, pull requests abiertos y calendario de contribuciones',
+        auth: 'El login propio del CLI gh',
+        state: failed ? 'warn' : okAt ? 'ok' : 'off',
+        detail: failed
+          ? 'gh no contestó (¿sin instalar o sin login?)'
+          : latest
+            ? `Conectado como ${latest.login}`
+            : 'Aún no se ha preguntado',
+        ...(okAt ? { lastUsedAt: new Date(okAt).toISOString() } : {}),
+      },
+    ],
+  });
 }

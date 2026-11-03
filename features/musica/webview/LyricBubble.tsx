@@ -4,7 +4,7 @@ import type { OfficeState } from '../../../webview-ui/src/office/engine/officeSt
 import { overlayProjection } from '../../../webview-ui/src/office/projection.js';
 import { renderDpr } from '../../../webview-ui/src/viewScale.js';
 import { LYRIC_BUBBLE_GAP_PX, LYRIC_BUBBLE_MAX_WIDTH_PX } from './constants.js';
-import { isTurntable, lyricAnchorY } from './musicFurniture.js';
+import { isMusicPlayer, lyricAnchorY } from './musicFurniture.js';
 import { currentLyricIndex, currentLyrics, isMusicPlaying, type MusicState } from './musicStore.js';
 
 interface LyricBubbleProps {
@@ -35,7 +35,7 @@ export function LyricBubble({ music, officeState, containerRef, zoom, panRef }: 
   const lyrics = currentLyrics(music);
   const idx = currentLyricIndex(music);
   const text = idx >= 0 ? lyrics?.lines?.[idx]?.text : undefined;
-  const turntable = officeState.furniture.find(isTurntable);
+  const turntable = officeState.furniture.find(isMusicPlayer);
   const el = containerRef.current;
   if (!text || !turntable || !el) return null;
 

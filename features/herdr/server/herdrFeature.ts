@@ -1,6 +1,6 @@
 import { execFile } from 'child_process';
 
-import type { HerdrTabLabels } from '../../../core/src/messages.js';
+import type { ConnectionInfo, HerdrTabLabels } from '../../../core/src/messages.js';
 import { createPollingFeature } from '../../../server/src/pollingFeature.js';
 import {
   HERDR_POLL_MS,
@@ -118,6 +118,7 @@ export function createHerdrFeature(opts: {
   let current: HerdrTabLabels = { type: 'herdrTabLabels', labels: {} };
   let last = JSON.stringify(current);
   let warned = false;
+  let okAt = 0;
 
   let feature: ReturnType<typeof createPollingFeature<HerdrTabLabels>> | null = null;
   feature = createPollingFeature({
@@ -131,6 +132,7 @@ export function createHerdrFeature(opts: {
         const [panes, tabs] = await Promise.all([run(['pane', 'list']), run(['tab', 'list'])]);
         snapshot = parseHerdr(panes, tabs);
         warned = false;
+        okAt = Date.now();
       } catch (err) {
         // herdr closed or not installed: keep the last names rather than flicker back to folders
         if (!warned) console.log(`${LOG_PREFIX} Sin herdr por ahora:`, (err as Error).message);
@@ -152,6 +154,22 @@ export function createHerdrFeature(opts: {
   });
 
   return Object.assign(feature, {
+    connections: (): ConnectionInfo[] => [
+      {
+        id: 'herdr',
+        name: 'Herdr',
+        feature: 'Nombres de pestañas',
+        purpose: 'Nombre de la pestaña de terminal de cada agente',
+        auth: 'CLI local, sin llave',
+        state: warned ? 'warn' : okAt ? 'ok' : 'off',
+        detail: warned
+          ? 'Herdr cerrado o no instalado'
+          : okAt
+            ? 'Leyendo pestañas'
+            : 'Aún no se ha preguntado',
+        ...(okAt ? { lastUsedAt: new Date(okAt).toISOString() } : {}),
+      },
+    ],
     /** Every hook event: remember which herdr pane its session runs in. */
     noteHookEvent(event: Record<string, unknown>): void {
       const session = str(event.session_id);

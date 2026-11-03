@@ -10,6 +10,8 @@
 
 import * as path from 'path';
 
+import { createConcertsFeature } from '../../features/conciertos/server/concertsFeature.js';
+import { createConnectionsFeature } from '../../features/conexiones/server/connectionsFeature.js';
 import { createGithubFeature } from '../../features/github/server/githubFeature.js';
 import { createHerdrFeature } from '../../features/herdr/server/herdrFeature.js';
 import { createMusicFeature } from '../../features/musica/server/musicFeature.js';
@@ -34,6 +36,7 @@ import { MAX_PORT, MIN_PORT } from './constants.js';
 import { FileStateAdapter } from './fileStateAdapter.js';
 import { claudeProvider, copyHookScript, hookProviderById } from './providers/index.js';
 import { PixelAgentsServer } from './server.js';
+import type { ServerFeature } from './serverFeature.js';
 
 // ── Argument parsing ──────────────────────────────────────────
 
@@ -243,6 +246,21 @@ async function main(): Promise<void> {
       serverUrl: () => (currentConfig ? `http://127.0.0.1:${currentConfig.port}` : null),
     });
 
+    const features: ServerFeature[] = [
+      music,
+      createUsageFeature({ command: () => runUsageCommand() }),
+      herdr,
+      createGithubFeature(),
+      // Optional feature: upcoming concerts from Google Calendar + Ticketmaster (features/conciertos).
+      createConcertsFeature({
+        officeToken: () => currentConfig?.token ?? null,
+        serverUrl: () => (currentConfig ? `http://127.0.0.1:${currentConfig.port}` : null),
+        topArtists: () => music.topArtists(),
+      }),
+    ];
+    // Optional feature: the board of outside connections, as every other feature reports them (features/conexiones).
+    features.push(createConnectionsFeature({ features: () => features }));
+
     const config = await server.start({
       store,
       runtime,
@@ -253,13 +271,7 @@ async function main(): Promise<void> {
       assetCache,
       onSetHooksEnabled,
       onReloadAssets,
-      // Optional feature: Claude plan limits and cost per agent (features/usage).
-      features: [
-        music,
-        createUsageFeature({ command: () => runUsageCommand() }),
-        herdr,
-        createGithubFeature(),
-      ],
+      features,
     });
     currentConfig = { port: config.port, token: config.token };
 

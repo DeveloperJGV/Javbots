@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef } from 'react';
 
 import { bodegaStore } from '../../../../features/bodega/webview/bodegaStore.js';
+import { concertsStore } from '../../../../features/conciertos/webview/concertsStore.js';
+import { connectionsStore } from '../../../../features/conexiones/webview/connectionsStore.js';
 import { githubStore } from '../../../../features/github/webview/githubStore.js';
 import { musicStore } from '../../../../features/musica/webview/musicStore.js';
 import { usageStore } from '../../../../features/usage/webview/usageStore.js';
@@ -535,9 +537,10 @@ export function OfficeCanvas({
             hitId === null &&
             petId === null &&
             (officeState.isBoardAt(pos.worldX, pos.worldY) ||
-              officeState.isTurntableAt(pos.worldX, pos.worldY) ||
               officeState.isBodegaAt(pos.worldX, pos.worldY) ||
-              officeState.jukeboxUidAt(pos.worldX, pos.worldY) !== null ||
+              officeState.isConcertTicketsAt(pos.worldX, pos.worldY) ||
+              officeState.isConnectionsRackAt(pos.worldX, pos.worldY) ||
+              officeState.musicPlayerUidAt(pos.worldX, pos.worldY) !== null ||
               officeState.isUsageMeterAt(pos.worldX, pos.worldY) ||
               github !== null),
           selectedAgentId: officeState.selectedAgentId,
@@ -780,22 +783,28 @@ export function OfficeCanvas({
         return;
       }
 
-      // Turntable (features/musica): show / hide the music column.
-      if (officeState.isTurntableAt(pos.worldX, pos.worldY)) {
-        musicStore.toggleColumn();
-        return;
-      }
-
-      // Jukebox (features/musica): its style menu.
-      const jukeboxUid = officeState.jukeboxUidAt(pos.worldX, pos.worldY);
-      if (jukeboxUid) {
-        musicStore.openJukeboxPicker(jukeboxUid);
+      // Music player (features/musica): its menu (style, show / hide the music column).
+      const playerUid = officeState.musicPlayerUidAt(pos.worldX, pos.worldY);
+      if (playerUid) {
+        musicStore.openJukeboxPicker(playerUid);
         return;
       }
 
       // Storage shelf (features/bodega): open the stored furniture.
       if (officeState.isBodegaAt(pos.worldX, pos.worldY)) {
         bodegaStore.open();
+        return;
+      }
+
+      // Concert tickets (features/conciertos): the upcoming concerts.
+      if (officeState.isConcertTicketsAt(pos.worldX, pos.worldY)) {
+        concertsStore.open();
+        return;
+      }
+
+      // Connections rack (features/conexiones): which outside services the office talks to.
+      if (officeState.isConnectionsRackAt(pos.worldX, pos.worldY)) {
+        connectionsStore.open();
         return;
       }
 

@@ -18,16 +18,20 @@ export const LYRIC_BUBBLE_GAP_PX = 6;
 export const TURNTABLE_TYPE = 'TURNTABLE';
 export const ALBUM_FRAME_TYPE = 'ALBUM_FRAME';
 
-/** The jukebox: one piece with interchangeable looks (same 2×2 footprint). A click opens the style menu. */
-export const JUKEBOX_STYLES: ReadonlyArray<{ type: string; label: string }> = [
-  { type: 'JUKEBOX_CLASSIC', label: 'Clásica (años 50)' },
-  { type: 'JUKEBOX_RETRO', label: 'Setentera' },
-  { type: 'JUKEBOX_MODERN', label: 'Digital' },
+/**
+ * The music player: one piece with interchangeable looks (same 2×2 footprint). A click opens the style menu. The
+ * record spins only on the turntable; notes and the lyric bubble come out of any of them.
+ */
+export const PLAYER_STYLES: ReadonlyArray<{ type: string; label: string }> = [
+  { type: TURNTABLE_TYPE, label: 'Tocadiscos' },
+  { type: 'JUKEBOX_CLASSIC', label: 'Rockola clásica' },
+  { type: 'JUKEBOX_RETRO', label: 'Rockola setentera' },
+  { type: 'JUKEBOX_MODERN', label: 'Rockola digital' },
 ];
 /** Screen of the digital jukebox (sprite px, see arte/pixellab/musica/rockola/armar.py): the cover shows there. */
 export const JUKEBOX_SCREEN = { type: 'JUKEBOX_MODERN', x: 12, y: 7, size: 8 } as const;
 /** Style menu thumbnails (CSS px). */
-export const JUKEBOX_THUMB_PX = 96;
+export const PLAYER_THUMB_PX = 96;
 
 /** The record on the TURNTABLE sprite (sprite px): an ellipse the glint runs around. */
 export const TURNTABLE_RECORD = { cx: 12.5, cy: 16.5, rx: 6, ry: 2 } as const;

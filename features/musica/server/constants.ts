@@ -67,7 +67,7 @@ export const SCREEN_MAX_BODY_BYTES = 1024;
 export const SPOTIFY_ACCOUNTS_URL = 'https://accounts.spotify.com';
 export const SPOTIFY_API_URL = 'https://api.spotify.com/v1';
 export const SPOTIFY_SCOPES =
-  'user-read-currently-playing user-read-playback-state user-modify-playback-state';
+  'user-read-currently-playing user-read-playback-state user-modify-playback-state user-top-read';
 /** GET with the music token: sends the browser to Spotify's login. */
 export const SPOTIFY_LOGIN_PATH = '/api/music/spotify/login';
 /** Where Spotify sends the browser back (register `http://127.0.0.1:<port>` + this in the app's dashboard). */

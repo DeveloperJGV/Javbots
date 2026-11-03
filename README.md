@@ -25,11 +25,12 @@ cambiamos el idioma, el arte, los cuartos y le agregamos cosas nuevas. La docume
 
 ## Novedades
 
+- **3 de noviembre de 2026**: tablero de conexiones en el Sótano (un foco por servicio de fuera, con su estado y
+  para qué sirve), un solo reproductor en la sala de música con cuatro estilos (tocadiscos o tres rockolas) y los
+  boletos del mostrador, que muestran tus próximos conciertos de Google Calendar y buscan más en Ticketmaster México.
 - **2 de noviembre de 2026**: sala de música (tienda de discos retro con cabina de DJ, instrumentos, karaoke y
   guiños geek), una rockola con tres estilos que se cambian con un clic y una bodega con miniaturas de todo lo que
   no está puesto en la oficina.
-- **30 de octubre de 2026**: la música ya no necesita Spotify abierto en la computadora: la oficina se conecta a
-  tu cuenta de Spotify y ve lo que suena en el celular o en una bocina; los botones funcionan igual por esa vía.
 
 Todo lo nuevo, por fecha, en [NOVEDADES.md](NOVEDADES.md).
 

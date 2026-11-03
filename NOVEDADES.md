@@ -3,6 +3,21 @@
 Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
 (Pixel Agents) está en [CHANGELOG.md](CHANGELOG.md).
 
+## 3 de noviembre de 2026
+
+- **Tablero de conexiones** en el Sótano: un rack con un foco por cada servicio de fuera con el que habla la oficina
+  (Spotify, LRCLIB, GitHub, Claude, Herdr…). Verde funciona, amarillo parpadea si hay que atenderlo, rojo si falta
+  la llave o conectarlo y azul si es una idea. Un clic muestra la lista: para qué sirve cada uno, cómo entra y cuándo
+  se usó. Detalles en [features/conexiones](features/conexiones/README.md).
+- **Un solo reproductor** en la sala de música: el tocadiscos y la rockola ahora son el mismo mueble, y un clic deja
+  escoger entre tocadiscos, rockola clásica, setentera o digital (y ocultar o mostrar la columna de música).
+- La sala de música se aligera: el piano, la batería, las cajas de discos y la cabina de DJ se fueron a la bodega, y
+  el amplificador de Marty tomó el lugar del piano. En el mostrador hay boletos de concierto nuevos.
+- **Mis próximos conciertos**: un clic en los boletos del mostrador muestra los conciertos de tu Google Calendar
+  (los eventos cuyo título empieza con `Concierto:`) y cuántos días faltan. El botón **Buscar conciertos** revisa
+  Ticketmaster México con tus artistas más escuchados en Spotify, y lo que encuentra se agrega al calendario con un
+  clic. Detalles en [features/conciertos](features/conciertos/README.md).
+
 ## 2 de noviembre de 2026
 
 - **Sala de música** donde estaba el laboratorio de Portal: una tienda de discos retro con neón, estantes de discos

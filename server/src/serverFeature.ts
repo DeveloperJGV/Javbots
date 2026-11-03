@@ -1,5 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 
+import type { ConnectionInfo } from '../../core/src/messages.js';
+
 /** One connected WebSocket client, as a feature sees it. */
 export interface FeatureClient {
   send(message: Record<string, unknown>): void;
@@ -21,4 +23,6 @@ export interface ServerFeature {
   /** Return true when the feature consumed the message (the core handler then skips it). */
   handleClientMessage?(msg: Record<string, unknown>, client: FeatureClient): boolean;
   dispose?(): void;
+  /** The outside services it talks to and their state right now (features/conexiones shows them). */
+  connections?(): ConnectionInfo[];
 }

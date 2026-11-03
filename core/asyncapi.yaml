@@ -128,6 +128,10 @@ components:
         - $ref: '#/components/schemas/HerdrTabLabels'
         # GitHub room (feature: features/github)
         - $ref: '#/components/schemas/GithubStatus'
+        # Upcoming concerts (feature: features/conciertos)
+        - $ref: '#/components/schemas/ConcertsStatus'
+        # Outside connections board (feature: features/conexiones)
+        - $ref: '#/components/schemas/ConnectionsStatus'
       discriminator: type
 
     ClientMessage:
@@ -162,6 +166,11 @@ components:
         - $ref: '#/components/schemas/InstallMusicExtension'
         - $ref: '#/components/schemas/MusicControl'
         - $ref: '#/components/schemas/DisconnectSpotify'
+        # Upcoming concerts (feature: features/conciertos)
+        - $ref: '#/components/schemas/RefreshConcerts'
+        - $ref: '#/components/schemas/SearchConcerts'
+        - $ref: '#/components/schemas/AddConcert'
+        - $ref: '#/components/schemas/DisconnectGoogle'
       discriminator: type
 
     # ── Server message variants ────────────────────────────────────
@@ -1132,6 +1141,136 @@ components:
         openPullRequests:
           type: number
 
+    ConcertsStatus:
+      description: >-
+        Upcoming concerts: the events of the owner's "Conciertos" Google calendar
+        whose title starts with "Concierto:", plus concerts found on Ticketmaster
+        Mexico for the artists they listen to most. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, googleConfigured, googleConnected, ticketmasterConfigured, concerts, found, searching]
+      properties:
+        type:
+          const: concertsStatus
+        googleConfigured:
+          type: boolean
+          description: The Google client ID and secret are in conciertos.json.
+        googleConnected:
+          type: boolean
+        reconnectInDays:
+          type: number
+          description: Present when the Google session (7 days for a Testing app) ends soon; 0 = today.
+        ticketmasterConfigured:
+          type: boolean
+        concerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/CalendarConcert'
+        found:
+          type: array
+          items:
+            $ref: '#/components/schemas/FoundConcert'
+        searching:
+          type: boolean
+        error:
+          type: string
+
+    CalendarConcert:
+      type: object
+      additionalProperties: false
+      required: [id, title, artist, start, allDay]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+          description: The event title without the "Concierto:" prefix.
+        artist:
+          type: string
+        start:
+          type: string
+          description: ISO date-time, or YYYY-MM-DD for an all-day event.
+        allDay:
+          type: boolean
+        location:
+          type: string
+        link:
+          type: string
+
+    FoundConcert:
+      type: object
+      additionalProperties: false
+      required: [id, artist, name, start, allDay]
+      properties:
+        id:
+          type: string
+        artist:
+          type: string
+        name:
+          type: string
+        start:
+          type: string
+          description: YYYY-MM-DD, plus THH:MM:SS when known (venue local time).
+        allDay:
+          type: boolean
+        venue:
+          type: string
+        city:
+          type: string
+        url:
+          type: string
+
+    # ── Outside connections (feature: features/conexiones) ────────
+
+    ConnectionsStatus:
+      description: >-
+        Every outside service the office talks to (web APIs, local CLIs), as
+        each feature reports it: what it is for, how it signs in and whether it
+        works right now. No keys or tokens, only their state. Privileged
+        connections only.
+      type: object
+      additionalProperties: false
+      required: [type, connections]
+      properties:
+        type:
+          const: connectionsStatus
+        connections:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConnectionInfo'
+
+    ConnectionInfo:
+      type: object
+      additionalProperties: false
+      required: [id, name, feature, purpose, auth, state]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        feature:
+          type: string
+          description: The office feature that uses it (e.g. "Música").
+        purpose:
+          type: string
+        auth:
+          type: string
+          description: How it signs in (OAuth, API key, the CLI's own login, none).
+        state:
+          $ref: '#/components/schemas/ConnectionState'
+        detail:
+          type: string
+        lastUsedAt:
+          type: string
+          description: ISO time of the last successful call.
+
+    ConnectionState:
+      description: >-
+        ok = working; warn = expiring soon or failing; off = no key or not
+        connected; idea = planned, no code yet.
+      type: string
+      enum: [ok, warn, off, idea]
+
     GithubPullRequest:
       type: object
       additionalProperties: false
@@ -1273,6 +1412,44 @@ components:
           description: Where the current track comes from.
           type: string
           enum: [extension, spotify]
+
+    RefreshConcerts:
+      description: Read the concerts calendar again now. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: refreshConcerts
+
+    SearchConcerts:
+      description: Look for concerts in Mexico of the most listened artists. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: searchConcerts
+
+    AddConcert:
+      description: Add a found concert (its id in concertsStatus.found) to the calendar. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, id]
+      properties:
+        type:
+          const: addConcert
+        id:
+          type: string
+
+    DisconnectGoogle:
+      description: Forget the Google Calendar session. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: disconnectGoogle
 
     DisconnectSpotify:
       description: Forget the Spotify session (Web API). Privileged connections only.

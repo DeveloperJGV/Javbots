@@ -21,7 +21,9 @@
 		"features/musica/server",
 		"features/usage/server",
 		"features/herdr/server",
-		"features/github/server"
+		"features/github/server",
+		"features/conciertos/server",
+		"features/conexiones/server"
 	],
 	"exclude": [
 		"node_modules",

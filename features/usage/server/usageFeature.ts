@@ -3,6 +3,7 @@ import * as os from 'os';
 import * as path from 'path';
 
 import type {
+  ConnectionInfo,
   UsageLimit,
   UsageProfile,
   UsageSession,
@@ -204,5 +205,24 @@ export function createUsageFeature(
     if (msg.type === 'webviewReady' && client.privileged) void feature?.poll();
     return handled;
   };
-  return feature;
+  return Object.assign(feature, {
+    connections: (): ConnectionInfo[] => [
+      {
+        id: 'claude-usage',
+        name: 'Claude Code (/usage)',
+        feature: 'Uso del plan',
+        purpose: 'Límites de 5 horas y de la semana',
+        auth: 'El login propio del CLI claude',
+        state: !opts.command ? 'off' : commandOff ? 'warn' : fromCommand ? 'ok' : 'off',
+        detail: !opts.command
+          ? 'Solo lee los archivos de la barra de estado'
+          : commandOff
+            ? 'Apagado: /usage costó tokens'
+            : fromCommand
+              ? 'Leyendo límites'
+              : 'Aún no ha contestado',
+        ...(fromCommand ? { lastUsedAt: fromCommand.at.toISOString() } : {}),
+      },
+    ],
+  });
 }

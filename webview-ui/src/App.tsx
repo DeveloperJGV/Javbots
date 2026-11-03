@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { BodegaPanel } from '../../features/bodega/webview/BodegaPanel.js';
 import { bodegaStore } from '../../features/bodega/webview/bodegaStore.js';
+import { ConcertsPanel } from '../../features/conciertos/webview/ConcertsPanel.js';
+import { ConnectionsPanel } from '../../features/conexiones/webview/ConnectionsPanel.js';
+import { useConnections } from '../../features/conexiones/webview/useConnections.js';
 import { GithubPanel } from '../../features/github/webview/GithubPanel.js';
 import { useHerdrTabs } from '../../features/herdr/webview/useHerdrTabs.js';
 import { JukeboxPicker } from '../../features/musica/webview/JukeboxPicker.js';
@@ -67,6 +70,8 @@ function App() {
   const music = useMusic(transport);
   // Optional feature (features/usage): Claude plan limits and cost per agent
   const usage = useUsage(transport);
+  // Optional feature (features/conexiones): listen from the start, the board is sent once when the page opens
+  useConnections(transport);
   // Optional feature (features/herdr): each character named after its herdr terminal tab
   useHerdrTabs(transport, getOfficeState());
   // Browser runtime (dev or static dist): dispatch mock messages after the
@@ -651,6 +656,10 @@ function App() {
         <UsageBar usage={usage} />
         {/* Optional feature (features/github): repositories as cabinets in the GitHub room */}
         <GithubPanel transport={transport} />
+        {/* Optional feature (features/conciertos): upcoming concerts from the tickets on the counter */}
+        <ConcertsPanel transport={transport} />
+        {/* Optional feature (features/conexiones): the outside services the office talks to, from the rack */}
+        <ConnectionsPanel />
         {/* Optional feature (features/bodega): every piece of furniture not in the office, with thumbnails */}
         <BodegaPanel getPlacedTypes={getPlacedTypes} />
         <JukeboxPicker getType={getFurnitureType} onPick={handlePickJukebox} />

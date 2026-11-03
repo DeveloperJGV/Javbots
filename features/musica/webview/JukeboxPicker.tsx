@@ -1,15 +1,17 @@
 import { useSyncExternalStore } from 'react';
 
+import { Button } from '../../../webview-ui/src/components/ui/Button.js';
 import { ItemSelect } from '../../../webview-ui/src/components/ui/ItemSelect.js';
 import { Modal } from '../../../webview-ui/src/components/ui/Modal.js';
 import { getCatalogEntry } from '../../../webview-ui/src/office/layout/furnitureCatalog.js';
 import { getCachedSprite } from '../../../webview-ui/src/office/sprites/spriteCache.js';
-import { JUKEBOX_STYLES, JUKEBOX_THUMB_PX } from './constants.js';
+import { PLAYER_STYLES, PLAYER_THUMB_PX } from './constants.js';
 import { musicStore } from './musicStore.js';
 
 /**
- * The jukebox style menu (features/musica): a click on a jukebox shows its looks; picking one swaps the piece in the
- * layout (same footprint, same place). `getType` reads the current type of that uid; `onPick` saves the change.
+ * The music player menu (features/musica): a click on the player shows its looks (turntable or one of the jukeboxes);
+ * picking one swaps the piece in the layout (same footprint, same place), and a button shows / hides the music
+ * column. `getType` reads the current type of that uid; `onPick` saves the change.
  */
 export function JukeboxPicker({
   getType,
@@ -18,22 +20,25 @@ export function JukeboxPicker({
   getType: (uid: string) => string | undefined;
   onPick: (uid: string, type: string) => void;
 }) {
-  const { jukeboxPickerUid: uid } = useSyncExternalStore(musicStore.subscribe, musicStore.get);
+  const { jukeboxPickerUid: uid, columnHidden } = useSyncExternalStore(
+    musicStore.subscribe,
+    musicStore.get,
+  );
   if (!uid) return null;
   const current = getType(uid)?.split(':')[0];
-  const styles = JUKEBOX_STYLES.filter((s) => getCatalogEntry(s.type));
+  const styles = PLAYER_STYLES.filter((s) => getCatalogEntry(s.type));
   return (
-    <Modal isOpen onClose={() => musicStore.closeJukeboxPicker()} title="Rockola">
+    <Modal isOpen onClose={() => musicStore.closeJukeboxPicker()} title="Reproductor">
       <div className="px-10 pb-6">
-        <p className="text-sm text-text-muted">Escoge cómo se ve.</p>
+        <p className="text-sm text-text-muted">Escoge cómo se ve. La música sale de aquí.</p>
         <div className="mt-4 flex gap-10">
           {styles.map((s) => {
             const entry = getCatalogEntry(s.type)!;
             return (
               <div key={s.type} className="flex flex-col items-center">
                 <ItemSelect
-                  width={JUKEBOX_THUMB_PX}
-                  height={JUKEBOX_THUMB_PX}
+                  width={PLAYER_THUMB_PX}
+                  height={PLAYER_THUMB_PX}
                   selected={current === s.type}
                   title={s.label}
                   onClick={() => {
@@ -53,6 +58,11 @@ export function JukeboxPicker({
               </div>
             );
           })}
+        </div>
+        <div className="mt-6">
+          <Button size="sm" onClick={() => musicStore.toggleColumn()}>
+            {columnHidden ? 'Mostrar la columna de música' : 'Ocultar la columna de música'}
+          </Button>
         </div>
       </div>
     </Modal>

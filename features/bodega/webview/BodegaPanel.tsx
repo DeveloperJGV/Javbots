@@ -11,14 +11,14 @@ import {
 } from '../../../webview-ui/src/office/layout/furnitureCatalog.js';
 import { getCachedSprite } from '../../../webview-ui/src/office/sprites/spriteCache.js';
 import type { FurnitureCatalogEntry } from '../../../webview-ui/src/office/types.js';
-import { JUKEBOX_STYLES } from '../../musica/webview/constants.js';
+import { PLAYER_STYLES } from '../../musica/webview/constants.js';
 import { bodegaStore } from './bodegaStore.js';
 import { BODEGA_THUMB_PX, DLC_TAB, DLC_TAB_LABEL, DLC_THUMB_SCALE } from './constants.js';
 import { DLC_CHARACTERS } from './dlc.js';
 import { byCategory, storedItems } from './storedItems.js';
 
 /** Pieces with interchangeable looks: one placed look takes all of them out of storage. */
-const STYLE_FAMILIES: ReadonlyArray<readonly string[]> = [JUKEBOX_STYLES.map((s) => s.type)];
+const STYLE_FAMILIES: ReadonlyArray<readonly string[]> = [PLAYER_STYLES.map((s) => s.type)];
 
 /** Rotations, on/off states and looks of a piece: placing any of them takes the whole piece out of storage. */
 function familyOf(type: string): string[] {

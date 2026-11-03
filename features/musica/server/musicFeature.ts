@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 
-import type { MusicStatus, MusicTrack } from '../../../core/src/messages.js';
+import type { ConnectionInfo, MusicStatus, MusicTrack } from '../../../core/src/messages.js';
 import type { FeatureClient, ServerFeature } from '../../../server/src/serverFeature.js';
 import {
   LOG_PREFIX,
@@ -14,6 +14,7 @@ import {
   SPOTIFY_EXTENSION_FRESH_MS,
   SPOTIFY_LOGIN_PATH,
   SPOTIFY_POLL_MS,
+  SPOTIFY_SCOPES,
   WS_CLOSE_POLICY,
 } from './constants.js';
 import { CoverCache } from './cover.js';
@@ -92,6 +93,8 @@ const CONTROL_ACTIONS = new Set(['previous', 'togglePlay', 'next', 'volumeUp', '
  * the feature's own settings file.
  */
 export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
+  /** The account's most listened artists (empty without a Spotify session). */
+  topArtists(): Promise<string[]>;
   /** For tests: what clients currently see. */
   current(): MusicTrack | undefined;
   /** The extension's control channel opened (exposed for tests; the WebSocket route calls it). */
@@ -114,6 +117,9 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
   let lastReportAt = 0;
   /** Last report from the extension (Spotify open on this computer): while fresh, it is the main source. */
   let lastExtensionAt = 0;
+  /** Last LRCLIB lookup and last cover download (the connections board shows them). */
+  let lastLrclibAt = 0;
+  let lastCoverAt = 0;
   let source: TrackSource | undefined;
   /** When the current track's position was reported (to move it forward while it plays). */
   let trackReportedAt = 0;
@@ -225,6 +231,7 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
       album: track.album,
       durationMs: track.durationMs,
     };
+    lastLrclibAt = now();
     void fetchLyrics(song).then((found) => {
       if (songNow !== key || lyrics) return;
       // Found or not, the search is over: lyrics, or the "no lyrics" message instead of the loader.
@@ -326,6 +333,7 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
       if (key !== songNow) songChanged(key);
       if (parsed.coverUrl && !sameCover) {
         void covers.get(parsed.coverUrl).then((cover) => {
+          if (cover) lastCoverAt = now();
           if (cover && track === next) {
             track = { ...next, cover };
             broadcastNowPlaying();
@@ -430,6 +438,67 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
 
   return {
     name: 'musica',
+    /** The account's most listened artists (features/conciertos searches their concerts). */
+    topArtists: (): Promise<string[]> => spotify?.topArtists() ?? Promise.resolve([]),
+
+    connections: (): ConnectionInfo[] => {
+      const at = (ms: number) => (ms ? { lastUsedAt: new Date(ms).toISOString() } : {});
+      const extensionFresh = now() - lastExtensionAt < SPOTIFY_EXTENSION_FRESH_MS;
+      return [
+        {
+          id: 'spotify-extension',
+          name: 'Spotify de escritorio (Spicetify)',
+          feature: 'Música',
+          purpose: 'Canción actual, letra de Spotify y botones de reproducción',
+          auth: 'Token propio de la oficina (music.json)',
+          state: !spicetify.found
+            ? 'off'
+            : extensionFresh || controlSockets.size > 0
+              ? 'ok'
+              : 'warn',
+          detail: !spicetify.found
+            ? 'Spicetify no está instalado'
+            : !spicetify.installed
+              ? 'Falta instalar la extensión'
+              : extensionFresh
+                ? 'Spotify abierto y reportando'
+                : 'Spotify cerrado o sin reportar',
+          ...at(lastExtensionAt),
+        },
+        {
+          id: 'spotify-web-api',
+          name: 'Spotify Web API',
+          feature: 'Música',
+          purpose:
+            'Lo que suena aunque Spotify esté cerrado aquí, botones y artistas más escuchados',
+          auth: `OAuth PKCE, sin secreto. Permisos: ${SPOTIFY_SCOPES}`,
+          state: !spotify ? 'off' : spotifyConnected() ? 'ok' : 'off',
+          detail: !spotify
+            ? 'Falta spotifyClientId en music.json'
+            : spotifyConnected()
+              ? 'Cuenta conectada'
+              : 'Sin conectar la cuenta',
+        },
+        {
+          id: 'lrclib',
+          name: 'LRCLIB',
+          feature: 'Música',
+          purpose: 'Letra de respaldo cuando Spotify no la tiene',
+          auth: 'Sin llave',
+          state: 'ok',
+          ...at(lastLrclibAt),
+        },
+        {
+          id: 'spotify-covers',
+          name: 'Portadas de Spotify (i.scdn.co)',
+          feature: 'Música',
+          purpose: 'Carátula del disco que suena',
+          auth: 'Sin llave (solo ese servidor)',
+          state: 'ok',
+          ...at(lastCoverAt),
+        },
+      ];
+    },
 
     registerRoutes(app: FastifyInstance) {
       // The extension runs inside Spotify (a public https origin) and posts to this local server:
@@ -464,7 +533,8 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
         // The owner clicks "Conectar con Spotify" in Settings: a link with the music token that lands here.
         app.get(SPOTIFY_LOGIN_PATH, async (request, reply) => {
           const token = new URL(request.url, 'http://localhost').searchParams.get('token') ?? '';
-          if (!timingSafeEqual(token, config.token)) return reply.code(401).send({ error: 'unauthorized' });
+          if (!timingSafeEqual(token, config.token))
+            return reply.code(401).send({ error: 'unauthorized' });
           return reply.redirect(spotify.authorizeUrl());
         });
         app.get(SPOTIFY_CALLBACK_PATH, async (request, reply) => {
@@ -482,10 +552,14 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
             console.log(`${LOG_PREFIX} Conectado a la cuenta de Spotify`);
             void pollSpotify();
           }
-          const text = problem ? `No se pudo conectar con Spotify: ${problem}.` : 'Listo: la oficina ya está conectada a Spotify. Puedes cerrar esta pestaña.';
+          const text = problem
+            ? `No se pudo conectar con Spotify: ${problem}.`
+            : 'Listo: la oficina ya está conectada a Spotify. Puedes cerrar esta pestaña.';
           return reply
             .type('text/html; charset=utf-8')
-            .send(`<!doctype html><html lang="es"><meta charset="utf-8"><title>Javbots</title><body style="font-family:sans-serif;padding:2em">${text}</body></html>`);
+            .send(
+              `<!doctype html><html lang="es"><meta charset="utf-8"><title>Javbots</title><body style="font-family:sans-serif;padding:2em">${text}</body></html>`,
+            );
         });
       }
       app.post(MUSIC_LYRICS_API_PATH, async (request, reply) => {
