@@ -18,7 +18,13 @@ import { readLayoutFromFile, writeLayoutToFile } from './layoutPersistence.js';
 import type { ConsentEffects } from './providers/hook/consentExecutor.js';
 import { applyConsentChoice } from './providers/hook/consentExecutor.js';
 import { hooksConsentRequest } from './providers/hook/consentGate.js';
-import { claudeProvider, hookProviderById, hookProviders } from './providers/index.js';
+import {
+  claudeHooksEnabled,
+  claudeProvider,
+  hookProviderById,
+  hookProviders,
+  isClaudeProfileProvider,
+} from './providers/index.js';
 
 type WsSend = (message: Record<string, unknown>) => void;
 
@@ -313,11 +319,10 @@ async function applyHooksPreference(
     const installed = await provider.areHooksInstalled();
     if (installed === enabled) {
       setHooksEnabled(provider.id, enabled);
-      // The runtime's single hooksEnabled ref gates the CLAUDE scanners; it
-      // follows only the Claude provider until the scanners grow per-provider
-      // awareness alongside the Settings UI.
-      if (ctx.runtime && provider.id === claudeProvider.id) {
-        ctx.runtime.hooksEnabled.current = enabled;
+      // The runtime's single hooksEnabled ref gates the CLAUDE scanners: on
+      // only while every Claude profile wants hooks (claudeHooksEnabled).
+      if (ctx.runtime && isClaudeProfileProvider(provider)) {
+        ctx.runtime.hooksEnabled.current = claudeHooksEnabled(getHooksEnabled);
       }
     }
     // Always report the ACTUAL install state — the toggle expresses intent,
@@ -355,7 +360,7 @@ function standaloneConsentEffects(
       // Durable writes are the executor's own atomic recordHooksDecline; this
       // only mirrors the live runtime ref the CLAUDE scanners read, so another
       // provider's answer can never flip Claude's fallback behavior.
-      if (ctx.runtime && provider.id === claudeProvider.id) {
+      if (ctx.runtime && isClaudeProfileProvider(provider)) {
         ctx.runtime.hooksEnabled.current = false;
       }
     },
@@ -424,10 +429,9 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
   // 4. Settings (from adapter, with sensible defaults when adapter is absent)
   const cfg = readConfig();
   const watchAllSessions = adapter?.getSetting(KEY_WATCH_ALL_SESSIONS, false) ?? false;
-  // settingsLoaded.hooksEnabled stays a single boolean carrying the CLAUDE
-  // provider's preference until the Settings UI grows a per-provider list —
-  // its sole webview reader is the hooks tooltip gate.
-  const hooksEnabled = getHooksEnabled(claudeProvider.id);
+  // settingsLoaded.hooksEnabled stays a single boolean: on while every Claude
+  // profile wants hooks — its sole webview reader is the hooks tooltip gate.
+  const hooksEnabled = claudeHooksEnabled(getHooksEnabled);
   const showAreas = adapter?.getSetting(KEY_SHOW_AREAS, false) ?? false;
   send({
     type: 'settingsLoaded',
@@ -451,7 +455,7 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
   // provider checks are async, so these land as follow-ups right after the
   // synchronous handshake; the webview's default (not installed) is the safe
   // assumption until each arrives. One status + at most one ask PER PROVIDER.
-  for (const provider of hookProviders) {
+  for (const provider of hookProviders()) {
     // One provider's unreadable settings file must degrade to
     // installed=false (matching the executor's fail-closed read: no choice
     // ever uninstalls on a guess) rather than surface as an unhandled
@@ -502,6 +506,7 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
   // 6. Existing agents (either just restored, or from VS Code adapter if present)
   const agentIds: number[] = [];
   const folderNames: Record<number, string> = {};
+  const profiles: Record<number, string> = {};
   const externalAgents: Record<number, boolean> = {};
   const persistedSeats = adapter?.loadSeats() ?? {};
   const agentMeta: Record<number, { palette?: number; hueShift?: number; seatId?: string }> = {};
@@ -509,6 +514,10 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
     agentIds.push(id);
     if (agent.folderName) {
       folderNames[id] = agent.folderName;
+    }
+    const profile = runtime?.sessionLabel(agent);
+    if (profile) {
+      profiles[id] = profile;
     }
     if (agent.isExternal) {
       externalAgents[id] = true;
@@ -525,6 +534,7 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
     agents: agentIds,
     agentMeta,
     folderNames,
+    profiles,
     externalAgents,
   });
 

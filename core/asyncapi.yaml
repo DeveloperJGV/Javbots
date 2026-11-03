@@ -209,6 +209,9 @@ components:
           type: integer
         folderName:
           type: string
+        profile:
+          type: string
+          description: Which install of the CLI the session runs under (a Claude Code profile); absent for the default.
         isExternal:
           type: boolean
         palette:
@@ -262,6 +265,11 @@ components:
         folderNames:
           type: object
           description: Map of agent ID (string) to workspace folder name.
+          additionalProperties:
+            type: string
+        profiles:
+          type: object
+          description: Map of agent ID (string) to CLI profile tag (only agents outside the default profile).
           additionalProperties:
             type: string
         externalAgents:

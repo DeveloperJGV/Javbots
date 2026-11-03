@@ -20,10 +20,15 @@ import { CLAUDE_HOOK_EVENTS, SETTINGS_BACKUP_SUFFIX } from './constants.js';
 const SETTINGS_FILE = '~/.claude/settings.json';
 
 /** WHY we ask + WHAT we write. */
-export const CONSENT_FACT_WHAT =
-  `Para darle vida a tus agentes en tiempo real, Pixel Agents agrega hooks para ` +
-  `${CLAUDE_HOOK_EVENTS.length} eventos de Claude Code en ${SETTINGS_FILE}. ` +
-  `Tu configuración actual se conserva, y se guarda un respaldo único como settings.json${SETTINGS_BACKUP_SUFFIX}.`;
+export const CONSENT_FACT_WHAT = factWhat(SETTINGS_FILE);
+
+function factWhat(settingsFile: string): string {
+  return (
+    `Para darle vida a tus agentes en tiempo real, Pixel Agents agrega hooks para ` +
+    `${CLAUDE_HOOK_EVENTS.length} eventos de Claude Code en ${settingsFile}. ` +
+    `Tu configuración actual se conserva, y se guarda un respaldo único como settings.json${SETTINGS_BACKUP_SUFFIX}.`
+  );
+}
 
 /** WHAT data moves, and where it stops.
  *
@@ -62,3 +67,17 @@ export const CONSENT_DISCLOSURE = [
   CONSENT_FACT_DATA,
   CONSENT_FACT_REVERSIBLE,
 ].join('\n\n');
+
+/** The consent copy for one Claude Code profile (see claudeProfiles.ts): the same facts, naming the profile's own
+ *  settings file, with the profile in the headline so each of several asks says which one it is about. The default
+ *  profile gets exactly the constants above. */
+export function consentCopyFor(
+  settingsFile: string,
+  label?: string,
+): { headline: string; disclosure: string } {
+  if (!label) return { headline: CONSENT_INSTALL_HEADLINE, disclosure: CONSENT_DISCLOSURE };
+  return {
+    headline: `${CONSENT_INSTALL_HEADLINE} (perfil ${label})`,
+    disclosure: [factWhat(settingsFile), CONSENT_FACT_DATA, CONSENT_FACT_REVERSIBLE].join('\n\n'),
+  };
+}

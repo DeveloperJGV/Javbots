@@ -218,7 +218,8 @@ function App() {
 
   // The Settings surface renders one provider today; its checkbox binds to
   // the Claude row of the per-provider install-state map.
-  const claudeHooksInstalled = hooksInstalled['claude'] === true;
+  // Any Claude Code profile's hooks (one hook provider per profile).
+  const claudeHooksInstalled = Object.values(hooksInstalled).some(Boolean);
 
   // Mutate folder→Area mappings locally + send to server. Updates OfficeState in
   // the same tick so a follow-up agentCreated picks up the new mapping.
@@ -692,22 +693,18 @@ function App() {
             setWatchAllSessions(newVal);
             transport.send({ type: 'setWatchAllSessions', enabled: newVal });
           }}
-          hooksInstalled={claudeHooksInstalled}
-          onToggleHooksEnabled={() => {
+          hooksInstalled={hooksInstalled}
+          onToggleHooksEnabled={(providerId) => {
             // Toggle the DISPLAYED state (actual install), not the preference: when the two disagree — preference on,
             // nothing installed while consent is pending — toggling the preference would turn hooks OFF for a user
             // asking for ON. No optimistic local update either; both backends answer with the truthful hooksStatus this
             // checkbox renders, so it lands correct instead of flickering when an install fails. The providerId is
-            // ECHOED from that row (never originated here), so nothing sends until the row has arrived.
-            const [rowProviderId] =
-              Object.entries(hooksInstalled).find(([id]) => id === 'claude') ?? [];
-            if (rowProviderId !== undefined) {
-              transport.send({
-                type: 'setHooksEnabled',
-                providerId: rowProviderId,
-                enabled: !claudeHooksInstalled,
-              });
-            }
+            // ECHOED from the row (one per hooksStatus received, never originated here).
+            transport.send({
+              type: 'setHooksEnabled',
+              providerId,
+              enabled: hooksInstalled[providerId] !== true,
+            });
           }}
           showAreas={showAreas}
           onToggleShowAreas={onToggleShowAreas}

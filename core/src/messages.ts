@@ -93,6 +93,7 @@ export interface AgentCreated {
   type: 'agentCreated';
   id: number;
   folderName?: string;
+  profile?: string;
   isExternal?: boolean;
   palette?: number;
   hueShift?: number;
@@ -113,6 +114,7 @@ export interface ExistingAgents {
   agents: number[];
   agentMeta: Record<string, AgentSeatMeta>;
   folderNames: Record<string, string>;
+  profiles?: Record<string, string>;
   externalAgents: Record<string, boolean>;
 }
 
@@ -367,10 +369,10 @@ export interface MusicStatus {
   message?: string;
   spotifyConfigured?: boolean;
   spotifyConnected?: boolean;
-  source?: AnonymousSchema_215;
+  source?: AnonymousSchema_218;
 }
 
-export type AnonymousSchema_215 = 'extension' | 'spotify';
+export type AnonymousSchema_218 = 'extension' | 'spotify';
 
 export interface MusicLyrics {
   type: 'musicLyrics';
@@ -378,11 +380,11 @@ export interface MusicLyrics {
   artist?: string;
   loading?: boolean;
   synced?: boolean;
-  source?: AnonymousSchema_221;
+  source?: AnonymousSchema_224;
   lines?: MusicLyricLine[];
 }
 
-export type AnonymousSchema_221 = 'spotify' | 'lrclib';
+export type AnonymousSchema_224 = 'spotify' | 'lrclib';
 
 export interface MusicLyricLine {
   text: string;
@@ -649,10 +651,10 @@ export interface InstallMusicExtension {
 
 export interface MusicControl {
   type: 'musicControl';
-  action: AnonymousSchema_354;
+  action: AnonymousSchema_357;
 }
 
-export type AnonymousSchema_354 = 'previous' | 'togglePlay' | 'next';
+export type AnonymousSchema_357 = 'previous' | 'togglePlay' | 'next';
 
 export interface DisconnectSpotify {
   type: 'disconnectSpotify';

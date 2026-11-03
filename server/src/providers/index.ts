@@ -12,18 +12,33 @@
  */
 
 import type { HookProvider } from '../../../core/src/provider.js';
-import { claudeProvider } from './hook/claude/claude.js';
+import {
+  claudeProfileProviders,
+  claudeProvider,
+  isClaudeProfileProvider,
+} from './hook/claude/claude.js';
 
-export { claudeProvider };
+export { claudeProvider, isClaudeProfileProvider };
 export { copyHookScript } from './hook/claude/claudeHookInstaller.js';
 
-/** Every bundled hook provider, in registration order. The consent gate loops
- *  over this at the webviewReady handshake (one ask per provider that needs
- *  one) and `hooksConsentResponse` resolves its provider id against it. */
-export const hookProviders: readonly HookProvider[] = [claudeProvider];
+/** Every hook provider, in registration order: one per Claude Code profile in use (claudeProfiles.ts), so the list
+ *  is re-read on each call and a newly created profile shows up without a restart. The consent gate loops over this
+ *  at the webviewReady handshake (one ask per provider that needs one) and `hooksConsentResponse` resolves its
+ *  provider id against it. */
+export function hookProviders(): readonly HookProvider[] {
+  return claudeProfileProviders();
+}
 
 /** Resolve a wire-supplied provider id, or undefined for an unknown one —
  *  the caller writes nothing on undefined (fail-closed, like a junk choice). */
 export function hookProviderById(id: unknown): HookProvider | undefined {
-  return typeof id === 'string' ? hookProviders.find((p) => p.id === id) : undefined;
+  return typeof id === 'string' ? hookProviders().find((p) => p.id === id) : undefined;
+}
+
+/** The runtime's single hooks ref, which gates the Claude transcript scanners: on only while EVERY Claude profile
+ *  wants hooks, because a profile left without them still needs the scanners to find its new sessions. */
+export function claudeHooksEnabled(getHooksEnabled: (providerId: string) => boolean): boolean {
+  return hookProviders()
+    .filter(isClaudeProfileProvider)
+    .every((p) => getHooksEnabled(p.id));
 }

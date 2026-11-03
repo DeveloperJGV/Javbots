@@ -12,6 +12,9 @@ const os = createRequire(path.join(process.cwd(), 'noop.js'))('os') as typeof im
 const isolatedHome = fs.mkdtempSync(path.join(os.tmpdir(), 'pxl-test-home-'));
 process.env.HOME = isolatedHome;
 process.env.USERPROFILE = isolatedHome;
+// A Claude Code profile the developer's shell points at (CLAUDE_CONFIG_DIR) is a real
+// config dir outside the throwaway home: claudeProfiles.ts would read and write it.
+delete process.env.CLAUDE_CONFIG_DIR;
 
 const realHomedir = os.homedir;
 os.homedir = () => process.env.HOME || realHomedir();

@@ -197,6 +197,9 @@ export class OfficeState {
   private isaacStep: number | null = null;
   /** What each agent did since the page opened: the hallway whiteboard and its panel. */
   activity = new ActivityLog();
+  /** Claude Code profile of each agent outside the default one (agentCreated.profile), shown beside its folder. Kept
+   *  apart from the characters so it holds whichever of agent and layout messages lands first. */
+  agentProfiles = new Map<number, string>();
   /** The big party under way (fork, Fase 5.5), or null. */
   /** Name of the herdr terminal tab each agent runs in (features/herdr); shown instead of its folder. */
   agentTabLabels = new Map<number, string>();

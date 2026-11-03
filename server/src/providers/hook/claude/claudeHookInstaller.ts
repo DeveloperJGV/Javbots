@@ -33,7 +33,12 @@ interface ClaudeSettings {
 
 /** Returns the absolute path to ~/.claude/settings.json. */
 function getClaudeSettingsPath(): string {
-  return path.join(os.homedir(), '.claude', 'settings.json');
+  return claudeSettingsPath(path.join(os.homedir(), '.claude'));
+}
+
+/** settings.json of one Claude Code profile (a CLAUDE_CONFIG_DIR). */
+export function claudeSettingsPath(configDir: string): string {
+  return path.join(configDir, 'settings.json');
 }
 
 /** Returns the destination path for the hook script (~/.pixel-agents/hooks/claude-hook.js). */
@@ -76,8 +81,7 @@ export const SETTINGS_HOOKS_NOT_OBJECT_MESSAGE =
   'hooks in ~/.claude/settings.json is not an object — fix or remove it';
 
 /** Raw file content, or null when the file does not exist. Throws on read errors. */
-function readRawClaudeSettings(): string | null {
-  const settingsPath = getClaudeSettingsPath();
+function readRawClaudeSettings(settingsPath: string): string | null {
   if (!fs.existsSync(settingsPath)) {
     return null;
   }
@@ -100,8 +104,8 @@ function parseClaudeSettings(raw: string | null): ClaudeSettings {
 }
 
 /** Read and parse ~/.claude/settings.json (see parseClaudeSettings for the throw contract). */
-function readClaudeSettings(): ClaudeSettings {
-  return parseClaudeSettings(readRawClaudeSettings());
+function readClaudeSettings(settingsPath: string): ClaudeSettings {
+  return parseClaudeSettings(readRawClaudeSettings(settingsPath));
 }
 
 function sleep(ms: number): Promise<void> {
@@ -126,6 +130,7 @@ function sleep(ms: number): Promise<void> {
  * the caller must hear about it rather than get a false "installed".
  */
 async function mutateClaudeSettings(
+  settingsPath: string,
   mutate: (settings: ClaudeSettings) => boolean,
 ): Promise<boolean> {
   let lastError: Error | null = null;
@@ -136,7 +141,7 @@ async function mutateClaudeSettings(
     let raw: string | null;
     let settings: ClaudeSettings;
     try {
-      raw = readRawClaudeSettings();
+      raw = readRawClaudeSettings(settingsPath);
       settings = parseClaudeSettings(raw);
     } catch (e) {
       lastError = e instanceof Error ? e : new Error(String(e));
@@ -146,7 +151,7 @@ async function mutateClaudeSettings(
       return false;
     }
     try {
-      writeClaudeSettings(settings, raw);
+      writeClaudeSettings(settingsPath, settings, raw);
       return true;
     } catch (e) {
       if (!(e instanceof ConcurrentWriteError)) throw e;
@@ -222,8 +227,11 @@ export function settingsUnusableBackupMessage(backupPath: string): string {
  * swallowed: a caller that hears no error installs an entry pointing at a file
  * that was never written.
  */
-function writeClaudeSettings(settings: ClaudeSettings, expectedRaw: string | null): void {
-  const settingsPath = getClaudeSettingsPath();
+function writeClaudeSettings(
+  settingsPath: string,
+  settings: ClaudeSettings,
+  expectedRaw: string | null,
+): void {
   const dir = path.dirname(settingsPath);
   const tmpPath = settingsPath + SETTINGS_TMP_SUFFIX;
 
@@ -269,7 +277,7 @@ function writeClaudeSettings(settings: ClaudeSettings, expectedRaw: string | nul
       mode: SETTINGS_FRESH_FILE_MODE,
     });
     fs.chmodSync(tmpPath, mode);
-    if (readRawClaudeSettings() !== expectedRaw) {
+    if (readRawClaudeSettings(settingsPath) !== expectedRaw) {
       throw new ConcurrentWriteError();
     }
     fs.renameSync(tmpPath, settingsPath);
@@ -571,10 +579,10 @@ function makeHookEntry(): ClaudeHookEntry {
  * An unparseable file reads as "not installed" — the install path will then
  * refuse to touch it rather than rewrite it.
  */
-export function areHooksInstalled(): boolean {
+export function areHooksInstalled(settingsPath = getClaudeSettingsPath()): boolean {
   let settings: ClaudeSettings;
   try {
-    settings = readClaudeSettings();
+    settings = readClaudeSettings(settingsPath);
   } catch {
     return false;
   }
@@ -594,22 +602,22 @@ export function areHooksInstalled(): boolean {
  * keeps changing concurrently — callers surface the error to the user instead
  * of installing.
  */
-export async function installHooks(): Promise<void> {
+export async function installHooks(settingsPath = getClaudeSettingsPath()): Promise<void> {
   let wrote: boolean;
   try {
-    wrote = await installEntries();
+    wrote = await installEntries(settingsPath);
   } catch (e) {
     throw new Error(`${e instanceof Error ? e.message : String(e)} — hooks not installed.`, {
       cause: e,
     });
   }
   if (wrote) {
-    console.log('[Pixel Agents] Hooks installed in ~/.claude/settings.json');
+    console.log(`[Pixel Agents] Hooks installed in ${settingsPath}`);
   }
 }
 
-function installEntries(): Promise<boolean> {
-  return mutateClaudeSettings((settings) => {
+function installEntries(settingsPath: string): Promise<boolean> {
+  return mutateClaudeSettings(settingsPath, (settings) => {
     if (settings.hooks === undefined || settings.hooks === null) {
       settings.hooks = {};
     } else if (typeof settings.hooks !== 'object' || Array.isArray(settings.hooks)) {
@@ -681,10 +689,10 @@ function installEntries(): Promise<boolean> {
  *  as install: never rewrite a file we could not read. Callers surface the
  *  error; claiming success after an aborted uninstall is how a "removed"
  *  log line ends up next to entries that are still live. */
-export async function uninstallHooks(): Promise<void> {
+export async function uninstallHooks(settingsPath = getClaudeSettingsPath()): Promise<void> {
   let wrote: boolean;
   try {
-    wrote = await mutateClaudeSettings((settings) => {
+    wrote = await mutateClaudeSettings(settingsPath, (settings) => {
       if (!settings.hooks || typeof settings.hooks !== 'object' || Array.isArray(settings.hooks)) {
         return false;
       }
@@ -717,7 +725,7 @@ export async function uninstallHooks(): Promise<void> {
     });
   }
   if (wrote) {
-    console.log('[Pixel Agents] Hooks removed from ~/.claude/settings.json');
+    console.log(`[Pixel Agents] Hooks removed from ${settingsPath}`);
   }
 }
 

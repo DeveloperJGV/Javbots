@@ -1460,6 +1460,12 @@ export function scanExternalDir(
 
     knownJsonlFiles.add(file);
     console.log(`[Pixel Agents] Watcher: detected external session ${path.basename(file)}`);
+    // Same name resolution as global discovery: without it, sessions of the server's own
+    // folder came up with no folder name (and an agent tag with nothing beside it).
+    const folderName =
+      folderNameResolver?.({ projectDir }) ??
+      folderNameFromTranscript(file) ??
+      folderNameFromProjectDir(path.basename(projectDir));
     adoptExternalSession(
       file,
       projectDir,
@@ -1470,6 +1476,7 @@ export function scanExternalDir(
       waitingTimers,
       permissionTimers,
       persistAgents,
+      folderName,
     );
   }
 }

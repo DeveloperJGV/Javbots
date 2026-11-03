@@ -291,6 +291,8 @@ export function useExtensionMessages(
         const teammateName = msg.teammateName as string | undefined;
         const teammateParentId = msg.parentAgentId as number | undefined;
         const teamName = msg.teamName as string | undefined;
+        const profile = msg.profile as string | undefined;
+        if (profile) os.agentProfiles.set(id, profile);
         setAgents((prev) => (prev.includes(id) ? prev : [...prev, id]));
         // Don't auto-select teammates (keep focus on lead)
         if (!isTeammate) {
@@ -333,6 +335,7 @@ export function useExtensionMessages(
       } else if (msg.type === 'agentClosed') {
         const id = msg.id as number;
         os.activity.close(id);
+        os.agentProfiles.delete(id);
         setAgents((prev) => prev.filter((a) => a !== id));
         setSelectedAgent((prev) => (prev === id ? null : prev));
         setAgentTools((prev) => {
@@ -363,9 +366,11 @@ export function useExtensionMessages(
         const meta = (msg.agentMeta || {}) as Record<number, ExistingAgentMeta>;
         const folderNames = (msg.folderNames || {}) as Record<number, string>;
         const externalAgents = (msg.externalAgents || {}) as Record<number, boolean>;
+        const profiles = (msg.profiles || {}) as Record<number, string>;
         const headlessAgents: Record<number, boolean> = {};
         for (const id of incoming) {
           noteFolderName(folderNames[id]);
+          if (profiles[id]) os.agentProfiles.set(id, profiles[id]);
           if (isHeadlessAgent(externalAgents[id])) headlessAgents[id] = true;
         }
         // Order-independent restore: add agents now if the layout (and its seats)

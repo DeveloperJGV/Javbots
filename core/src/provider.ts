@@ -139,6 +139,10 @@ export interface HookProvider {
    *  Sessions". Each returned dir contains subdirs whose entries are session
    *  transcript files. Undefined = this provider doesn't support global scan. */
   getAllSessionRoots?(): string[];
+  /** Short tag naming which install of this CLI a session belongs to, when one person runs several side by side
+   *  (Claude Code profiles: one CLAUDE_CONFIG_DIR each). Given a transcript or project dir; undefined for the default
+   *  install or an unknown path. The office shows it next to the agent's folder name. */
+  sessionLabel?(sessionPath: string): string | undefined;
   /** Glob pattern for session files (e.g., '*.jsonl'). */
   readonly sessionFilePattern?: string;
   /** Parse one line of a transcript file into an AgentEvent. */

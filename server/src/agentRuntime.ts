@@ -34,6 +34,7 @@ import {
   startFileWatching,
   startStaleExternalAgentCheck,
 } from './fileWatcher.js';
+import { folderNameFromTranscript } from './folderName.js';
 import type { HookEvent } from './hookEventHandler.js';
 import { HookEventHandler } from './hookEventHandler.js';
 import { assignPaletteIfNeeded } from './paletteAssigner.js';
@@ -87,7 +88,7 @@ export class AgentRuntime {
 
   constructor(
     private readonly store: AgentStateStore,
-    provider: HookProvider,
+    private readonly provider: HookProvider,
   ) {
     // Wire module-level dependencies
     setDismissalTracker(this.dismissalTracker);
@@ -283,6 +284,11 @@ export class AgentRuntime {
   /** Register adapter-specific lifecycle callbacks. */
   setLifecycleCallbacks(callbacks: RuntimeLifecycleCallbacks): void {
     this.lifecycleCallbacks = callbacks;
+  }
+
+  /** Which install of the CLI (a Claude Code profile) the agent's session runs under; undefined for the default. */
+  sessionLabel(agent: Pick<AgentState, 'jsonlFile' | 'projectDir'>): string | undefined {
+    return this.provider.sessionLabel?.(agent.jsonlFile || agent.projectDir);
   }
 
   // ── Hook event routing ──
@@ -511,7 +517,9 @@ export class AgentRuntime {
         lastDataAt: 0,
         linesProcessed: 0,
         seenUnknownRecordTypes: new Set(),
-        folderName: p.folderName,
+        // Agents saved before project-dir sessions got a name have none: read it from the transcript.
+        folderName:
+          p.folderName ?? (p.jsonlFile ? folderNameFromTranscript(p.jsonlFile) : undefined),
         hookDelivered: false,
         contextTokens: 0,
         maxContextTokens: DEFAULT_MAX_CONTEXT_TOKENS,

@@ -38,6 +38,8 @@ const WAITING_INPUT_ACTIVITY_TEXT = 'Esperando instrucciones';
 const THINKING_ACTIVITY_TEXT = 'Pensando…';
 // Sub-agents are drawn as their spawner's interns; this names the boss.
 const INTERN_LABEL_PREFIX = 'Becario de';
+/** Between an agent's folder and its Claude Code profile: "mi-repo · trabajo". */
+const PROFILE_SEPARATOR = ' · ';
 const NEEDS_APPROVAL_TEXT = 'Necesita tu permiso';
 
 interface ToolOverlayProps {
@@ -274,7 +276,11 @@ export function ToolOverlay({
           bossId !== undefined
             ? `${INTERN_LABEL_PREFIX} ${officeState.agentTabLabels.get(bossId) ?? officeState.characters.get(bossId)?.folderName ?? `Agente ${bossId}`}`
             : null;
-        const subtitle = internLabel ?? officeState.agentTabLabels.get(id) ?? ch.folderName;
+        const profile = officeState.agentProfiles.get(id);
+        const place = officeState.agentTabLabels.get(id) ?? ch.folderName;
+        const subtitle =
+          internLabel ??
+          (profile ? [place, profile].filter(Boolean).join(PROFILE_SEPARATOR) : place);
         const hasExtraLines = !!(subtitle || teamRoleLabel);
 
         // Context gauge. Every agent gets one — lead, teammate, adopted,

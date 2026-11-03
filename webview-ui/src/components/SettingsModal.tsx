@@ -22,12 +22,12 @@ interface SettingsModalProps {
   externalAssetDirectories: string[];
   watchAllSessions: boolean;
   onToggleWatchAllSessions: () => void;
-  /** ACTUAL install state (the hooksStatus message), not the hooksEnabled
+  /** ACTUAL install state per hook provider (the hooksStatus messages), not the hooksEnabled
    *  preference. The preference defaults to true while first-run consent is
    *  still pending, so binding the checkbox to it renders "on" over an empty
-   *  ~/.claude/settings.json. */
-  hooksInstalled: boolean;
-  onToggleHooksEnabled: () => void;
+   *  ~/.claude/settings.json. One checkbox per provider: one per Claude Code profile. */
+  hooksInstalled: Record<string, boolean>;
+  onToggleHooksEnabled: (providerId: string) => void;
   /** Whether the areas overlay is rendered outside of the Areas edit tool. */
   showAreas: boolean;
   onToggleShowAreas: () => void;
@@ -198,11 +198,14 @@ export function SettingsModal({
         checked={watchAllSessions}
         onChange={onToggleWatchAllSessions}
       />
-      <Checkbox
-        label="Detección instantánea (hooks)"
-        checked={hooksInstalled}
-        onChange={onToggleHooksEnabled}
-      />
+      {hooksProviderIds(hooksInstalled).map((providerId) => (
+        <Checkbox
+          key={providerId}
+          label={hooksLabel(providerId)}
+          checked={hooksInstalled[providerId] === true}
+          onChange={() => onToggleHooksEnabled(providerId)}
+        />
+      ))}
       <Checkbox
         label="Mostrar siempre las etiquetas"
         checked={alwaysShowOverlay}
@@ -230,4 +233,22 @@ export function SettingsModal({
       {extraSections}
     </Modal>
   );
+}
+
+const HOOKS_LABEL = 'Detección instantánea (hooks)';
+/** Hook provider ids of the Claude Code profiles: `claude` (default) and `claude-<name>`. */
+const CLAUDE_PROFILE_PREFIX = 'claude-';
+
+/** The default profile first, then the rest alphabetically. */
+function hooksProviderIds(hooksInstalled: Record<string, boolean>): string[] {
+  return Object.keys(hooksInstalled).sort((a, b) =>
+    a === 'claude' ? -1 : b === 'claude' ? 1 : a.localeCompare(b),
+  );
+}
+
+/** "Detección instantánea (hooks)" for the default profile, "… · trabajo" for `claude-trabajo`. */
+function hooksLabel(providerId: string): string {
+  return providerId.startsWith(CLAUDE_PROFILE_PREFIX)
+    ? `${HOOKS_LABEL} · ${providerId.slice(CLAUDE_PROFILE_PREFIX.length)}`
+    : HOOKS_LABEL;
 }

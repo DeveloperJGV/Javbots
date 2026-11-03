@@ -34,7 +34,14 @@ import {
 } from './configPersistence.js';
 import { MAX_PORT, MIN_PORT } from './constants.js';
 import { FileStateAdapter } from './fileStateAdapter.js';
-import { claudeProvider, copyHookScript, hookProviderById } from './providers/index.js';
+import {
+  claudeHooksEnabled,
+  claudeProvider,
+  copyHookScript,
+  hookProviderById,
+  hookProviders,
+  isClaudeProfileProvider,
+} from './providers/index.js';
 import { PixelAgentsServer } from './server.js';
 import type { ServerFeature } from './serverFeature.js';
 
@@ -177,7 +184,7 @@ async function main(): Promise<void> {
         // neither copy it nor be blocked by it.
         grantHooksConsent(provider.id);
         if (
-          provider.id === claudeProvider.id &&
+          isClaudeProfileProvider(provider) &&
           !copyHookScriptOrReport(packageRoot, ' (user toggle)')
         ) {
           return;
@@ -276,16 +283,27 @@ async function main(): Promise<void> {
     currentConfig = { port: config.port, token: config.token };
 
     // Sync runtime refs with persisted settings BEFORE first scan tick. The
-    // runtime's single hooksEnabled ref follows the Claude provider until the
-    // scanners grow per-provider awareness alongside the Settings UI.
-    runtime.hooksEnabled.current = getHooksEnabled(claudeProvider.id);
+    // runtime's single hooksEnabled ref gates the Claude scanners: on only while
+    // every Claude profile wants hooks (claudeHooksEnabled).
+    runtime.hooksEnabled.current = claudeHooksEnabled(getHooksEnabled);
     runtime.watchAllSessions.current = adapter.getSetting('pixel-agents.watchAllSessions', false);
 
-    // Install hooks on startup if the persisted setting says so — gated on the
-    // one-time consent to modify ~/.claude/settings.json.
-    if (runtime.hooksEnabled.current) {
-      let consent = getHooksConsent(claudeProvider.id) === 'granted';
-      if (!consent && (await claudeProvider.areHooksInstalled())) {
+    // Install hooks on startup, per Claude Code profile (claudeProfiles.ts), where
+    // the persisted setting says so — each gated on its own one-time consent to
+    // modify that profile's settings.json.
+    let hookScriptReady: boolean | null = null;
+    for (const provider of hookProviders()) {
+      const where = provider.displayName;
+      if (!getHooksEnabled(provider.id)) {
+        // Without this line, a persisted hooks-off makes startup skip the entire
+        // consent/install flow with zero output — indistinguishable from a bug.
+        console.log(
+          `[Pixel Agents] Hooks disabled for ${where} — enable "Instant Detection (Hooks)" in the UI settings to install them.`,
+        );
+        continue;
+      }
+      let consent = getHooksConsent(provider.id) === 'granted';
+      if (!consent && (await provider.areHooksInstalled())) {
         // Our hooks are already installed and already firing — a pre-consent
         // version put them there. Grant and continue with NO prompt: the
         // install below is the 14 -> 12 migration, and it only ever REDUCES
@@ -294,37 +312,35 @@ async function main(): Promise<void> {
         // this user no protection they do not already have, so they are not
         // asked. A fresh install still is, in full — in the browser UI, when a
         // tokened client connects (clientMessageHandler's webviewReady).
-        grantHooksConsent(claudeProvider.id);
+        grantHooksConsent(provider.id);
         consent = true;
       }
       if (!consent) {
         console.log(
-          '[Pixel Agents] Hooks not installed: modifying ~/.claude/settings.json needs one-time approval — open the URL below to review and approve it.',
+          `[Pixel Agents] Hooks not installed for ${where}: modifying its settings.json needs one-time approval — open the URL below to review and approve it.`,
         );
-      } else if (copyHookScriptOrReport(packageRoot)) {
-        try {
-          await claudeProvider.installHooks(`http://127.0.0.1:${config.port}`, config.token);
-          console.log('[Pixel Agents] Hooks installed');
-        } catch (err) {
-          console.error(`[Pixel Agents] ${err instanceof Error ? err.message : String(err)}`);
-        }
+        continue;
       }
-    } else {
-      // Without this line, a persisted hooks-off makes startup skip the entire
-      // consent/install flow with zero output — indistinguishable from a bug.
-      console.log(
-        '[Pixel Agents] Hooks disabled — enable "Instant Detection (Hooks)" in the UI settings to install them.',
-      );
+      hookScriptReady ??= copyHookScriptOrReport(packageRoot);
+      if (!hookScriptReady) continue;
+      try {
+        await provider.installHooks(`http://127.0.0.1:${config.port}`, config.token);
+        console.log(`[Pixel Agents] Hooks installed for ${where}`);
+      } catch (err) {
+        console.error(`[Pixel Agents] ${err instanceof Error ? err.message : String(err)}`);
+      }
     }
 
-    // Start scanning for external sessions (Claude running in user's terminal)
+    // Start scanning for external sessions (Claude running in user's terminal),
+    // in this folder's project dir of every Claude profile that has one.
     const cwd = process.cwd();
-    const dirs = claudeProvider.getSessionDirs?.(cwd);
-    if (dirs && dirs[0]) {
-      const projectDir = dirs[0];
-      console.log(`[Pixel Agents] Scanning project dir: ${projectDir}`);
-      runtime.startProjectScan(projectDir);
-      runtime.startExternalScanning(projectDir);
+    const dirs = claudeProvider.getSessionDirs?.(cwd) ?? [];
+    if (dirs[0]) {
+      for (const projectDir of dirs) {
+        console.log(`[Pixel Agents] Scanning project dir: ${projectDir}`);
+        runtime.startProjectScan(projectDir);
+      }
+      runtime.startExternalScanning(dirs[0]);
       runtime.startStaleCheck();
     }
 
