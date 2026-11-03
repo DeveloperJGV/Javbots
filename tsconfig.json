@@ -18,12 +18,8 @@
 		"adapters/vscode",
 		"server/src",
 		"core/src",
-		"features/musica/server",
-		"features/usage/server",
-		"features/herdr/server",
-		"features/github/server",
-		"features/conciertos/server",
-		"features/conexiones/server"
+		"features/*/server",
+		"privado/*/features/*/server"
 	],
 	"exclude": [
 		"node_modules",

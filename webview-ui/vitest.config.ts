@@ -10,7 +10,11 @@ const rootDir = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   test: {
     environment: 'node',
-    include: ['test/*.test.ts', '../features/*/test/webview/*.test.ts'],
+    include: [
+      'test/*.test.ts',
+      '../features/*/test/webview/*.test.ts',
+      '../privado/*/features/*/test/webview/*.test.ts',
+    ],
     testTimeout: 30_000,
     // Tests bind fixed ports (Vite dev server, vite preview) and share the
     // global `window.postMessage` listener in browser-transport. Serial run

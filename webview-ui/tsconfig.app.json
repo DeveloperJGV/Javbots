@@ -25,5 +25,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src", "../features/musica/webview", "../features/usage/webview", "../features/herdr/webview", "../features/github/webview", "../features/conciertos/webview", "../features/bodega/webview", "../features/conexiones/webview"]
+  "include": ["src", "../features/*/webview", "../privado/*/features/*/webview"]
 }

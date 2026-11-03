@@ -6,5 +6,5 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["__tests__/**/*.ts", "src/**/*.ts", "../features/musica/server/**/*.ts", "../features/musica/test/server/**/*.ts", "../features/usage/server/**/*.ts", "../features/usage/test/server/**/*.ts", "../features/herdr/server/**/*.ts", "../features/herdr/test/server/**/*.ts", "../features/github/server/**/*.ts", "../features/github/test/server/**/*.ts", "../features/conciertos/server/**/*.ts", "../features/conciertos/test/server/**/*.ts", "../features/conexiones/server/**/*.ts", "../features/conexiones/test/server/**/*.ts"]
+  "include": ["__tests__/**/*.ts", "src/**/*.ts", "../features/*/server/**/*.ts", "../features/*/test/server/**/*.ts", "../privado/*/features/*/server/**/*.ts", "../privado/*/features/*/test/server/**/*.ts"]
 }
