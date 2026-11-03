@@ -33,6 +33,42 @@ function copyAssets() {
     console.log('ℹ️  assets/ folder not found (optional)');
   }
   copyFeatureFiles();
+  copyPackFiles();
+}
+
+/**
+ * Private packs (privado/<pack>/ with a pack.json, never committed): pack.json, planos/ and assets/ go to
+ * dist/packs/<pack>/ (server/src/packLoader.ts reads them), and the furniture of its features joins
+ * dist/assets/furniture like a public feature's. Without privado/ (the public build) nothing happens.
+ */
+function copyPackFiles() {
+  const privado = path.join(__dirname, 'privado');
+  const out = path.join(__dirname, 'dist', 'packs');
+  fs.rmSync(out, { recursive: true, force: true });
+  if (!fs.existsSync(privado)) return;
+  for (const pack of fs.readdirSync(privado)) {
+    const packDir = path.join(privado, pack);
+    if (!fs.existsSync(path.join(packDir, 'pack.json'))) continue;
+    const dst = path.join(out, pack);
+    fs.mkdirSync(dst, { recursive: true });
+    fs.copyFileSync(path.join(packDir, 'pack.json'), path.join(dst, 'pack.json'));
+    for (const sub of ['planos', 'assets']) {
+      const src = path.join(packDir, sub);
+      if (fs.existsSync(src)) fs.cpSync(src, path.join(dst, sub), { recursive: true });
+    }
+    const features = path.join(packDir, 'features');
+    if (fs.existsSync(features)) {
+      for (const name of fs.readdirSync(features)) {
+        const furniture = path.join(features, name, 'assets', 'furniture');
+        if (fs.existsSync(furniture)) {
+          fs.cpSync(furniture, path.join(__dirname, 'dist', 'assets', 'furniture'), {
+            recursive: true,
+          });
+        }
+      }
+    }
+    console.log(`✓ Copied privado/${pack}/ → dist/packs/${pack}/`);
+  }
 }
 
 /**

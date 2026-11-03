@@ -2,24 +2,21 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-import {
-  LAYOUT_FILE_DIR,
-  LAYOUT_FILE_NAME,
-  LAYOUT_FILE_POLL_INTERVAL_MS,
-  LAYOUT_REVISION_KEY,
-} from './constants.js';
+import { MAIN_OFFICE, officeLayoutFileName } from '../../core/src/offices.js';
+import { LAYOUT_FILE_DIR, LAYOUT_FILE_POLL_INTERVAL_MS, LAYOUT_REVISION_KEY } from './constants.js';
 
 export interface LayoutWatcher {
   markOwnWrite(): void;
   dispose(): void;
 }
 
-function getLayoutFilePath(): string {
-  return path.join(os.homedir(), LAYOUT_FILE_DIR, LAYOUT_FILE_NAME);
+/** ~/.pixel-agents/layout.json for the main office; each other office keeps its own file (core/src/offices.ts). */
+function getLayoutFilePath(office: string = MAIN_OFFICE): string {
+  return path.join(os.homedir(), LAYOUT_FILE_DIR, officeLayoutFileName(office));
 }
 
-export function readLayoutFromFile(): Record<string, unknown> | null {
-  const filePath = getLayoutFilePath();
+export function readLayoutFromFile(office: string = MAIN_OFFICE): Record<string, unknown> | null {
+  const filePath = getLayoutFilePath(office);
   try {
     if (!fs.existsSync(filePath)) return null;
     const raw = fs.readFileSync(filePath, 'utf-8');
@@ -30,8 +27,11 @@ export function readLayoutFromFile(): Record<string, unknown> | null {
   }
 }
 
-export function writeLayoutToFile(layout: Record<string, unknown>): void {
-  const filePath = getLayoutFilePath();
+export function writeLayoutToFile(
+  layout: Record<string, unknown>,
+  office: string = MAIN_OFFICE,
+): void {
+  const filePath = getLayoutFilePath(office);
   const dir = path.dirname(filePath);
   try {
     if (!fs.existsSync(dir)) {

@@ -34,6 +34,8 @@ import {
 } from './configPersistence.js';
 import { MAX_PORT, MIN_PORT } from './constants.js';
 import { FileStateAdapter } from './fileStateAdapter.js';
+import { setOffices } from './officeRegistry.js';
+import { loadPacks } from './packLoader.js';
 import {
   claudeHooksEnabled,
   claudeProvider,
@@ -136,11 +138,13 @@ async function main(): Promise<void> {
   // External asset directories are merged at startup too, so directories added
   // in a previous session survive a restart. buildAssetCache is the shared
   // loader used by both the standalone server and the VS Code adapter.
+  // Private packs (privado/<name>/, copied to dist/packs/): extra offices, their layouts and art.
+  const packs = loadPacks(distRoot);
+  setOffices(packs.offices, packs.mainOffice);
+  const assetDirs = (): string[] => [...packs.assetDirs, ...readConfig().externalAssetDirectories];
   console.log('[Pixel Agents] Loading assets...');
-  const assetCache: AssetCache = await buildAssetCache(
-    distRoot,
-    readConfig().externalAssetDirectories,
-  );
+  const assetCache: AssetCache = await buildAssetCache(distRoot, assetDirs());
+  assetCache.officeLayouts = packs.officeLayouts;
   const charCount = assetCache.characters?.characters.length ?? 0;
   const petCount = assetCache.pets?.pets.length ?? 0;
   const furnitureCount = assetCache.furniture?.catalog.length ?? 0;
@@ -217,7 +221,7 @@ async function main(): Promise<void> {
     // characters/pets/furniture can come from external dirs, so only those three
     // are reloaded and re-sent (mirrors the VS Code reload path).
     const onReloadAssets: ReloadAssetsSideEffect = async (send): Promise<void> => {
-      const externalDirs = readConfig().externalAssetDirectories;
+      const externalDirs = assetDirs();
       const [characters, pets, furniture] = await Promise.all([
         loadAllCharacters(distRoot, externalDirs),
         loadAllPets(distRoot, externalDirs),

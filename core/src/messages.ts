@@ -26,6 +26,7 @@ export type ServerMessage =
   | AgentTeamInfo
   | AgentContextUsage
   | LayoutLoaded
+  | OfficesLoaded
   | FurnitureAssetsLoaded
   | CharacterSpritesLoaded
   | PetSpritesLoaded
@@ -216,6 +217,23 @@ export interface LayoutLoaded {
   wasReset?: boolean;
 }
 
+export interface OfficesLoaded {
+  type: 'officesLoaded';
+  current: string;
+  mainLabel?: string;
+  mainTitle?: string;
+  offices: OfficeInfo[];
+}
+
+export interface OfficeInfo {
+  id: string;
+  label: string;
+  title?: string;
+  profiles: string[];
+  alsoInMain?: string[];
+  mainProfile?: string;
+}
+
 export interface FurnitureAssetsLoaded {
   type: 'furnitureAssetsLoaded';
   catalog: FurnitureAssetMessage[];
@@ -369,10 +387,10 @@ export interface MusicStatus {
   message?: string;
   spotifyConfigured?: boolean;
   spotifyConnected?: boolean;
-  source?: AnonymousSchema_218;
+  source?: AnonymousSchema_231;
 }
 
-export type AnonymousSchema_218 = 'extension' | 'spotify';
+export type AnonymousSchema_231 = 'extension' | 'spotify';
 
 export interface MusicLyrics {
   type: 'musicLyrics';
@@ -380,11 +398,11 @@ export interface MusicLyrics {
   artist?: string;
   loading?: boolean;
   synced?: boolean;
-  source?: AnonymousSchema_224;
+  source?: AnonymousSchema_237;
   lines?: MusicLyricLine[];
 }
 
-export type AnonymousSchema_224 = 'spotify' | 'lrclib';
+export type AnonymousSchema_237 = 'spotify' | 'lrclib';
 
 export interface MusicLyricLine {
   text: string;
@@ -512,6 +530,7 @@ export type ConnectionState = 'ok' | 'warn' | 'off' | 'idea';
 
 export interface WebviewReady {
   type: 'webviewReady';
+  office?: string;
 }
 
 export interface LaunchAgent {
@@ -651,10 +670,10 @@ export interface InstallMusicExtension {
 
 export interface MusicControl {
   type: 'musicControl';
-  action: AnonymousSchema_357;
+  action: AnonymousSchema_371;
 }
 
-export type AnonymousSchema_357 = 'previous' | 'togglePlay' | 'next';
+export type AnonymousSchema_371 = 'previous' | 'togglePlay' | 'next';
 
 export interface DisconnectSpotify {
   type: 'disconnectSpotify';

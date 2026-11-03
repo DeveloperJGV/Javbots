@@ -5,10 +5,12 @@ import * as crypto from 'crypto';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import Fastify from 'fastify';
 
+import { MAIN_OFFICE } from '../../core/src/offices.js';
 import type { AgentRuntime } from './agentRuntime.js';
 import type { AgentStateStore } from './agentStateStore.js';
 import type {
   AssetCache,
+  ClientSession,
   ReloadAssetsSideEffect,
   SetHooksEnabledSideEffect,
 } from './clientMessageHandler.js';
@@ -19,6 +21,7 @@ import {
   WS_CLOSE_FORBIDDEN_ORIGIN,
   WS_CLOSE_UNAUTHORIZED,
 } from './constants.js';
+import { knownOffice } from './officeRegistry.js';
 import type { FeatureClient, ServerFeature } from './serverFeature.js';
 import type { AgentState } from './types.js';
 
@@ -57,6 +60,11 @@ export interface HttpServerHandle {
 }
 
 const startTime = Date.now();
+
+/** The office a page declared in its /ws URL (`?office=`), when this server knows it. */
+export function officeFromUrl(url: string | undefined): string | null {
+  return knownOffice(new URL(url ?? '/', 'http://localhost').searchParams.get('office'));
+}
 
 /** `/ws?token=abc&x=1` → `/ws?token=…&x=1` (log lines only). */
 export function redactToken(url: string): string {
@@ -217,6 +225,11 @@ function registerWebSocketRoute(app: FastifyInstance, options: HttpServerOptions
     store.on('agentRemoved', onAgentRemoved);
     store.on('broadcast', onBroadcast);
 
+    // Which office this page shows: from its /ws URL (so a reconnect after a server restart keeps it) or its
+    // webviewReady. Until one of them says, layout and seat saves are refused: they would land in another office.
+    const declared = officeFromUrl(request.url);
+    const session: ClientSession = { office: declared ?? MAIN_OFFICE, known: declared !== null };
+
     const features = options.features ?? [];
     const client: FeatureClient = { send: (m) => safeSend(socket, m), privileged };
     const disconnectFeatures = features.map((f) => f.connect?.(client));
@@ -236,6 +249,7 @@ function registerWebSocketRoute(app: FastifyInstance, options: HttpServerOptions
           onSetHooksEnabled: options.onSetHooksEnabled,
           onReloadAssets: options.onReloadAssets,
           privileged,
+          session,
         });
       } catch {
         // Malformed JSON, ignore

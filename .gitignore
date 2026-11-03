@@ -55,6 +55,9 @@ tasks/
 # Pixeles privados: se cargan como carpeta externa
 arte/privado/
 
+# Paquetes privados (cada uno es su propio repo): server/src/packLoader.ts
+/privado/
+
 # Python
 __pycache__/
 

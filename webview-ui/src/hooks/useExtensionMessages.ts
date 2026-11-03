@@ -29,6 +29,7 @@ import {
 } from '../office/toolUtils.js';
 import type { OfficeLayout, ToolActivity } from '../office/types.js';
 import { setWallSprites } from '../office/wallTiles.js';
+import { officesStore, requestedOffice } from '../offices.js';
 import { isBrowserRuntime, isE2E } from '../runtime.js';
 import { transport } from '../transport/index.js';
 
@@ -223,6 +224,10 @@ export function useExtensionMessages(
       setAgentFolderNames((prev) => (prev.includes(name) ? prev : [...prev, name]));
     };
 
+    // Agents of another office (by Claude Code profile, core/src/offices.ts): never drawn here, and nothing about
+    // them is either (an office may be shown to other people).
+    const otherOfficeAgents = new Set<number>();
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handler = (msg: any) => {
       const os = getOfficeState();
@@ -245,6 +250,38 @@ export function useExtensionMessages(
           toolId: msg.toolId,
           parentToolId: msg.parentToolId,
         });
+      }
+
+      if (msg.type === 'officesLoaded') {
+        officesStore.set({
+          current: msg.current,
+          offices: msg.offices,
+          mainLabel: msg.mainLabel,
+          mainTitle: msg.mainTitle,
+        });
+        return;
+      }
+      if (msg.type === 'agentCreated') {
+        // A teammate sits wherever its lead does.
+        const parentId = msg.parentAgentId as number | undefined;
+        const elsewhere =
+          parentId !== undefined
+            ? otherOfficeAgents.has(parentId)
+            : !officesStore.sitsHere(msg.profile as string | undefined);
+        if (elsewhere) {
+          otherOfficeAgents.add(msg.id as number);
+          return;
+        }
+      } else if (msg.type === 'existingAgents') {
+        const profiles = (msg.profiles || {}) as Record<number, string>;
+        msg.agents = (msg.agents as number[]).filter((id) => {
+          if (officesStore.sitsHere(profiles[id])) return true;
+          otherOfficeAgents.add(id);
+          return false;
+        });
+      } else if (typeof msg.id === 'number' && otherOfficeAgents.has(msg.id)) {
+        if (msg.type === 'agentClosed') otherOfficeAgents.delete(msg.id);
+        return;
       }
 
       if (msg.type === 'providerCapabilities') {
@@ -817,7 +854,7 @@ export function useExtensionMessages(
       }
     };
     const unsubscribe = transport.onMessage(handler);
-    transport.send({ type: 'webviewReady' });
+    transport.send({ type: 'webviewReady', office: requestedOffice });
     return unsubscribe;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getOfficeState]);

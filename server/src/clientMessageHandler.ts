@@ -1,3 +1,4 @@
+import { agentIdFromSeatKey, MAIN_OFFICE, officeSeatKey } from '../../core/src/offices.js';
 import type { HookProvider } from '../../core/src/provider.js';
 import { resendAgentActivity } from './agentActivityResend.js';
 import { buildAgentDiagnostics } from './agentDiagnostics.js';
@@ -15,6 +16,7 @@ import {
 } from './configPersistence.js';
 import { HUE_SHIFT_MAX_DEG, PALETTE_COUNT } from './constants.js';
 import { readLayoutFromFile, writeLayoutToFile } from './layoutPersistence.js';
+import { getMainOfficeNames, getOffices, knownOffice } from './officeRegistry.js';
 import type { ConsentEffects } from './providers/hook/consentExecutor.js';
 import { applyConsentChoice } from './providers/hook/consentExecutor.js';
 import { hooksConsentRequest } from './providers/hook/consentGate.js';
@@ -50,6 +52,15 @@ export interface AssetCache {
   carpetTiles: string[][][][] | null;
   furniture: LoadedAssets | null;
   defaultLayout: Record<string, unknown> | null;
+  /** Starting layouts of the offices the packs add (core/src/offices.ts), by office id. */
+  officeLayouts?: Record<string, Record<string, unknown> | null>;
+}
+
+/** Per-connection state: which office this page shows (from its /ws URL or its webviewReady). */
+export interface ClientSession {
+  office: string;
+  /** The page said which office it shows. Layout and seat saves wait for it. */
+  known: boolean;
 }
 
 export interface ClientMessageContext {
@@ -68,6 +79,21 @@ export interface ClientMessageContext {
    * to false so a caller that forgets to pass it gets the safe answer.
    */
   privileged?: boolean;
+  /** This connection's office; the main office when absent (VS Code, tests). */
+  session?: ClientSession;
+}
+
+function officeOf(ctx: ClientMessageContext): string {
+  return ctx.session?.office ?? MAIN_OFFICE;
+}
+
+/** A save from a page that hasn't said its office yet could write another office's files. */
+function officeUnknown(ctx: ClientMessageContext, what: string): boolean {
+  if (!ctx.session || ctx.session.known) return false;
+  console.warn(
+    `[Pixel Agents] Ignoring ${what}: this connection hasn't said which office it shows`,
+  );
+  return true;
 }
 
 // ── Setting key constants (mirror adapters/vscode/constants.ts) ──
@@ -99,6 +125,10 @@ export function handleClientMessage(
 
   switch (msg.type) {
     case 'webviewReady':
+      if (ctx.session) {
+        ctx.session.office = knownOffice(msg.office) ?? MAIN_OFFICE;
+        ctx.session.known = true;
+      }
       handleWebviewReady(send, ctx);
       break;
 
@@ -122,13 +152,14 @@ export function handleClientMessage(
       break;
 
     case 'saveLayout':
-      if (msg.layout) {
-        writeLayoutToFile(msg.layout as Record<string, unknown>);
+      if (msg.layout && !officeUnknown(ctx, 'saveLayout')) {
+        writeLayoutToFile(msg.layout as Record<string, unknown>, officeOf(ctx));
       }
       break;
 
     case 'saveAgentSeats':
-      if (msg.seats) {
+      if (msg.seats && !officeUnknown(ctx, 'saveAgentSeats')) {
+        const office = officeOf(ctx);
         const seats = msg.seats as Record<
           string,
           { palette?: number; hueShift?: number; seatId?: string }
@@ -163,7 +194,17 @@ export function handleClientMessage(
             }
           }
         }
-        adapter?.saveSeats(seats);
+        // Seats of the OTHER offices stay: each page only knows its own office's seats.
+        if (adapter) {
+          const merged = Object.fromEntries(
+            Object.entries(adapter.loadSeats()).filter(
+              ([key]) => agentIdFromSeatKey(office, key) === null,
+            ),
+          );
+          for (const [idStr, meta] of Object.entries(seats))
+            merged[officeSeatKey(office, idStr)] = meta;
+          adapter.saveSeats(merged);
+        }
       }
       break;
 
@@ -382,6 +423,16 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
   const { store, runtime, cache } = ctx;
   const adapter = store.getAdapter();
 
+  // 0. Offices, before anything about agents: the page draws only the ones that sit in its office.
+  const names = getMainOfficeNames();
+  send({
+    type: 'officesLoaded',
+    current: officeOf(ctx),
+    offices: getOffices().map((o) => ({ ...o })),
+    ...(names.label ? { mainLabel: names.label } : {}),
+    ...(names.title ? { mainTitle: names.title } : {}),
+  });
+
   // 1. Provider capabilities (must arrive before any agent messages)
   send({
     type: 'providerCapabilities',
@@ -508,7 +559,13 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
   const folderNames: Record<number, string> = {};
   const profiles: Record<number, string> = {};
   const externalAgents: Record<number, boolean> = {};
-  const persistedSeats = adapter?.loadSeats() ?? {};
+  const office = officeOf(ctx);
+  const persistedSeats: Record<string, { palette?: number; hueShift?: number; seatId?: string }> =
+    {};
+  for (const [key, seat] of Object.entries(adapter?.loadSeats() ?? {})) {
+    const id = agentIdFromSeatKey(office, key);
+    if (id !== null) persistedSeats[id] = seat;
+  }
   const agentMeta: Record<number, { palette?: number; hueShift?: number; seatId?: string }> = {};
   for (const [id, agent] of store) {
     agentIds.push(id);
@@ -540,8 +597,10 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
 
   // 7. Layout last (see step 3): flushes the webview's buffered existingAgents
   // into characters once seats are rebuilt.
-  const savedLayout = readLayoutFromFile();
-  send({ type: 'layoutLoaded', layout: savedLayout ?? cache?.defaultLayout ?? null });
+  const savedLayout = readLayoutFromFile(office);
+  const officeDefault =
+    office === MAIN_OFFICE ? cache?.defaultLayout : cache?.officeLayouts?.[office];
+  send({ type: 'layoutLoaded', layout: savedLayout ?? officeDefault ?? null });
 
   // 8. Agent state, AFTER layoutLoaded -- the characters they target only
   // exist once the layout flush creates them. Without this a reconnecting

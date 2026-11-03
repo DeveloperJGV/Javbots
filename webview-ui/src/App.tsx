@@ -23,6 +23,7 @@ import { DebugView } from './components/DebugView.js';
 import { EditActionBar } from './components/EditActionBar.js';
 import { IntroBubble } from './components/IntroBubble.js';
 import { MigrationNotice } from './components/MigrationNotice.js';
+import { OfficeSwitch } from './components/OfficeSwitch.js';
 import { SettingsModal } from './components/SettingsModal.js';
 import { Tooltip } from './components/Tooltip.js';
 import { Modal } from './components/ui/Modal.js';
@@ -652,6 +653,9 @@ function App() {
         />
 
         <ConnectionIndicator />
+
+        {/* Offices (core/src/offices.ts): the switch shows only when a pack adds one */}
+        <OfficeSwitch />
 
         {/* Optional feature (features/usage): Claude plan limits and cost per agent */}
         <UsageBar usage={usage} />

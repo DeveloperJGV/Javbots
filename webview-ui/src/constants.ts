@@ -807,3 +807,10 @@ export const CAPTURE_TOP_PAD_TILES = 2;
 export const CAPTURE_PAD_TILES = 1;
 export const CAPTURE_BG_COLOR = '#1e1e2e';
 export const CAPTURE_FILE_PREFIX = 'pixel-agents';
+
+// ── Offices (core/src/offices.ts): the main one plus the ones a private pack adds ──
+/** URL parameter that picks the office (?oficina=x); the choice is also remembered per browser. */
+export const OFFICE_URL_PARAM = 'oficina';
+export const OFFICE_STORAGE_KEY = 'javbots.oficina';
+/** Name of the main office on the switch when the pack doesn't give one. */
+export const MAIN_OFFICE_LABEL = 'Javbots';

@@ -102,6 +102,8 @@ components:
         - $ref: '#/components/schemas/AgentContextUsage'
         # Layout
         - $ref: '#/components/schemas/LayoutLoaded'
+        # Offices (core/src/offices.ts)
+        - $ref: '#/components/schemas/OfficesLoaded'
         # Assets
         - $ref: '#/components/schemas/FurnitureAssetsLoaded'
         - $ref: '#/components/schemas/CharacterSpritesLoaded'
@@ -849,6 +851,50 @@ components:
 
     # ── Client message variants ────────────────────────────────────
 
+    OfficesLoaded:
+      description: >-
+        The offices this server has (the main one plus the ones private packs
+        declare) and the one this page shows. Sent first on webviewReady, before
+        any agent, so the page knows whose agents to draw.
+      type: object
+      additionalProperties: false
+      required: [type, current, offices]
+      properties:
+        type:
+          const: officesLoaded
+        current:
+          type: string
+        mainLabel:
+          type: string
+        mainTitle:
+          type: string
+        offices:
+          type: array
+          items:
+            $ref: '#/components/schemas/OfficeInfo'
+
+    OfficeInfo:
+      type: object
+      additionalProperties: false
+      required: [id, label, profiles]
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        title:
+          type: string
+        profiles:
+          type: array
+          items:
+            type: string
+        alsoInMain:
+          type: array
+          items:
+            type: string
+        mainProfile:
+          type: string
+
     WebviewReady:
       description: Client signals it's ready to receive state.
       type: object
@@ -857,6 +903,9 @@ components:
       properties:
         type:
           const: webviewReady
+        office:
+          type: string
+          description: Office this page shows (core/src/offices.ts); the main office when absent or unknown.
 
     LaunchAgent:
       description: Launch a new Claude agent in a new terminal.
@@ -909,7 +958,7 @@ components:
             $ref: '#/components/schemas/SeatAssignment'
 
     SaveLayout:
-      description: Save the office layout to ~/.pixel-agents/layout.json.
+      description: Save the layout of this page's office to ~/.pixel-agents/ (layout.json for the main office).
       type: object
       additionalProperties: false
       required: [type, layout]
