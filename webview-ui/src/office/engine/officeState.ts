@@ -76,7 +76,15 @@ import {
   ZONE_ERROR_HOLD_SEC,
   ZONE_PER_TOOL,
 } from '../../constants.js';
-import { applyPackFurniture } from '../../packs/registry.js';
+import {
+  applyPackFurniture,
+  packAgentLeisure,
+  packAgentsStayAtDesk,
+  packCast,
+  packStaffRoles,
+  packsVersion,
+  packTick,
+} from '../../packs/registry.js';
 import { ActivityLog } from '../board/activityLog.js';
 import { boardSprite } from '../board/boardSprite.js';
 import { applyAmbientAnimation } from '../effects/ambientFurniture.js';
@@ -109,11 +117,13 @@ import {
   isNightOnly,
   pickLeisureStops,
   shuffled,
+  sleepingIn,
 } from '../leisure/leisure.js';
 import type { DiscoLight, PartyBounds, PartyState } from '../party/party.js';
 import { discoLights, partyBounds } from '../party/party.js';
 import { getPetCount, getPetName } from '../sprites/petSpriteData.js';
-import { getLoadedCharacterCount } from '../sprites/spriteData.js';
+import { characterSheetIndex, getLoadedCharacterCount } from '../sprites/spriteData.js';
+import { nearestWalkable, StaffCrew } from '../staff/staffCrew.js';
 import type {
   Character,
   FurnitureInstance,
@@ -189,6 +199,15 @@ export class OfficeState {
   zonePerTool = ZONE_PER_TOOL;
   /** What agents may do on a break (AGENT_LEISURE: the break room only). */
   leisureActivities: readonly LeisureActivity[] = AGENT_LEISURE;
+  /** Furniture a private pack draws as walking people (office/staff, WebviewPack.staff). */
+  private staff = new StaffCrew();
+  /** Uids of the pieces someone is asleep in (a free-time activity with pose 'sleep'). */
+  private sleepingBeds = new Set<string>();
+  /** Sprites that move every frame (the staff, a pack's `tick`): drawn on top of the furniture list. */
+  private liveSprites: FurnitureInstance[] = [];
+  private packLiveSprites = new Map<string, FurnitureInstance[]>();
+  /** packsVersion() the staff was last built for. */
+  private staffPacksVersion = -1;
   private zoneKindsOf: OfficeLayout | null = null;
   private zoneKinds = new Set<string>();
   /** Notes off the turntable while music plays (features/musica). */
@@ -264,6 +283,14 @@ export class OfficeState {
     this.walkableTiles = getWalkableTiles(this.tileMap, this.blockedTiles);
     // Pets are built last because they need walkableTiles populated for spawn.
     this.rebuildPetsFromLayout(this.layout);
+    this.rebuildStaff();
+    if (this.staff.size > 0) this.rebuildFurnitureInstances();
+  }
+
+  /** The walking staff for this layout and the packs active now. */
+  private rebuildStaff(): void {
+    this.staffPacksVersion = packsVersion();
+    this.staff.rebuild(this.layout.furniture, packStaffRoles());
   }
 
   /** Rebuild all derived state from a new layout. Reassigns existing characters.
@@ -273,6 +300,7 @@ export class OfficeState {
     this.tileMap = layoutToTileMap(layout);
     this.seats = layoutToSeats(layout.furniture);
     this.blockedTiles = getBlockedTiles(layout.furniture);
+    this.rebuildStaff();
     this.rebuildFurnitureInstances();
     this.walkableTiles = getWalkableTiles(this.tileMap, this.blockedTiles);
 
@@ -864,6 +892,10 @@ export class OfficeState {
     palette: number;
     hueShift: number;
   } {
+    const pool = (packCast()?.interns ?? [])
+      .map(characterSheetIndex)
+      .filter((i): i is number => i !== undefined);
+    if (pool.length > 0) return this.pickPooledIntern(pool);
     if (!parentCh) return { palette: 0, hueShift: 0 };
     const loaded = getLoadedCharacterCount();
     const interns = (BOSS_INTERNS[parentCh.palette] ?? []).filter((i) => i < loaded);
@@ -883,6 +915,19 @@ export class OfficeState {
     }
     const own = busy.filter((i) => interns.includes(i)).length;
     return { palette: interns[own % interns.length], hueShift: parentCh.hueShift };
+  }
+
+  /** An intern from the office's shared pool (WebviewPack.cast.interns): the least used sheet among the interns out
+   *  right now, first without a hue shift, then repeated with one (the same rounds as the bosses). */
+  private pickPooledIntern(pool: readonly number[]): { palette: number; hueShift: number } {
+    const counts = pool.map(() => 0);
+    for (const ch of this.characters.values()) {
+      if (!ch.isSubagent || ch.leavingSec !== null || ch.matrixEffect === 'despawn') continue;
+      const i = pool.indexOf(ch.palette);
+      if (i !== -1) counts[i]++;
+    }
+    const pick = pickDiversePalette(pool.length, counts);
+    return { palette: pool[pick.palette], hueShift: pick.hueShift };
   }
 
   /** An intern done with its task walks back to its boss and fades out there (Fase 4B). With no
@@ -1083,7 +1128,7 @@ export class OfficeState {
       }
     }
 
-    if (autoOnTiles.size === 0) {
+    if (autoOnTiles.size === 0 && this.sleepingBeds.size === 0) {
       this.furniture = this.withAmbientAnimation(layoutToFurnitureInstances(this.layout.furniture));
       return;
     }
@@ -1091,6 +1136,8 @@ export class OfficeState {
     // Build modified furniture list with auto-state and animation applied
     const animFrame = Math.floor(this.furnitureAnimTimer / FURNITURE_ANIM_INTERVAL_SEC);
     const modifiedFurniture: PlacedFurniture[] = this.layout.furniture.map((item) => {
+      // Someone asleep in it: its on-state, the same bed with someone tucked in (the agent is not drawn)
+      if (this.sleepingBeds.has(item.uid)) return { ...item, type: getOnStateType(item.type) };
       const entry = getCatalogEntry(item.type);
       if (!entry) return item;
       // Check if any tile of this furniture overlaps an auto-on tile
@@ -1118,6 +1165,8 @@ export class OfficeState {
   }
 
   private withAmbientAnimation(instances: FurnitureInstance[]): FurnitureInstance[] {
+    // The walking staff is drawn by the crew, not as still furniture (see updateLive)
+    if (this.staff.size > 0) instances = instances.filter((f) => !this.staff.draws(f.type));
     // Optional features: spinning turntable and album cover (features/musica), plan limits on the meter
     // (features/usage), repositories in the GitHub room (features/github), lights on the connections rack
     // (features/conexiones)
@@ -1138,10 +1187,77 @@ export class OfficeState {
       this.furnitureAnimTimer,
     );
     // Private packs (webview-ui/src/packs/registry.ts)
-    return applyPackFurniture(withConnections, {
+    const withPacks = applyPackFurniture(withConnections, {
       timeSec: this.furnitureAnimTimer,
       officeState: this,
     });
+    return this.liveSprites.length ? [...withPacks, ...this.liveSprites] : withPacks;
+  }
+
+  /** Redraw the furniture now (a pack's `furniture` step depends on something that changed). */
+  refreshFurniture(): void {
+    this.rebuildFurnitureInstances();
+  }
+
+  /** The free tile closest to the front of the first piece of `type` (where staff stand to use it), or null. */
+  private frontTileOf(type: string): { col: number; row: number } | null {
+    const item = this.layout.furniture.find((f) => f.type === type);
+    const entry = item ? getCatalogEntry(item.type) : undefined;
+    if (!item || !entry) return null;
+    return nearestWalkable(
+      item.col + Math.floor(entry.footprintW / 2),
+      item.row + entry.footprintH,
+      this.tileMap,
+      this.blockedTiles,
+    );
+  }
+
+  /** Where the walking staff of that piece stands (feet, world pixels), or null when the office has none. */
+  staffPosition(type: string): { x: number; y: number } | null {
+    return this.staff.positionOf(type);
+  }
+
+  /** Keeps the walking staff of that piece at their post while `busy`. */
+  setStaffBusy(type: string, busy: boolean): void {
+    this.staff.setBusy(type, busy);
+  }
+
+  /** The guards walk to the front of the first piece of `type`, check it and go back. False when none can. */
+  soundAlarm(type: string): boolean {
+    const to = this.frontTileOf(type);
+    return to ? this.staff.alarm(to, this.tileMap, this.blockedTiles) : false;
+  }
+
+  /** A free worker carries a box from one piece of furniture to another. False without staff or a piece. */
+  carryBetween(fromType: string, toType: string): boolean {
+    const from = this.frontTileOf(fromType);
+    const to = this.frontTileOf(toType);
+    if (this.staff.size === 0 || !from || !to) return false;
+    this.staff.carry(from, to);
+    return true;
+  }
+
+  /** The staff walks and the packs' moving sprites move every frame: swap them in the furniture list. */
+  private updateLive(dt: number): void {
+    if (this.staff.size > 0) this.staff.update(dt, this.tileMap, this.blockedTiles);
+    const next = [...this.staff.instances(), ...packTick(dt, this, this.packLiveSprites)];
+    if (next.length === 0 && this.liveSprites.length === 0) return;
+    const old = new Set(this.liveSprites);
+    this.liveSprites = next;
+    this.furniture = [...this.furniture.filter((f) => !old.has(f)), ...next];
+  }
+
+  /** Pieces with someone asleep switch to their on-state (see rebuildFurnitureInstances). */
+  private updateSleepers(): void {
+    const beds = new Set<string>();
+    for (const ch of this.characters.values()) {
+      const bed = sleepingIn(ch);
+      if (bed) beds.add(bed);
+    }
+    if (beds.size === this.sleepingBeds.size && [...beds].every((b) => this.sleepingBeds.has(b)))
+      return;
+    this.sleepingBeds = beds;
+    this.rebuildFurnitureInstances();
   }
 
   private withOfficeAnimation(instances: FurnitureInstance[]): FurnitureInstance[] {
@@ -1402,6 +1518,11 @@ export class OfficeState {
     return 'done';
   }
 
+  /** What agents may do on a break here: the office's pool, or the active pack's (WebviewPack.agentLeisure). */
+  private agentLeisure(): readonly LeisureActivity[] {
+    return packAgentLeisure(this.leisureActivities);
+  }
+
   /** Free time of an agent: starts after LEISURE_START_SEC without work, one activity after another. */
   private updateLeisure(ch: Character, dt: number): void {
     if (ch.isActive) {
@@ -1418,12 +1539,12 @@ export class OfficeState {
         this.wanderFor(ch, LEISURE_RETRY_SEC);
       } else if (Math.random() < LEISURE_WANDER_CHANCE) {
         this.wanderFor(ch, randomRange(LEISURE_WANDER_MIN_SEC, LEISURE_WANDER_MAX_SEC));
-      } else if (!this.startLeisure(ch, this.leisureActivities, last)) {
+      } else if (!this.startLeisure(ch, this.agentLeisure(), last)) {
         this.wanderFor(ch, LEISURE_RETRY_SEC);
       }
       return;
     }
-    if (ch.idleSec >= LEISURE_START_SEC && !this.startLeisure(ch, this.leisureActivities)) {
+    if (ch.idleSec >= LEISURE_START_SEC && !this.startLeisure(ch, this.agentLeisure())) {
       this.wanderFor(ch, LEISURE_RETRY_SEC);
     }
   }
@@ -1943,6 +2064,13 @@ export class OfficeState {
   }
 
   update(dt: number): void {
+    // The office (and its packs) became known after the layout: build its staff now
+    if (this.staffPacksVersion !== packsVersion()) {
+      this.rebuildStaff();
+      this.rebuildFurnitureInstances();
+    }
+    this.updateLive(dt);
+    this.updateSleepers();
     // Furniture animation cycling
     const prevFrame = Math.floor(this.furnitureAnimTimer / FURNITURE_ANIM_INTERVAL_SEC);
     this.furnitureAnimTimer += dt;
@@ -1968,6 +2096,8 @@ export class OfficeState {
 
     this.updateParty(dt);
 
+    // A pack's calm office: agents don't wander between turns (WebviewPack.agentsStayAtDesk)
+    const stayAtDesk = packAgentsStayAtDesk();
     const toDelete: number[] = [];
     for (const ch of this.characters.values()) {
       const effect = advanceMatrixEffect(ch, dt);
@@ -2030,7 +2160,15 @@ export class OfficeState {
 
       // Temporarily unblock own seat so character can pathfind to it
       this.withOwnSeatUnblocked(ch, () =>
-        updateCharacter(ch, dt, this.walkableTiles, this.seats, this.tileMap, this.blockedTiles),
+        updateCharacter(
+          ch,
+          dt,
+          this.walkableTiles,
+          this.seats,
+          this.tileMap,
+          this.blockedTiles,
+          stayAtDesk && !ch.isSubagent,
+        ),
       );
 
       this.fireTeleporterOnArrival(ch);

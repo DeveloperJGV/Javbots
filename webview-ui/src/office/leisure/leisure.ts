@@ -2,8 +2,10 @@
 // to do for a while — sit on the couch, read, meditate, walk the gallery, get a
 // coffee, play Pac-Man, look at the stars. Spots come from the furniture in the
 // layout (by type), so they follow the furniture when it moves in the editor.
+// A private pack can add activities of its own (WebviewPack.leisure).
 
 import { LEISURE_SEAT_REACH_TILES } from '../../constants.js';
+import { packLeisureDef } from '../../packs/registry.js';
 import { getCatalogEntry } from '../layout/furnitureCatalog.js';
 import { isWalkable } from '../layout/tileMap.js';
 import type { Character, OfficeLayout, Seat, TileType as TileTypeVal } from '../types.js';
@@ -19,10 +21,15 @@ export const LeisureActivity = {
   PACMAN: 'pacman',
   STARS: 'stars',
 } as const;
-export type LeisureActivity = (typeof LeisureActivity)[keyof typeof LeisureActivity];
+type BuiltinLeisure = (typeof LeisureActivity)[keyof typeof LeisureActivity];
+/** One of the built-in activities above, or one a pack adds (WebviewPack.leisure). */
+export type LeisureActivity = string;
 
-/** How the agent looks once there: typing/playing, reading, or still. */
-export type LeisurePose = 'type' | 'read' | 'still';
+/**
+ * How the agent looks once there: typing/playing, reading, still, or asleep — not drawn at all: the piece it
+ * lies in shows its on-state (the same bed with someone in it) while it's there.
+ */
+export type LeisurePose = 'type' | 'read' | 'still' | 'sleep';
 
 export interface LeisureSpot {
   col: number;
@@ -31,6 +38,8 @@ export interface LeisureSpot {
   dir: Direction;
   /** Seat uid when the spot is a chair; null = standing. */
   seatUid: string | null;
+  /** The piece a standing spot belongs to (the bed a sleeper gets into). */
+  piece?: { uid: string; col: number; row: number; type: string };
 }
 
 export interface LeisureState {
@@ -47,13 +56,14 @@ export interface LeisureState {
   failed: boolean;
 }
 
-interface SeatSource {
+export interface SeatSource {
   type: string;
   /** Only seats within reach of one of these furniture types. */
   near?: readonly string[];
 }
 
-interface ActivityDef {
+export interface LeisureActivityDef {
+  /** What the agent's label says while it's on it ("Viendo la tele"). */
   label: string;
   pose: LeisurePose;
   /** Sit on one of these chairs… */
@@ -63,6 +73,8 @@ interface ActivityDef {
   /** Walk from one `standBy` piece to the next instead of staying at one. */
   tour?: boolean;
   nightOnly?: boolean;
+  /** One agent per piece (a bed): a single spot next to each. */
+  onePerPiece?: boolean;
 }
 
 const GALLERY_PIECES = [
@@ -74,7 +86,7 @@ const GALLERY_PIECES = [
   'RING_PEDESTAL',
 ] as const;
 
-export const LEISURE_ACTIVITIES: Readonly<Record<LeisureActivity, ActivityDef>> = {
+export const LEISURE_ACTIVITIES: Readonly<Record<BuiltinLeisure, LeisureActivityDef>> = {
   tv: {
     label: 'Viendo la tele',
     pose: 'still',
@@ -128,8 +140,19 @@ export const INTERN_LEISURE: readonly LeisureActivity[] = [
   LeisureActivity.PACMAN,
 ];
 
+const IDLE_DEF: LeisureActivityDef = { label: '', pose: 'still' };
+
+/** A built-in activity's definition, else a pack's; an unknown id has no spots. */
+export function leisureDef(activity: LeisureActivity): LeisureActivityDef {
+  return (
+    (LEISURE_ACTIVITIES as Readonly<Record<string, LeisureActivityDef>>)[activity] ??
+    packLeisureDef(activity) ??
+    IDLE_DEF
+  );
+}
+
 export function leisureLabel(activity: LeisureActivity): string {
-  return LEISURE_ACTIVITIES[activity].label;
+  return leisureDef(activity).label;
 }
 
 /** The stop the agent is heading to or at, or null. */
@@ -145,7 +168,7 @@ export function atLeisureStop(ch: Character): boolean {
 
 /** Pose to draw while at the spot, or null when not there. */
 export function leisurePose(ch: Character): LeisurePose | null {
-  return ch.leisure && atLeisureStop(ch) ? LEISURE_ACTIVITIES[ch.leisure.activity].pose : null;
+  return ch.leisure && atLeisureStop(ch) ? leisureDef(ch.leisure.activity).pose : null;
 }
 
 /** Arrive at the stop: face it, and sit down (or play standing) when the activity says so. */
@@ -156,7 +179,7 @@ export function settleAtLeisure(ch: Character): void {
   ch.dir = stop.dir;
   ch.frame = 0;
   ch.frameTimer = 0;
-  const pose = LEISURE_ACTIVITIES[ch.leisure.activity].pose;
+  const pose = leisureDef(ch.leisure.activity).pose;
   ch.state = stop.seatUid !== null || pose !== 'still' ? CharacterState.TYPE : CharacterState.IDLE;
 }
 
@@ -186,7 +209,7 @@ const STAND_SIDES: Array<{ dCol: number; dRow: number; dir: Direction }> = [
 ];
 
 function standSpotsBy(
-  item: { col: number; row: number; type: string },
+  item: { uid: string; col: number; row: number; type: string },
   seatTiles: Set<string>,
   tileMap: TileTypeVal[][],
   blockedTiles: Set<string>,
@@ -208,7 +231,13 @@ function standSpotsBy(
       if (seen.has(key) || seatTiles.has(key)) continue;
       if (!isWalkable(col, row, tileMap, blockedTiles)) continue;
       seen.add(key);
-      spots.push({ col, row, dir: side.dir, seatUid: null });
+      spots.push({
+        col,
+        row,
+        dir: side.dir,
+        seatUid: null,
+        piece: { uid: item.uid, col: item.col, row: item.row, type: item.type },
+      });
     }
     if (spots.length > 0) return spots;
   }
@@ -227,7 +256,7 @@ export function findLeisureSpots(
   tileMap: TileTypeVal[][],
   blockedTiles: Set<string>,
 ): LeisureSpot[][] {
-  const def = LEISURE_ACTIVITIES[activity];
+  const def = leisureDef(activity);
   const groups: LeisureSpot[][] = [];
   if (def.seats) {
     const chairs: LeisureSpot[] = [];
@@ -256,7 +285,7 @@ export function findLeisureSpots(
     for (const item of layout.furniture) {
       if (!def.standBy.includes(item.type)) continue;
       const spots = standSpotsBy(item, seatTiles, tileMap, blockedTiles);
-      if (spots.length > 0) groups.push(spots);
+      if (spots.length > 0) groups.push(def.onePerPiece ? spots.slice(0, 1) : spots);
     }
   }
   return groups;
@@ -289,7 +318,7 @@ export function pickLeisureStops(
     .filter((g) => g.length > 0);
   if (free.length === 0) return null;
   const pickOne = (g: LeisureSpot[]): LeisureSpot => g[Math.floor(rand() * g.length)];
-  if (LEISURE_ACTIVITIES[activity].tour) {
+  if (leisureDef(activity).tour) {
     // Walk the hall in one direction, starting from the end nearer to the agent
     const stops = shuffled(free, rand)
       .slice(0, Math.max(1, tourStops))
@@ -304,5 +333,10 @@ export function pickLeisureStops(
 }
 
 export function isNightOnly(activity: LeisureActivity): boolean {
-  return LEISURE_ACTIVITIES[activity].nightOnly === true;
+  return leisureDef(activity).nightOnly === true;
+}
+
+/** Uid of the piece this agent is asleep in right now (pose 'sleep'), or null. */
+export function sleepingIn(ch: Character): string | null {
+  return leisurePose(ch) === 'sleep' ? (leisureStop(ch)?.piece?.uid ?? null) : null;
 }

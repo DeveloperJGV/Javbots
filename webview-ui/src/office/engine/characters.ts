@@ -68,6 +68,13 @@ function workSpot(
   return seat ? { col: seat.seatCol, row: seat.seatRow, dir: seat.facingDir } : null;
 }
 
+/** Sitting at its own desk, or has none (types where it stands). */
+function atOwnSeat(ch: Character, seats: Map<string, Seat>): boolean {
+  if (!ch.seatId) return true;
+  const seat = seats.get(ch.seatId);
+  return !seat || (ch.tileCol === seat.seatCol && ch.tileRow === seat.seatRow);
+}
+
 export function createCharacter(
   id: number,
   palette: number,
@@ -135,6 +142,9 @@ export function updateCharacter(
   seats: Map<string, Seat>,
   tileMap: TileTypeVal[][],
   blockedTiles: Set<string>,
+  /** Calm office (WebviewPack.agentsStayAtDesk): no wandering. Between turns the agent stays at its desk, and only
+   *  gets up for a free-time activity. */
+  stayAtDesk = false,
 ): void {
   ch.frameTimer += dt;
   updateIdleMotion(ch, dt);
@@ -149,6 +159,8 @@ export function updateCharacter(
       if (!ch.isActive) {
         // Free time: stay on the couch / cushion / at the arcade until it is over
         if (atLeisureStop(ch)) break;
+        // Calm office: stay at the desk until a free-time activity calls
+        if (stayAtDesk && !ch.leisure && atOwnSeat(ch, seats)) break;
         // Just finished a turn: stay at the desk (free time, once picked, gets it up)
         if (ch.seatTimer < 0) ch.seatTimer = AFTER_TURN_SEAT_SEC;
         if (ch.seatTimer > 0 && !ch.leisure) {
@@ -215,11 +227,22 @@ export function updateCharacter(
         }
         break;
       }
+      // Calm office: no wandering — sit back down at the desk, or head straight to it
+      if (stayAtDesk && ch.seatId) {
+        const seat = seats.get(ch.seatId);
+        if (seat && ch.tileCol === seat.seatCol && ch.tileRow === seat.seatRow) {
+          ch.state = CharacterState.TYPE;
+          ch.dir = seat.facingDir;
+          ch.frame = 0;
+          ch.frameTimer = 0;
+          break;
+        }
+      }
       // Countdown wander timer
       ch.wanderTimer -= dt;
-      if (ch.wanderTimer <= 0) {
-        // Check if we've wandered enough — return to seat for a rest
-        if (ch.wanderCount >= ch.wanderLimit && ch.seatId) {
+      if (ch.wanderTimer <= 0 || stayAtDesk) {
+        // Check if we've wandered enough — return to seat for a rest (a calm office never wanders)
+        if ((stayAtDesk || ch.wanderCount >= ch.wanderLimit) && ch.seatId) {
           const seat = seats.get(ch.seatId);
           if (seat) {
             const path = findPath(
@@ -240,7 +263,7 @@ export function updateCharacter(
             }
           }
         }
-        if (walkableTiles.length > 0) {
+        if (!stayAtDesk && walkableTiles.length > 0) {
           const target = walkableTiles[Math.floor(Math.random() * walkableTiles.length)];
           const path = findPath(
             ch.tileCol,

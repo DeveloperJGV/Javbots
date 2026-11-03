@@ -125,7 +125,15 @@ test('spots come from the furniture: couch seats, the cushion by the holo table,
     'only the cushion within reach of the holo table',
   );
   assert.equal(spots('read').length, 0, 'no study table: nothing to read at');
-  assert.deepEqual(spots('pacman'), [{ col: 14, row: 6, dir: Direction.UP, seatUid: null }]);
+  assert.deepEqual(spots('pacman'), [
+    {
+      col: 14,
+      row: 6,
+      dir: Direction.UP,
+      seatUid: null,
+      piece: { uid: 'arcade', col: 14, row: 5, type: 'ARCADE' },
+    },
+  ]);
   assert.equal(spots('gallery').length, 2, 'one stop per statue');
 });
 

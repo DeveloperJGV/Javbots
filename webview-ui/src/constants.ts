@@ -814,3 +814,29 @@ export const OFFICE_URL_PARAM = 'oficina';
 export const OFFICE_STORAGE_KEY = 'javbots.oficina';
 /** Name of the main office on the switch when the pack doesn't give one. */
 export const MAIN_OFFICE_LABEL = 'Javbots';
+
+// ── Walking staff (office/staff): furniture a private pack draws as people (WebviewPack.staff) ──
+/** How long a guard checks the piece on an alarm before going back to its post. */
+export const STAFF_PATROL_CHECK_SEC = 4;
+/** How far (tiles, Manhattan) a worker strolls from where it was placed. */
+export const STAFF_WANDER_RADIUS = 4;
+export const STAFF_WORK_MIN_SEC = 6;
+export const STAFF_WORK_MAX_SEC = 14;
+export const STAFF_PAUSE_MIN_SEC = 1.5;
+export const STAFF_PAUSE_MAX_SEC = 4;
+export const STAFF_WALK_SPEED_PX_PER_SEC = 32;
+export const STAFF_WORK_FRAME_DURATION_SEC = 0.45;
+/** The box a worker carries between two pieces (carryBetween). */
+export const STAFF_BOX_COLORS = {
+  outline: '#2a1c14',
+  cardboard: '#b07c46',
+  shade: '#8a5e34',
+  ribbon: '#d6b05a',
+} as const;
+/** Where the box sits relative to the worker's feet (sprite px), per facing. */
+export const STAFF_BOX_LIFT_PX = 20;
+export const STAFF_BOX_SIDE_PX = 6;
+/** Pause at each end of a delivery (pick up / put down). */
+export const STAFF_HANDOFF_SEC = 0.8;
+/** How far to look for a free tile next to a piece. */
+export const STAFF_NEAREST_TILE_RADIUS = 4;

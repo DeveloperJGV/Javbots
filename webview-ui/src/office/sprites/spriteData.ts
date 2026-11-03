@@ -1,6 +1,7 @@
 import { CHAR_FRAME_H, CHAR_FRAME_W } from '../../../../core/src/assets/constants.js';
 import type { ColorValue } from '../../components/ui/types.js';
 import { PALETTE_COUNT } from '../../constants.js';
+import { packCast } from '../../packs/registry.js';
 import { adjustSprite } from '../colorize.js';
 import type { Direction, SpriteData } from '../types.js';
 import { Direction as Dir } from '../types.js';
@@ -63,6 +64,13 @@ export function setCharacterTemplates(
 export function characterSheetIndex(name: string): number | undefined {
   const i = sheetNames[name];
   return i !== undefined && i < getLoadedCharacterCount() ? i : undefined;
+}
+
+/** Sheet that draws an agent's palette slot: the office's own boss (WebviewPack.cast) when it is loaded, else the
+ *  slot itself. The agent keeps its slot (the server assigns it), so the same agent looks right in every office. */
+export function bossSheet(slot: number): number {
+  const name = packCast()?.bosses?.[slot];
+  return (name !== undefined ? characterSheetIndex(name) : undefined) ?? slot;
 }
 
 /** Return the number of loaded character palettes, or PALETTE_COUNT as fallback. */

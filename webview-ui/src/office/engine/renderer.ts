@@ -55,6 +55,7 @@ import { renderParticles } from '../effects/particleRender.js';
 import type { ParticleSystem } from '../effects/particles.js';
 import { renderShadows } from '../effects/shadowRender.js';
 import { getColorizedFloorSprite, hasFloorSprites, WALL_COLOR } from '../floorTiles.js';
+import { leisurePose } from '../leisure/leisure.js';
 import type { DiscoLight, PartyBounds } from '../party/party.js';
 import { hopOffsetPx } from '../party/party.js';
 import { renderDisco } from '../party/partyRender.js';
@@ -67,6 +68,7 @@ import {
 import { getPetSprites } from '../sprites/petSpriteData.js';
 import { getCachedSprite, getOutlineSprite } from '../sprites/spriteCache.js';
 import {
+  bossSheet,
   BUBBLE_HEART_SPRITE,
   BUBBLE_PERMISSION_SPRITE,
   BUBBLE_THINKING_FRAMES,
@@ -409,7 +411,11 @@ export function renderScene(
 
   // Characters
   for (const ch of characters) {
-    const sprites = getCharacterSprites(ch.palette, ch.hueShift);
+    // Asleep: the piece it lies in is drawn with it tucked in (officeState swaps it), so it is not drawn
+    if (leisurePose(ch) === 'sleep') continue;
+    // Interns carry their own sheet; agents carry a palette slot the office may draw with its own boss
+    const sheet = ch.isSubagent ? ch.palette : bossSheet(ch.palette);
+    const sprites = getCharacterSprites(sheet, ch.hueShift);
     const spriteData = getCharacterSprite(ch, sprites);
     // Sub-agents (interns) draw smaller, at the next whole zoom level down so
     // they stay pixel-perfect. Positions still use the office zoom.

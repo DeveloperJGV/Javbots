@@ -59,6 +59,7 @@ import {
   WORK_LIGHT_INTENSITY,
   WORK_LIGHT_RADIUS_PX,
 } from '../../constants.js';
+import { packGlow } from '../../packs/registry.js';
 import { getPetLightColor } from '../sprites/petSpriteData.js';
 import type { Character, FurnitureInstance, Pet } from '../types.js';
 import { CharacterState, Direction } from '../types.js';
@@ -113,6 +114,20 @@ const GLOW_SPECS: Record<string, { y: number; color: Rgb; radius: number; intens
     intensity: MATRIX_LIGHT_INTENSITY,
   },
 };
+/** A private pack's light for this furniture type (WebviewPack.glow), its color parsed once. */
+const packRgb = new Map<string, Rgb>();
+function packGlowRgb(
+  type: string,
+): { y: number; color: Rgb; radius: number; intensity: number } | undefined {
+  const spec = packGlow(type);
+  if (!spec) return undefined;
+  let color = packRgb.get(spec.color);
+  if (!color) {
+    color = hexToRgb(spec.color);
+    packRgb.set(spec.color, color);
+  }
+  return { y: spec.y, color, radius: spec.radius, intensity: spec.intensity };
+}
 const PORTAL_RGB: Record<string, Rgb> = {
   PORTAL_BLUE: hexToRgb(PORTAL_BLUE_LIGHT_COLOR),
   PORTAL_ORANGE: hexToRgb(PORTAL_ORANGE_LIGHT_COLOR),
@@ -305,7 +320,7 @@ export function collectLights(
       });
       continue;
     }
-    const glow = GLOW_SPECS[type];
+    const glow = GLOW_SPECS[type] ?? packGlowRgb(type);
     if (glow) {
       lights.push({
         x: f.x + w / 2,
