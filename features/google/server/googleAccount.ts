@@ -32,6 +32,9 @@ export type GoogleApi = (
   init?: { method?: string; body?: unknown },
 ) => Promise<Record<string, unknown>>;
 
+/** A GET that returns the raw bytes (a file's content from Drive), with the session's token. */
+export type GoogleDownload = (url: string) => Promise<Buffer>;
+
 export interface GoogleAccountOptions {
   clientId: string;
   /** Desktop clients have a secret Google calls "not confidential"; the token endpoint still wants it. */
@@ -137,6 +140,16 @@ export function createGoogleAccount(opts: GoogleAccountOptions) {
     return json;
   };
 
+  const download: GoogleDownload = async (url) => {
+    const res = await call(url, { headers: { Authorization: `Bearer ${await token()}` } });
+    if (res.status === 401) accessToken = undefined;
+    if (!res.ok) {
+      const json = obj(await res.json().catch(() => ({})));
+      throw new GoogleApiError(res.status, `google ${res.status}: ${str(obj(json.error).message)}`);
+    }
+    return Buffer.from(await res.arrayBuffer());
+  };
+
   return {
     get connected(): boolean {
       return !!refreshToken;
@@ -187,6 +200,7 @@ export function createGoogleAccount(opts: GoogleAccountOptions) {
     },
 
     api,
+    download,
   };
 }
 

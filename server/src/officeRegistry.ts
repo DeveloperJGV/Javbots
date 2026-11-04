@@ -6,6 +6,7 @@ import {
   isValidFloorLevel,
   MAIN_OFFICE,
   type OfficeDef,
+  roofLevel,
   sortFloorsTopDown,
 } from '../../core/src/offices.js';
 
@@ -72,22 +73,29 @@ export function addFloors(specs: readonly FloorSpec[], from: string): number {
       skip('id inválido');
       continue;
     }
-    if (!isValidFloorLevel(spec.level)) {
+    const roof = spec.roof === true;
+    // A roof's level is not its own: it always goes above the highest floor (see floorsOf).
+    if (!roof && !isValidFloorLevel(spec.level)) {
       skip('nivel inválido: un entero distinto de 0');
       continue;
     }
     const list = floorsByOffice.get(office) ?? [];
-    if (list.some((f) => f.id === spec.id || f.level === spec.level)) {
+    if (list.some((f) => f.id === spec.id || (!roof && !f.roof && f.level === spec.level))) {
       skip('otro piso ya tiene ese id o ese nivel');
+      continue;
+    }
+    if (roof && list.some((f) => f.roof)) {
+      skip('el edificio ya tiene azotea');
       continue;
     }
     const entry: FloorEntry = {
       id: spec.id,
-      level: spec.level,
+      level: roof ? 0 : spec.level,
       label: typeof spec.label === 'string' && spec.label ? spec.label.slice(0, 40) : spec.id,
       defaultLayout: spec.defaultLayout ?? null,
     };
     if (typeof spec.button === 'string' && spec.button) entry.button = spec.button.slice(0, 3);
+    if (roof) entry.roof = true;
     list.push(entry);
     floorsByOffice.set(office, list);
     added++;
@@ -95,11 +103,16 @@ export function addFloors(specs: readonly FloorSpec[], from: string): number {
   return added;
 }
 
+/** An office's floors with the roof's level worked out: above the highest floor, whatever was added after it. */
+function floorsOf(office: string): FloorEntry[] {
+  const list = floorsByOffice.get(office) ?? [];
+  const top = roofLevel(list);
+  return list.map((f) => (f.roof ? { ...f, level: top } : f));
+}
+
 /** An office's floors besides the ground floor, top floor first (no layouts: what the page gets). */
 export function getFloors(office: string): FloorDef[] {
-  return sortFloorsTopDown(floorsByOffice.get(office) ?? []).map(
-    ({ defaultLayout: _layout, ...floor }) => floor,
-  );
+  return sortFloorsTopDown(floorsOf(office)).map(({ defaultLayout: _layout, ...floor }) => floor);
 }
 
 /** The floor id when this office has it, else the ground floor. */

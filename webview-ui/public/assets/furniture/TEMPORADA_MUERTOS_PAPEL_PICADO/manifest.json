@@ -1,0 +1,13 @@
+{
+  "id": "TEMPORADA_MUERTOS_PAPEL_PICADO",
+  "name": "Papel picado",
+  "category": "wall",
+  "type": "asset",
+  "canPlaceOnWalls": true,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 0,
+  "width": 48,
+  "height": 16,
+  "footprintW": 3,
+  "footprintH": 1
+}

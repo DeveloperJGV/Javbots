@@ -1,0 +1,13 @@
+{
+  "id": "JARDIN_TEA_TABLE",
+  "name": "Mesita de t\u00e9",
+  "category": "misc",
+  "type": "asset",
+  "canPlaceOnWalls": false,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 0,
+  "width": 32,
+  "height": 16,
+  "footprintW": 2,
+  "footprintH": 1
+}

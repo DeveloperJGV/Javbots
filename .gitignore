@@ -65,3 +65,7 @@ __pycache__/
 # Tráiler: cuadros y videos generados
 docs/trailer/salida/
 docs/trailer/musica/
+
+# Notas de trabajo del arte (ids de PixelLab y hojas de revisión)
+arte/pixellab/**/trabajos.txt
+arte/pixellab/**/vista_x4*.png

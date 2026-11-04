@@ -12,11 +12,19 @@ import * as path from 'path';
 
 import { createAgendaFeature } from '../../features/agenda/server/agendaFeature.js';
 import { AGENDA_FLOOR_LAYOUT_FILE } from '../../features/agenda/server/constants.js';
+import { createHerdrLauncher } from '../../features/busquedas/server/herdrLauncher.js';
 import { createConcertsFeature } from '../../features/conciertos/server/concertsFeature.js';
 import { createConnectionsFeature } from '../../features/conexiones/server/connectionsFeature.js';
+import {
+  DIRECTORIO_ROOM,
+  DIRECTORIO_SKILL_FILE,
+} from '../../features/directorio/server/constants.js';
+import { createDirectorioFeature } from '../../features/directorio/server/directorioFeature.js';
 import { createGithubFeature } from '../../features/github/server/githubFeature.js';
 import { createGoogleFeature } from '../../features/google/server/googleFeature.js';
 import { createHerdrFeature } from '../../features/herdr/server/herdrFeature.js';
+import { JARDIN_FLOOR_LAYOUT_FILE } from '../../features/jardin/server/constants.js';
+import { createJardinFeature } from '../../features/jardin/server/jardinFeature.js';
 import { createMusicFeature } from '../../features/musica/server/musicFeature.js';
 import { runUsageCommand } from '../../features/usage/server/usageCommand.js';
 import { createUsageFeature } from '../../features/usage/server/usageFeature.js';
@@ -281,6 +289,13 @@ async function main(): Promise<void> {
         floorLayout: () =>
           readLayoutFile(path.join(distRoot, 'agenda', 'planos', AGENDA_FLOOR_LAYOUT_FILE)),
       }),
+      // Optional feature: a room of the personal floor where a Claude Code agent (opened in herdr) searches the web
+      // with criteria and leaves its results for the panel (features/directorio, on features/busquedas).
+      createDirectorioFeature({
+        google,
+        launcher: createHerdrLauncher(),
+        skillFile: path.join(distRoot, DIRECTORIO_ROOM, 'skill', DIRECTORIO_SKILL_FILE),
+      }),
       createUsageFeature({ command: () => runUsageCommand() }),
       herdr,
       createGithubFeature(),
@@ -288,6 +303,13 @@ async function main(): Promise<void> {
       createConcertsFeature({
         google,
         topArtists: () => music.topArtists(),
+      }),
+      // Optional feature: the roof garden, its plants and their reminders in Google (features/jardin).
+      createJardinFeature({
+        google,
+        officeToken: () => currentConfig?.token ?? null,
+        floorLayout: () =>
+          readLayoutFile(path.join(distRoot, 'jardin', 'planos', JARDIN_FLOOR_LAYOUT_FILE)),
       }),
     ];
     // Private packs (privado/<pack>/server.ts, found by scripts/generate-packs.mjs): their own features.

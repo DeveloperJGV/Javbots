@@ -1,0 +1,13 @@
+{
+  "id": "JARDIN_TEA_PERGOLA",
+  "name": "P\u00e9rgola de glicinas",
+  "category": "decor",
+  "type": "asset",
+  "canPlaceOnWalls": false,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 2,
+  "width": 32,
+  "height": 48,
+  "footprintW": 2,
+  "footprintH": 3
+}

@@ -1,0 +1,13 @@
+{
+  "id": "TEMPORADA_CUMPLE_SIGN",
+  "name": "Letrero FELIZ CUMPLEA\u00d1OS",
+  "category": "wall",
+  "type": "asset",
+  "canPlaceOnWalls": true,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 0,
+  "width": 48,
+  "height": 16,
+  "footprintW": 3,
+  "footprintH": 1
+}

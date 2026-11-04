@@ -73,16 +73,19 @@ function readPackLayout(packDir: string, value: unknown): Record<string, unknown
 function readFloors(value: unknown, office: string, packDir: string): FloorSpec[] {
   const out: FloorSpec[] = [];
   for (const f of Array.isArray(value) ? value : []) {
-    if (!isObject(f) || typeof f.id !== 'string' || typeof f.level !== 'number') continue;
+    const roof = isObject(f) && f.roof === true;
+    if (!isObject(f) || typeof f.id !== 'string' || (typeof f.level !== 'number' && !roof))
+      continue;
     const floor: FloorSpec = {
       id: f.id,
-      level: f.level,
+      level: typeof f.level === 'number' ? f.level : 0,
       label: str(f.label) ?? f.id,
       office,
       defaultLayout: readPackLayout(packDir, f.defaultLayout),
     };
     const button = str(f.button);
     if (button) floor.button = button;
+    if (roof) floor.roof = true;
     out.push(floor);
   }
   return out;

@@ -17,6 +17,7 @@ import {
   type Fetcher,
   type GoogleAccount,
   type GoogleApi,
+  type GoogleDownload,
   GoogleReconnectNeeded,
 } from './googleAccount.js';
 import {
@@ -38,6 +39,8 @@ export interface GoogleSession {
   hasScope(scope: string): boolean;
   /** JSON call to a Google API with the session's token. Throws GoogleReconnectNeeded when the session died. */
   api: GoogleApi;
+  /** GET of a file's raw bytes (Drive content) with the session's token; same errors as `api`. */
+  download: GoogleDownload;
   /** Days until a Testing app's session dies, only when it's close (≤ 1 day); undefined otherwise. */
   reconnectInDays(): number | undefined;
   /** Log out (every feature loses Google). */
@@ -69,7 +72,8 @@ const page = (title: string, body: string) =>
 
 /**
  * The owner's Google account (features/google): login (`/api/google/login?token=<office token>`), the session in
- * google.json, and `api` for the features that use Google (Conciertos: Calendar; the agenda: Calendar and Tasks).
+ * google.json, and `api` for the features that use Google (Conciertos: Calendar; the agenda: Calendar and Tasks;
+ * the roof garden: Calendar, Tasks and reading Drive).
  * Other features get it from cli.ts, or find it by name ('google') among the features a pack receives.
  */
 export function createGoogleFeature(opts: GoogleFeatureOptions): ServerFeature & GoogleSession {
@@ -156,6 +160,14 @@ export function createGoogleFeature(opts: GoogleFeatureOptions): ServerFeature &
     return out;
   };
 
+  const download: GoogleDownload = async (url) => {
+    const a = fresh();
+    if (!a) throw new GoogleReconnectNeeded('sin llaves');
+    const out = await a.download(url);
+    okAt = now();
+    return out;
+  };
+
   function reconnectInDays(): number | undefined {
     if (!fresh()?.connected || !config.connectedAt) return undefined;
     const left = GOOGLE_TESTING_TOKEN_DAYS - (now() - Date.parse(config.connectedAt)) / DAY_MS;
@@ -174,6 +186,7 @@ export function createGoogleFeature(opts: GoogleFeatureOptions): ServerFeature &
       return !!fresh()?.connected && (config.scopes ?? GOOGLE_SCOPES).includes(scope);
     },
     api,
+    download,
     reconnectInDays,
     forget() {
       fresh()?.forget();
@@ -245,10 +258,10 @@ export function createGoogleFeature(opts: GoogleFeatureOptions): ServerFeature &
       return [
         {
           id: 'google',
-          name: 'Google (Calendar y Tasks)',
+          name: 'Google (Calendar, Tasks y Drive)',
           feature: 'Google',
           purpose: 'Una sola sesión para las funciones que usan tu calendario y tus tareas',
-          auth: 'OAuth de app de escritorio (modo Prueba), permisos calendar y tasks',
+          auth: 'OAuth de app de escritorio (modo Prueba), permisos calendar, tasks y drive.readonly',
           state: !a?.connected ? 'off' : reconnect !== undefined ? 'warn' : 'ok',
           detail,
           ...(okAt ? { lastUsedAt: new Date(okAt).toISOString() } : {}),

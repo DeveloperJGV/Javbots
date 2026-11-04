@@ -9,6 +9,7 @@ import {
   applyConnectionsFurniture,
   isConnectionsRack,
 } from '../../../../features/conexiones/webview/rackFurniture.js';
+import { isDirectorioFurniture } from '../../../../features/directorio/webview/directorioStore.js';
 import {
   applyGithubFurniture,
   isCabinet,
@@ -17,6 +18,8 @@ import {
   repoForCabinet,
 } from '../../../../features/github/webview/githubFurniture.js';
 import { githubStore } from '../../../../features/github/webview/githubStore.js';
+import { applyJardinFurniture } from '../../../../features/jardin/webview/jardinFurniture.js';
+import { isJardinFurniture, jardinStore } from '../../../../features/jardin/webview/jardinStore.js';
 import {
   applyMusicFurniture,
   isMusicPlayer,
@@ -1194,8 +1197,10 @@ export class OfficeState {
       agendaStore.get().status,
       this.furnitureAnimTimer,
     );
+    // Optional feature: plants with late watering look thirsty on the roof (features/jardin)
+    const withJardin = applyJardinFurniture(withAgenda, jardinStore.get().status);
     // Private packs (webview-ui/src/packs/registry.ts)
-    const withPacks = applyPackFurniture(withAgenda, {
+    const withPacks = applyPackFurniture(withJardin, {
       timeSec: this.furnitureAnimTimer,
       officeState: this,
     });
@@ -1336,6 +1341,22 @@ export class OfficeState {
   isAgendaAt(worldX: number, worldY: number): boolean {
     return this.furniture.some(
       (f) => isAgendaFurniture(f.type) && hitsPaintedPixel(f, worldX, worldY),
+    );
+  }
+
+  /** The type of the roof garden piece at a world point (features/jardin), or null. */
+  jardinFurnitureAt(worldX: number, worldY: number): string | null {
+    const status = jardinStore.get().status;
+    const hit = this.furniture.find(
+      (f) => isJardinFurniture(f.type, status) && hitsPaintedPixel(f, worldX, worldY),
+    );
+    return hit?.type ?? null;
+  }
+
+  /** Whether a world point lands on a piece of the Directorio room (features/directorio). */
+  isDirectorioAt(worldX: number, worldY: number): boolean {
+    return this.furniture.some(
+      (f) => isDirectorioFurniture(f.type) && hitsPaintedPixel(f, worldX, worldY),
     );
   }
 

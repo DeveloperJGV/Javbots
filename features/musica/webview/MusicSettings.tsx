@@ -3,7 +3,7 @@ import { useState } from 'react';
 import type { MessageTransport } from '../../../core/src/transport.js';
 import { Button } from '../../../webview-ui/src/components/ui/Button.js';
 import { Checkbox } from '../../../webview-ui/src/components/ui/Checkbox.js';
-import type { MusicState } from './musicStore.js';
+import { type MusicState, musicStore } from './musicStore.js';
 
 /** Settings → Música: show/hide, and install the Spicetify extension into Spotify. */
 export function MusicSettings({
@@ -25,6 +25,13 @@ export function MusicSettings({
         checked={status.enabled}
         onChange={() => transport.send({ type: 'setMusicEnabled', enabled: !status.enabled })}
       />
+      {status.enabled && (
+        <Checkbox
+          label="Globito con la letra en cada piso"
+          checked={!music.lyricBubbleHidden}
+          onChange={() => musicStore.toggleLyricBubble()}
+        />
+      )}
       <div className="px-10 pb-6 text-xs text-text-muted flex flex-col gap-6">
         <span>
           {!status.spicetifyFound
@@ -66,14 +73,15 @@ export function MusicSettings({
         <div className="flex flex-col gap-6 pt-6 border-t-2 border-border">
           {!status.spotifyConfigured ? (
             <span>
-              Sin Spotify abierto en esta computadora, la oficina puede preguntarle a tu cuenta qué suena (en el
-              celular, una bocina…): pon <code>spotifyClientId</code> en <code>music.json</code> (ver el README de
-              la música).
+              Sin Spotify abierto en esta computadora, la oficina puede preguntarle a tu cuenta qué
+              suena (en el celular, una bocina…): pon <code>spotifyClientId</code> en{' '}
+              <code>music.json</code> (ver el README de la música).
             </span>
           ) : status.spotifyConnected ? (
             <>
               <span>
-                Conectada a tu cuenta de Spotify: la oficina ve lo que suena aunque Spotify no esté abierto aquí
+                Conectada a tu cuenta de Spotify: la oficina ve lo que suena aunque Spotify no esté
+                abierto aquí
                 {status.source === 'spotify' ? ' (ahora mismo la canción viene de ahí).' : '.'}
               </span>
               {status.token && (
@@ -89,8 +97,8 @@ export function MusicSettings({
           ) : (
             <>
               <span>
-                Sin Spotify abierto en esta computadora, la oficina puede preguntarle a tu cuenta qué suena (en
-                el celular, una bocina…).
+                Sin Spotify abierto en esta computadora, la oficina puede preguntarle a tu cuenta
+                qué suena (en el celular, una bocina…).
               </span>
               {status.token && (
                 <a

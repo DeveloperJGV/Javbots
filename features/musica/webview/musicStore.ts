@@ -1,5 +1,11 @@
 import type { MusicLyrics, MusicStatus, MusicTrack } from '../../../core/src/messages.js';
-import { LYRIC_LEAD_MS, MUSIC_COLUMN_HIDDEN_KEY, MUSIC_PAUSE_HIDE_SEC } from './constants.js';
+import {
+  LYRIC_BUBBLE_HIDDEN_KEY,
+  LYRIC_LEAD_MS,
+  LYRIC_NOTE,
+  MUSIC_COLUMN_HIDDEN_KEY,
+  MUSIC_PAUSE_HIDE_SEC,
+} from './constants.js';
 
 type SpriteData = string[][];
 
@@ -16,15 +22,26 @@ export interface MusicState {
   coverSprite: SpriteData | null;
   /** The viewer hid the column with a click on the turntable (remembered in this browser). */
   columnHidden: boolean;
+  /** The viewer turned off the lyric bubble in Settings (remembered in this browser; on by default). */
+  lyricBubbleHidden?: boolean;
   /** Lyrics of the current track (none until they arrive, or when there aren't any). */
   lyrics?: MusicLyrics;
 }
 
-function readColumnHidden(): boolean {
+function readFlag(key: string): boolean {
   try {
-    return globalThis.localStorage?.getItem(MUSIC_COLUMN_HIDDEN_KEY) === '1';
+    return globalThis.localStorage?.getItem(key) === '1';
   } catch {
     return false;
+  }
+}
+
+function writeFlag(key: string, on: boolean): void {
+  try {
+    if (on) globalThis.localStorage?.setItem(key, '1');
+    else globalThis.localStorage?.removeItem(key);
+  } catch {
+    // no storage (private window, tests): it just isn't remembered
   }
 }
 
@@ -36,7 +53,8 @@ class MusicStore {
   private state: MusicState = {
     receivedAt: 0,
     coverSprite: null,
-    columnHidden: readColumnHidden(),
+    columnHidden: readFlag(MUSIC_COLUMN_HIDDEN_KEY),
+    lyricBubbleHidden: readFlag(LYRIC_BUBBLE_HIDDEN_KEY),
   };
   private listeners = new Set<() => void>();
   private coverOf: string | undefined;
@@ -65,13 +83,15 @@ class MusicStore {
   /** Show / hide the column (a click on the turntable). */
   toggleColumn(): void {
     const columnHidden = !this.state.columnHidden;
-    try {
-      if (columnHidden) globalThis.localStorage?.setItem(MUSIC_COLUMN_HIDDEN_KEY, '1');
-      else globalThis.localStorage?.removeItem(MUSIC_COLUMN_HIDDEN_KEY);
-    } catch {
-      // no storage (private window, tests): it just isn't remembered
-    }
+    writeFlag(MUSIC_COLUMN_HIDDEN_KEY, columnHidden);
     this.set({ columnHidden });
+  }
+
+  /** Turn the lyric bubble on / off (Settings → music). */
+  toggleLyricBubble(): void {
+    const lyricBubbleHidden = !this.state.lyricBubbleHidden;
+    writeFlag(LYRIC_BUBBLE_HIDDEN_KEY, lyricBubbleHidden);
+    this.set({ lyricBubbleHidden });
   }
 
   /** Kept even without lines: "still looking" and "there are none" matter too (loader / message). */
@@ -132,13 +152,16 @@ export function currentLyrics(state: MusicState): MusicLyrics | undefined {
   return lyrics.title === track.title && lyrics.artist === track.artist ? lyrics : undefined;
 }
 
-/** Where the lyrics of the track on screen stand: on their way, here, or nowhere to be found. */
-export function lyricsStatus(state: MusicState): 'loading' | 'ready' | 'none' | undefined {
+/** Where the lyrics of the track on screen stand: on their way, here, an instrumental, or nowhere to be found. */
+export function lyricsStatus(
+  state: MusicState,
+): 'loading' | 'ready' | 'instrumental' | 'none' | undefined {
   const { lyrics, track } = state;
   if (!track) return undefined;
   // Nothing yet about THIS song (a new one just started): they're on their way.
   if (!lyrics || lyrics.title !== track.title || lyrics.artist !== track.artist) return 'loading';
   if (lyrics.lines?.length) return 'ready';
+  if (lyrics.instrumental) return 'instrumental';
   return lyrics.loading ? 'loading' : 'none';
 }
 
@@ -160,6 +183,20 @@ export function currentLyricIndex(state: MusicState, nowMs = Date.now()): number
     }
   }
   return found;
+}
+
+/**
+ * What the lyric bubble says right now: the synced line being sung, a note between lines (intro, solos) and for an
+ * instrumental song, or null for no bubble (nothing playing, no synced lyrics, or turned off in Settings).
+ */
+export function lyricBubbleText(state: MusicState, nowMs = Date.now()): string | null {
+  if (state.lyricBubbleHidden || !isMusicPlaying(state)) return null;
+  if (lyricsStatus(state) === 'instrumental') return LYRIC_NOTE;
+  const lyrics = currentLyrics(state);
+  if (!lyrics?.synced || !lyrics.lines) return null;
+  const idx = currentLyricIndex(state, nowMs);
+  const text = idx >= 0 ? lyrics.lines[idx]?.text.trim() : '';
+  return text || LYRIC_NOTE;
 }
 
 export function formatTime(ms: number): string {

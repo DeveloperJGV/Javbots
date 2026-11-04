@@ -1,0 +1,13 @@
+{
+  "id": "FREELANCE_DESK_LAMP",
+  "name": "L\u00e1mpara de escritorio",
+  "category": "electronics",
+  "type": "asset",
+  "canPlaceOnWalls": false,
+  "canPlaceOnSurfaces": true,
+  "backgroundTiles": 1,
+  "width": 32,
+  "height": 32,
+  "footprintW": 2,
+  "footprintH": 2
+}

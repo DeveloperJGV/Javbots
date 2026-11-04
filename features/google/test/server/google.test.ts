@@ -4,7 +4,11 @@ import * as os from 'os';
 import * as path from 'path';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { GOOGLE_CALENDAR_SCOPE, GOOGLE_TASKS_SCOPE } from '../../server/constants.js';
+import {
+  GOOGLE_CALENDAR_SCOPE,
+  GOOGLE_DRIVE_READ_SCOPE,
+  GOOGLE_TASKS_SCOPE,
+} from '../../server/constants.js';
 import type { Fetcher } from '../../server/googleAccount.js';
 import { GoogleReconnectNeeded } from '../../server/googleAccount.js';
 import { createGoogleFeature, findGoogleSession } from '../../server/googleFeature.js';
@@ -64,7 +68,9 @@ describe('google feature', () => {
     const login = await app.inject({ url: '/api/google/login?token=tok' });
     expect(login.statusCode).toBe(302);
     const auth = new URL(login.headers.location as string);
-    expect(auth.searchParams.get('scope')).toBe(`${GOOGLE_CALENDAR_SCOPE} ${GOOGLE_TASKS_SCOPE}`);
+    expect(auth.searchParams.get('scope')).toBe(
+      `${GOOGLE_CALENDAR_SCOPE} ${GOOGLE_TASKS_SCOPE} ${GOOGLE_DRIVE_READ_SCOPE}`,
+    );
     expect(auth.searchParams.get('redirect_uri')).toBe('http://127.0.0.1:3100/api/google/callback');
     expect(auth.searchParams.get('code_challenge_method')).toBe('S256');
 
@@ -76,6 +82,8 @@ describe('google feature', () => {
     expect(changes).toBe(1);
     expect(feature.connected).toBe(true);
     expect(feature.hasScope(GOOGLE_TASKS_SCOPE)).toBe(true);
+    // The owner left Drive unticked on the consent screen (the token answer above has no drive scope)
+    expect(feature.hasScope(GOOGLE_DRIVE_READ_SCOPE)).toBe(false);
     expect(saved()).toMatchObject({
       clientId: 'id',
       otro: 1,
@@ -103,6 +111,17 @@ describe('google feature', () => {
     tick(6.5 * DAY_MS);
     expect(feature.reconnectInDays()).toBe(0);
     expect(feature.connections?.()[0]).toMatchObject({ id: 'google', state: 'warn' });
+  });
+
+  it('downloads the raw bytes of a file with the token (Drive content)', async () => {
+    const { feature, requests } = setup({
+      clientId: 'id',
+      clientSecret: 'secret',
+      refreshToken: 'rt',
+    });
+    const bytes = await feature.download('https://www.googleapis.com/drive/v3/files/f1?alt=media');
+    expect(requests.at(-1)?.auth).toBe('Bearer at');
+    expect(bytes.toString('utf8')).toBe(JSON.stringify({ items: [] }));
   });
 
   it('forgets a dead session and tells the features', async () => {

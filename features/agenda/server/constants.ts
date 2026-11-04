@@ -27,6 +27,6 @@ export const AGENDA_TICK_MS = 60_000;
 /** The agenda's own floor of the main office (core/src/offices.ts): first floor up, "1 · Agenda" in the elevator. */
 export const AGENDA_FLOOR_ID = 'agenda';
 export const AGENDA_FLOOR_LEVEL = 1;
-export const AGENDA_FLOOR_LABEL = 'Agenda';
+export const AGENDA_FLOOR_LABEL = 'Personal';
 /** Where the build copies its layout (esbuild.js: features/<name>/planos → dist/<name>/planos). */
-export const AGENDA_FLOOR_LAYOUT_FILE = 'agenda.json';
+export const AGENDA_FLOOR_LAYOUT_FILE = 'piso.json';

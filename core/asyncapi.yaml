@@ -134,6 +134,10 @@ components:
         - $ref: '#/components/schemas/ConcertsStatus'
         # Personal agenda (feature: features/agenda)
         - $ref: '#/components/schemas/AgendaStatus'
+        # Roof garden (feature: features/jardin)
+        - $ref: '#/components/schemas/JardinStatus'
+        # Agent searches with criteria (features/busquedas; rooms: features/directorio)
+        - $ref: '#/components/schemas/SearchRoomStatus'
         # Outside connections board (feature: features/conexiones)
         - $ref: '#/components/schemas/ConnectionsStatus'
       discriminator: type
@@ -179,6 +183,21 @@ components:
         - $ref: '#/components/schemas/RefreshAgenda'
         - $ref: '#/components/schemas/AddAgendaItem'
         - $ref: '#/components/schemas/CompleteAgendaTask'
+        # Roof garden (feature: features/jardin)
+        - $ref: '#/components/schemas/RefreshJardin'
+        - $ref: '#/components/schemas/SaveJardinPlant'
+        - $ref: '#/components/schemas/DeleteJardinPlant'
+        - $ref: '#/components/schemas/MarkJardinCare'
+        - $ref: '#/components/schemas/SaveJardinSupply'
+        - $ref: '#/components/schemas/DeleteJardinSupply'
+        - $ref: '#/components/schemas/ResolveJardinInbox'
+        # Agent searches with criteria (features/busquedas; rooms: features/directorio)
+        - $ref: '#/components/schemas/CreateSearchRequest'
+        - $ref: '#/components/schemas/LaunchSearchAgent'
+        - $ref: '#/components/schemas/MarkSearchResult'
+        - $ref: '#/components/schemas/DeleteSearchRequest'
+        - $ref: '#/components/schemas/SaveSearchCriteria'
+        - $ref: '#/components/schemas/ScheduleSearchResult'
       discriminator: type
 
     # ── Server message variants ────────────────────────────────────
@@ -933,9 +952,12 @@ components:
           description: 1, 2… above the ground floor (0), -1, -2… below it.
         button:
           type: string
-          description: Short text on its elevator button (from the level when absent).
+          description: Short text on its elevator button (from the level when absent; "AZ" for the roof).
         label:
           type: string
+        roof:
+          type: boolean
+          description: The roof, always the top floor of its building (its level is one above the highest floor).
 
     WebviewReady:
       description: Client signals it's ready to receive state.
@@ -1152,6 +1174,9 @@ components:
           type: boolean
         synced:
           description: Lines carry `timeMs` (the moment each one starts).
+          type: boolean
+        instrumental:
+          description: The song has no lyrics because it is instrumental (LRCLIB says so); comes without `lines`.
           type: boolean
         source:
           type: string
@@ -1430,6 +1455,625 @@ components:
           const: completeAgendaTask
         id:
           type: string
+
+    # ── Roof garden (feature: features/jardin) ─────────────────────
+
+    JardinStatus:
+      description: >-
+        The roof garden: the plants with their care (the next one worked out
+        from the last real one), the garden supplies, what came from the phone
+        and could not be read (the inbox), and the state of each link (the
+        plants calendar, the garden task list, the garden Drive folder).
+        Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, connected, today, plants, supplies, inbox, recent, checks, saving, defaultTime, calendarName, taskListName, folderName, eventPrefix]
+      properties:
+        type:
+          const: jardinStatus
+        connected:
+          type: boolean
+          description: There is a Google session.
+        today:
+          type: string
+          description: YYYY-MM-DD (local).
+        plants:
+          type: array
+          items:
+            $ref: '#/components/schemas/JardinPlant'
+        supplies:
+          type: array
+          items:
+            $ref: '#/components/schemas/JardinSupply'
+        inbox:
+          type: array
+          items:
+            $ref: '#/components/schemas/JardinInboxItem'
+        recent:
+          type: array
+          description: What the office applied by itself lately (notes from the phone, checked tasks), newest first.
+          items:
+            $ref: '#/components/schemas/JardinRecent'
+        checks:
+          type: array
+          items:
+            $ref: '#/components/schemas/JardinCheck'
+        saving:
+          type: boolean
+        syncedAt:
+          type: string
+          description: ISO time of the last sync with Google.
+        defaultTime:
+          type: string
+          description: HH:MM of a new care's reminder when the owner gives none.
+        calendarName:
+          type: string
+        taskListName:
+          type: string
+        folderName:
+          type: string
+        eventPrefix:
+          type: string
+          description: First word of the reminders' titles, with its colon.
+        error:
+          type: string
+
+    JardinCareKind:
+      type: string
+      enum: [regar, abonar, limpiar, podar]
+
+    JardinPlant:
+      type: object
+      additionalProperties: false
+      required: [id, name, photos, cares]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        species:
+          type: string
+        place:
+          type: string
+        notes:
+          type: string
+        photos:
+          type: array
+          description: File names under ~/.pixel-agents/jardin/fotos/ (served at /api/jardin/fotos/<name>).
+          items:
+            type: string
+        furniture:
+          type: string
+          description: The furniture it is drawn as (a uid or a type); it looks thirsty while watering is late.
+        cares:
+          type: array
+          items:
+            $ref: '#/components/schemas/JardinCare'
+
+    JardinCare:
+      type: object
+      additionalProperties: false
+      required: [kind, everyDays, time, due, synced]
+      properties:
+        kind:
+          $ref: '#/components/schemas/JardinCareKind'
+        everyDays:
+          type: integer
+        time:
+          type: string
+          description: HH:MM of the reminder.
+        last:
+          type: string
+          description: YYYY-MM-DD of the last time it was really done.
+        due:
+          type: string
+          description: YYYY-MM-DD when it is due (last + everyDays); before today = late.
+        synced:
+          type: boolean
+          description: Its reminder (event and task) is in Google.
+
+    JardinPlantInput:
+      description: A plant as the panel saves it (photos and sync state stay on the server).
+      type: object
+      additionalProperties: false
+      required: [name, cares]
+      properties:
+        id:
+          type: string
+          description: Absent for a new plant.
+        name:
+          type: string
+        species:
+          type: string
+        place:
+          type: string
+        notes:
+          type: string
+        furniture:
+          type: string
+        cares:
+          type: array
+          items:
+            $ref: '#/components/schemas/JardinCareInput'
+
+    JardinCareInput:
+      type: object
+      additionalProperties: false
+      required: [kind, everyDays]
+      properties:
+        kind:
+          $ref: '#/components/schemas/JardinCareKind'
+        everyDays:
+          type: integer
+        time:
+          type: string
+        last:
+          type: string
+
+    JardinSupplyCategory:
+      type: string
+      enum: [planta, herramienta, tierra, abono, maceta, otro]
+
+    JardinSupply:
+      type: object
+      additionalProperties: false
+      required: [id, name, category, quantity, unit, min, buying]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        category:
+          $ref: '#/components/schemas/JardinSupplyCategory'
+        quantity:
+          type: number
+        unit:
+          type: string
+        min:
+          type: number
+        buying:
+          type: boolean
+          description: A "Comprar ..." task is open in the garden task list.
+
+    JardinSupplyInput:
+      type: object
+      additionalProperties: false
+      required: [name, category, quantity, unit, min]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        category:
+          $ref: '#/components/schemas/JardinSupplyCategory'
+        quantity:
+          type: number
+        unit:
+          type: string
+        min:
+          type: number
+
+    JardinInboxKind:
+      type: string
+      enum: [note, photo]
+
+    JardinInboxSource:
+      type: string
+      enum: [drive, local]
+
+    JardinInboxItem:
+      description: Something from the phone (Drive) or the computer that the office could not apply by itself.
+      type: object
+      additionalProperties: false
+      required: [id, kind, source, name, receivedAt, why]
+      properties:
+        id:
+          type: string
+        kind:
+          $ref: '#/components/schemas/JardinInboxKind'
+        source:
+          $ref: '#/components/schemas/JardinInboxSource'
+        name:
+          type: string
+          description: The file's name.
+        text:
+          type: string
+        photo:
+          type: string
+          description: File name under jardin/fotos/ (photos only).
+        receivedAt:
+          type: string
+        why:
+          type: string
+          description: Why it is waiting.
+        newPlant:
+          $ref: '#/components/schemas/JardinPlantInput'
+
+    JardinRecent:
+      type: object
+      additionalProperties: false
+      required: [at, text]
+      properties:
+        at:
+          type: string
+        text:
+          type: string
+
+    JardinCheck:
+      type: object
+      additionalProperties: false
+      required: [id, label, state, detail]
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        state:
+          $ref: '#/components/schemas/ConnectionState'
+        detail:
+          type: string
+        help:
+          type: string
+          description: How to fix it, when it needs the owner.
+
+    RefreshJardin:
+      description: Sync with Google now (calendar, tasks, Drive). Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: refreshJardin
+
+    SaveJardinPlant:
+      description: Add or edit a plant, after the owner confirmed what goes to Google. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, plant]
+      properties:
+        type:
+          const: saveJardinPlant
+        plant:
+          $ref: '#/components/schemas/JardinPlantInput'
+        fromInbox:
+          type: string
+          description: The inbox item this plant came from (it leaves the inbox).
+
+    DeleteJardinPlant:
+      description: Remove a plant and the reminders the office made for it. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, id]
+      properties:
+        type:
+          const: deleteJardinPlant
+        id:
+          type: string
+
+    MarkJardinCare:
+      description: The owner did it; the next one is worked out from today. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, plantId, kind]
+      properties:
+        type:
+          const: markJardinCare
+        plantId:
+          type: string
+        kind:
+          $ref: '#/components/schemas/JardinCareKind'
+
+    SaveJardinSupply:
+      description: Add or edit a garden supply. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, supply]
+      properties:
+        type:
+          const: saveJardinSupply
+        supply:
+          $ref: '#/components/schemas/JardinSupplyInput'
+
+    DeleteJardinSupply:
+      description: Remove a garden supply. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, id]
+      properties:
+        type:
+          const: deleteJardinSupply
+        id:
+          type: string
+
+    JardinInboxAction:
+      type: string
+      enum: [care, photo, discard]
+
+    ResolveJardinInbox:
+      description: >-
+        The owner sorted an inbox item: a note becomes a care done on a plant,
+        a photo goes to a plant, or it is thrown away. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, id, action]
+      properties:
+        type:
+          const: resolveJardinInbox
+        id:
+          type: string
+        action:
+          $ref: '#/components/schemas/JardinInboxAction'
+        plantId:
+          type: string
+        kind:
+          $ref: '#/components/schemas/JardinCareKind'
+    # ── Agent searches with criteria (feature: features/busquedas) ─
+    # A room (features/directorio today) keeps requests; a Claude Code agent
+    # searches the web for each one with the room's criteria and leaves its
+    # results in a file the server reads. `room` says whose they are.
+
+    SearchRoomStatus:
+      description: >-
+        One room's requests, each with what the agent found (sorted, best
+        first), the room's criteria sets and whether an agent can be launched
+        from the office. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, room, requests, criteria, launcher, saving]
+      properties:
+        type:
+          const: searchRoomStatus
+        room:
+          type: string
+        requests:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchRequest'
+        criteria:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchCriteriaSet'
+        launcher:
+          $ref: '#/components/schemas/SearchLauncher'
+        calendar:
+          type: string
+          description: >-
+            Name of the shared calendar a result is scheduled in. Absent when
+            scheduling is not possible right now (no Google session).
+        saving:
+          type: boolean
+          description: Something is being written to Google right now.
+        error:
+          type: string
+
+    SearchLauncher:
+      type: object
+      additionalProperties: false
+      required: [available]
+      properties:
+        available:
+          type: boolean
+          description: The office can open a terminal with an agent for a request.
+        detail:
+          type: string
+
+    SearchRequest:
+      type: object
+      additionalProperties: false
+      required: [id, text, criteriaId, createdAt, state, brief, results]
+      properties:
+        id:
+          type: string
+        text:
+          type: string
+          description: What is needed, as the owner wrote it.
+        place:
+          type: string
+        when:
+          type: string
+          description: For when, in the owner's words.
+        criteriaId:
+          type: string
+        createdAt:
+          type: string
+          description: ISO date-time.
+        state:
+          $ref: '#/components/schemas/SearchRequestState'
+        note:
+          type: string
+          description: What is going on with the agent, or what went wrong.
+        brief:
+          type: string
+          description: One line to paste into any Claude Code session so it takes the request.
+        resultsNote:
+          type: string
+          description: The agent's own note about the search.
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchResult'
+
+    SearchRequestState:
+      description: >-
+        nuevo = saved, no agent yet; buscando = an agent has it; esperando =
+        the agent waits for the owner in its terminal; listo = results arrived;
+        error = the agent could not be launched.
+      type: string
+      enum: [nuevo, buscando, esperando, listo, error]
+
+    SearchResult:
+      type: object
+      additionalProperties: false
+      required: [id, name, kind, why, score, verdict]
+      properties:
+        id:
+          type: string
+          description: Stable across rewrites of the results file (made from the name).
+        name:
+          type: string
+        kind:
+          type: string
+          description: The room's own classification (directorio - oficial, establecido, otro).
+        rating:
+          type: number
+        reviews:
+          type: number
+        phone:
+          type: string
+        address:
+          type: string
+        link:
+          type: string
+          description: http(s) only.
+        source:
+          type: string
+        why:
+          type: string
+          description: Why it is recommended or discarded.
+        score:
+          type: number
+          description: 0-100, by the room's criteria.
+        verdict:
+          $ref: '#/components/schemas/SearchResultVerdict'
+        mark:
+          $ref: '#/components/schemas/SearchResultMark'
+
+    SearchResultVerdict:
+      description: The agent's verdict by the criteria.
+      type: string
+      enum: [recomendado, descartado]
+
+    SearchResultMark:
+      description: What the owner did with a result.
+      type: string
+      enum: [contactado, descartado, agendado]
+
+    SearchResultMarkChoice:
+      description: A mark the owner sets by hand; ninguno clears it.
+      type: string
+      enum: [contactado, descartado, ninguno]
+
+    SearchCriteriaSet:
+      type: object
+      additionalProperties: false
+      required: [id, label, rules]
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        rules:
+          type: array
+          description: In priority order; the first one weighs most.
+          items:
+            type: string
+
+    CreateSearchRequest:
+      description: Save a new request in a room (no agent is launched yet). Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, room, text, criteriaId]
+      properties:
+        type:
+          const: createSearchRequest
+        room:
+          type: string
+        text:
+          type: string
+        place:
+          type: string
+        when:
+          type: string
+        criteriaId:
+          type: string
+
+    LaunchSearchAgent:
+      description: >-
+        Open a terminal with a Claude Code agent (normal permissions) that
+        takes the request, or hand the request again to the agent that is
+        waiting. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, room, id]
+      properties:
+        type:
+          const: launchSearchAgent
+        room:
+          type: string
+        id:
+          type: string
+
+    MarkSearchResult:
+      description: Mark a result as contacted or discarded (ninguno clears it). Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, room, requestId, resultId, mark]
+      properties:
+        type:
+          const: markSearchResult
+        room:
+          type: string
+        requestId:
+          type: string
+        resultId:
+          type: string
+        mark:
+          $ref: '#/components/schemas/SearchResultMarkChoice'
+
+    DeleteSearchRequest:
+      description: Forget a request and its results. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, room, id]
+      properties:
+        type:
+          const: deleteSearchRequest
+        room:
+          type: string
+        id:
+          type: string
+
+    SaveSearchCriteria:
+      description: Replace a room's criteria sets. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, room, criteria]
+      properties:
+        type:
+          const: saveSearchCriteria
+        room:
+          type: string
+        criteria:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchCriteriaSet'
+
+    ScheduleSearchResult:
+      description: >-
+        Add the event the owner reviewed and confirmed for a result to the
+        shared calendar, then mark the result agendado. Privileged
+        connections only.
+      type: object
+      additionalProperties: false
+      required: [type, room, requestId, resultId, title, date]
+      properties:
+        type:
+          const: scheduleSearchResult
+        room:
+          type: string
+        requestId:
+          type: string
+        resultId:
+          type: string
+        title:
+          type: string
+          description: The whole title, type prefix included.
+        date:
+          type: string
+          description: YYYY-MM-DD (local).
+        time:
+          type: string
+          description: HH:MM (local); absent = all-day.
 
     # ── Outside connections (feature: features/conexiones) ────────
 

@@ -1,0 +1,13 @@
+{
+  "id": "POMODORO_YOGA_MAT",
+  "name": "Tapete de yoga extendido",
+  "category": "misc",
+  "type": "asset",
+  "canPlaceOnWalls": false,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 2,
+  "width": 16,
+  "height": 32,
+  "footprintW": 1,
+  "footprintH": 2
+}

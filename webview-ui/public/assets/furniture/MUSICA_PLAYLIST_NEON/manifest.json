@@ -1,0 +1,13 @@
+{
+  "id": "MUSICA_PLAYLIST_NEON",
+  "name": "Ne\u00f3n HOY SUENA",
+  "category": "wall",
+  "type": "asset",
+  "canPlaceOnWalls": true,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 0,
+  "width": 48,
+  "height": 16,
+  "footprintW": 3,
+  "footprintH": 1
+}

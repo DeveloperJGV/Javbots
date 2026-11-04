@@ -1,0 +1,13 @@
+{
+  "id": "JARDIN_SEED_VAULT",
+  "name": "Arca de semillas",
+  "category": "storage",
+  "type": "asset",
+  "canPlaceOnWalls": false,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 2,
+  "width": 32,
+  "height": 48,
+  "footprintW": 2,
+  "footprintH": 3
+}

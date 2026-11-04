@@ -12,11 +12,13 @@ import { Button } from './ui/Button.js';
 interface ZoomControlsProps {
   zoom: number;
   onZoomChange: (zoom: number) => void;
-  /** Fit the whole office to the window. */
-  onZoomFit: () => void;
 }
 
-export function ZoomControls({ zoom, onZoomChange, onZoomFit }: ZoomControlsProps) {
+/**
+ * Zoom in / out, small, bottom-right. "Fit the whole office" is a key on the elevator plate (BottomToolbar);
+ * Ctrl+wheel zooms too (OfficeCanvas).
+ */
+export function ZoomControls({ zoom, onZoomChange }: ZoomControlsProps) {
   const [showLevel, setShowLevel] = useState(false);
   const [fadeOut, setFadeOut] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -70,69 +72,43 @@ export function ZoomControls({ zoom, onZoomChange, onZoomFit }: ZoomControlsProp
         </div>
       )}
 
-      {/* Vertically stacked round buttons — top-left */}
-      <div className="absolute top-8 left-8 z-44 flex flex-col gap-4">
+      {/* [+][-] side by side, bottom-right, out of the elevator's way */}
+      <div className="absolute bottom-8 right-8 z-44 flex gap-4">
         <Button
-          size="icon_lg"
+          size="icon"
           onClick={() => onZoomChange(zoom + 1)}
           disabled={maxDisabled}
-          className="border-border! shadow-pixel disabled:hover:bg-btn-bg disabled:cursor-default disabled:opacity-(--btn-disabled-opacity)"
+          className="w-28! h-28! border-border! shadow-pixel disabled:hover:bg-btn-bg disabled:cursor-default disabled:opacity-(--btn-disabled-opacity)"
           title="Acercar (Ctrl+rueda)"
+          aria-label="Acercar"
         >
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <line
-              x1="9"
-              y1="3"
-              x2="9"
-              y2="15"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-            <line
-              x1="3"
-              y1="9"
-              x2="15"
-              y2="9"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            shapeRendering="crispEdges"
+            aria-hidden="true"
+          >
+            <rect x="6" y="2" width="2" height="10" fill="currentColor" />
+            <rect x="2" y="6" width="10" height="2" fill="currentColor" />
           </svg>
         </Button>
         <Button
-          size="icon_lg"
+          size="icon"
           onClick={() => onZoomChange(zoom - 1)}
           disabled={minDisabled}
-          className="border-border! shadow-pixel disabled:hover:bg-btn-bg disabled:cursor-default disabled:opacity-(--btn-disabled-opacity)"
+          className="w-28! h-28! border-border! shadow-pixel disabled:hover:bg-btn-bg disabled:cursor-default disabled:opacity-(--btn-disabled-opacity)"
           title="Alejar (Ctrl+rueda)"
+          aria-label="Alejar"
         >
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <line
-              x1="3"
-              y1="9"
-              x2="15"
-              y2="9"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
-        </Button>
-        <Button
-          size="icon_lg"
-          onClick={onZoomFit}
-          className="border-border! shadow-pixel"
-          title="Ver toda la oficina (ajustar a la ventana)"
-        >
-          {/* Four corners pointing out */}
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <path
-              d="M3 7V3h4M11 3h4v4M15 11v4h-4M7 15H3v-4"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="square"
-            />
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            shapeRendering="crispEdges"
+            aria-hidden="true"
+          >
+            <rect x="2" y="6" width="10" height="2" fill="currentColor" />
           </svg>
         </Button>
       </div>

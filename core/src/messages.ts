@@ -48,6 +48,8 @@ export type ServerMessage =
   | GithubStatus
   | ConcertsStatus
   | AgendaStatus
+  | JardinStatus
+  | SearchRoomStatus
   | ConnectionsStatus;
 
 export type ClientMessage =
@@ -86,7 +88,20 @@ export type ClientMessage =
   | DisconnectGoogle
   | RefreshAgenda
   | AddAgendaItem
-  | CompleteAgendaTask;
+  | CompleteAgendaTask
+  | RefreshJardin
+  | SaveJardinPlant
+  | DeleteJardinPlant
+  | MarkJardinCare
+  | SaveJardinSupply
+  | DeleteJardinSupply
+  | ResolveJardinInbox
+  | CreateSearchRequest
+  | LaunchSearchAgent
+  | MarkSearchResult
+  | DeleteSearchRequest
+  | SaveSearchCriteria
+  | ScheduleSearchResult;
 
 export interface ProviderCapabilities {
   type: 'providerCapabilities';
@@ -236,6 +251,7 @@ export interface FloorInfo {
   level: number;
   button?: string;
   label: string;
+  roof?: boolean;
 }
 
 export interface OfficeInfo {
@@ -402,10 +418,10 @@ export interface MusicStatus {
   message?: string;
   spotifyConfigured?: boolean;
   spotifyConnected?: boolean;
-  source?: AnonymousSchema_240;
+  source?: AnonymousSchema_241;
 }
 
-export type AnonymousSchema_240 = 'extension' | 'spotify';
+export type AnonymousSchema_241 = 'extension' | 'spotify';
 
 export interface MusicLyrics {
   type: 'musicLyrics';
@@ -413,11 +429,12 @@ export interface MusicLyrics {
   artist?: string;
   loading?: boolean;
   synced?: boolean;
-  source?: AnonymousSchema_246;
+  instrumental?: boolean;
+  source?: AnonymousSchema_248;
   lines?: MusicLyricLine[];
 }
 
-export type AnonymousSchema_246 = 'spotify' | 'lrclib';
+export type AnonymousSchema_248 = 'spotify' | 'lrclib';
 
 export interface MusicLyricLine {
   text: string;
@@ -548,6 +565,166 @@ export interface AgendaItem {
 
 export type AgendaItemKind = 'event' | 'task';
 
+export interface JardinStatus {
+  type: 'jardinStatus';
+  connected: boolean;
+  today: string;
+  plants: JardinPlant[];
+  supplies: JardinSupply[];
+  inbox: JardinInboxItem[];
+  recent: JardinRecent[];
+  checks: JardinCheck[];
+  saving: boolean;
+  syncedAt?: string;
+  defaultTime: string;
+  calendarName: string;
+  taskListName: string;
+  folderName: string;
+  eventPrefix: string;
+  error?: string;
+}
+
+export interface JardinPlant {
+  id: string;
+  name: string;
+  species?: string;
+  place?: string;
+  notes?: string;
+  photos: string[];
+  furniture?: string;
+  cares: JardinCare[];
+}
+
+export interface JardinCare {
+  kind: JardinCareKind;
+  everyDays: number;
+  time: string;
+  last?: string;
+  due: string;
+  synced: boolean;
+}
+
+export type JardinCareKind = 'regar' | 'abonar' | 'limpiar' | 'podar';
+
+export interface JardinSupply {
+  id: string;
+  name: string;
+  category: JardinSupplyCategory;
+  quantity: number;
+  unit: string;
+  min: number;
+  buying: boolean;
+}
+
+export type JardinSupplyCategory =
+  'planta' | 'herramienta' | 'tierra' | 'abono' | 'maceta' | 'otro';
+
+export interface JardinInboxItem {
+  id: string;
+  kind: JardinInboxKind;
+  source: JardinInboxSource;
+  name: string;
+  text?: string;
+  photo?: string;
+  receivedAt: string;
+  why: string;
+  newPlant?: JardinPlantInput;
+}
+
+export type JardinInboxKind = 'note' | 'photo';
+
+export type JardinInboxSource = 'drive' | 'local';
+
+export interface JardinPlantInput {
+  id?: string;
+  name: string;
+  species?: string;
+  place?: string;
+  notes?: string;
+  furniture?: string;
+  cares: JardinCareInput[];
+}
+
+export interface JardinCareInput {
+  kind: JardinCareKind;
+  everyDays: number;
+  time?: string;
+  last?: string;
+}
+
+export interface JardinRecent {
+  at: string;
+  text: string;
+}
+
+export interface JardinCheck {
+  id: string;
+  label: string;
+  state: ConnectionState;
+  detail: string;
+  help?: string;
+}
+
+export type ConnectionState = 'ok' | 'warn' | 'off' | 'idea';
+
+export interface SearchRoomStatus {
+  type: 'searchRoomStatus';
+  room: string;
+  requests: SearchRequest[];
+  criteria: SearchCriteriaSet[];
+  launcher: SearchLauncher;
+  calendar?: string;
+  saving: boolean;
+  error?: string;
+}
+
+export interface SearchRequest {
+  id: string;
+  text: string;
+  place?: string;
+  when?: string;
+  criteriaId: string;
+  createdAt: string;
+  state: SearchRequestState;
+  note?: string;
+  brief: string;
+  resultsNote?: string;
+  results: SearchResult[];
+}
+
+export type SearchRequestState = 'nuevo' | 'buscando' | 'esperando' | 'listo' | 'error';
+
+export interface SearchResult {
+  id: string;
+  name: string;
+  kind: string;
+  rating?: number;
+  reviews?: number;
+  phone?: string;
+  address?: string;
+  link?: string;
+  source?: string;
+  why: string;
+  score: number;
+  verdict: SearchResultVerdict;
+  mark?: SearchResultMark;
+}
+
+export type SearchResultVerdict = 'recomendado' | 'descartado';
+
+export type SearchResultMark = 'contactado' | 'descartado' | 'agendado';
+
+export interface SearchCriteriaSet {
+  id: string;
+  label: string;
+  rules: string[];
+}
+
+export interface SearchLauncher {
+  available: boolean;
+  detail?: string;
+}
+
 export interface ConnectionsStatus {
   type: 'connectionsStatus';
   connections: ConnectionInfo[];
@@ -563,8 +740,6 @@ export interface ConnectionInfo {
   detail?: string;
   lastUsedAt?: string;
 }
-
-export type ConnectionState = 'ok' | 'warn' | 'off' | 'idea';
 
 export interface WebviewReady {
   type: 'webviewReady';
@@ -709,10 +884,10 @@ export interface InstallMusicExtension {
 
 export interface MusicControl {
   type: 'musicControl';
-  action: AnonymousSchema_395;
+  action: AnonymousSchema_489;
 }
 
-export type AnonymousSchema_395 = 'previous' | 'togglePlay' | 'next';
+export type AnonymousSchema_489 = 'previous' | 'togglePlay' | 'next';
 
 export interface DisconnectSpotify {
   type: 'disconnectSpotify';
@@ -751,4 +926,101 @@ export interface AddAgendaItem {
 export interface CompleteAgendaTask {
   type: 'completeAgendaTask';
   id: string;
+}
+
+export interface RefreshJardin {
+  type: 'refreshJardin';
+}
+
+export interface SaveJardinPlant {
+  type: 'saveJardinPlant';
+  plant: JardinPlantInput;
+  fromInbox?: string;
+}
+
+export interface DeleteJardinPlant {
+  type: 'deleteJardinPlant';
+  id: string;
+}
+
+export interface MarkJardinCare {
+  type: 'markJardinCare';
+  plantId: string;
+  kind: JardinCareKind;
+}
+
+export interface SaveJardinSupply {
+  type: 'saveJardinSupply';
+  supply: JardinSupplyInput;
+}
+
+export interface JardinSupplyInput {
+  id?: string;
+  name: string;
+  category: JardinSupplyCategory;
+  quantity: number;
+  unit: string;
+  min: number;
+}
+
+export interface DeleteJardinSupply {
+  type: 'deleteJardinSupply';
+  id: string;
+}
+
+export interface ResolveJardinInbox {
+  type: 'resolveJardinInbox';
+  id: string;
+  action: JardinInboxAction;
+  plantId?: string;
+  kind?: JardinCareKind;
+}
+
+export type JardinInboxAction = 'care' | 'photo' | 'discard';
+
+export interface CreateSearchRequest {
+  type: 'createSearchRequest';
+  room: string;
+  text: string;
+  place?: string;
+  when?: string;
+  criteriaId: string;
+}
+
+export interface LaunchSearchAgent {
+  type: 'launchSearchAgent';
+  room: string;
+  id: string;
+}
+
+export interface MarkSearchResult {
+  type: 'markSearchResult';
+  room: string;
+  requestId: string;
+  resultId: string;
+  mark: SearchResultMarkChoice;
+}
+
+export type SearchResultMarkChoice = 'contactado' | 'descartado' | 'ninguno';
+
+export interface DeleteSearchRequest {
+  type: 'deleteSearchRequest';
+  room: string;
+  id: string;
+}
+
+export interface SaveSearchCriteria {
+  type: 'saveSearchCriteria';
+  room: string;
+  criteria: SearchCriteriaSet[];
+}
+
+export interface ScheduleSearchResult {
+  type: 'scheduleSearchResult';
+  room: string;
+  requestId: string;
+  resultId: string;
+  title: string;
+  date: string;
+  time?: string;
 }

@@ -1,0 +1,61 @@
+import type { JardinCareKind, JardinSupplyCategory } from '../../../core/src/messages.js';
+
+/** The roof's furniture that opens the garden panel (control screen, shed, tool rack, plant plaque). */
+export const JARDIN_CONTROL_TYPE = 'JARDIN_CONTROL';
+export const JARDIN_SHED_TYPE = 'JARDIN_SHED';
+export const JARDIN_TOOL_RACK_TYPE = 'JARDIN_TOOL_RACK';
+export const JARDIN_PLAQUE_TYPE = 'JARDIN_PLAQUE';
+export const JARDIN_PANEL_TYPES: readonly string[] = [
+  JARDIN_CONTROL_TYPE,
+  JARDIN_SHED_TYPE,
+  JARDIN_TOOL_RACK_TYPE,
+  JARDIN_PLAQUE_TYPE,
+];
+/** Panel section each one opens on (the shed and the tool rack: the supplies). */
+export const JARDIN_PANEL_SECTION: Record<string, 'hoy' | 'inventario'> = {
+  [JARDIN_CONTROL_TYPE]: 'hoy',
+  [JARDIN_SHED_TYPE]: 'inventario',
+  [JARDIN_TOOL_RACK_TYPE]: 'inventario',
+  [JARDIN_PLAQUE_TYPE]: 'hoy',
+};
+
+export const CARE_ORDER: readonly JardinCareKind[] = ['regar', 'abonar', 'limpiar', 'podar'];
+export const CARE_LABEL: Record<JardinCareKind, string> = {
+  regar: 'Regar',
+  abonar: 'Abonar',
+  limpiar: 'Limpiar',
+  podar: 'Podar',
+};
+/** Days a new care starts with in the form. */
+export const CARE_DEFAULT_DAYS: Record<JardinCareKind, number> = {
+  regar: 7,
+  abonar: 30,
+  limpiar: 14,
+  podar: 90,
+};
+
+export const SUPPLY_ORDER: readonly JardinSupplyCategory[] = [
+  'planta',
+  'herramienta',
+  'tierra',
+  'abono',
+  'maceta',
+  'otro',
+];
+export const SUPPLY_LABEL: Record<JardinSupplyCategory, string> = {
+  planta: 'Planta',
+  herramienta: 'Herramienta',
+  tierra: 'Tierra',
+  abono: 'Abono',
+  maceta: 'Maceta',
+  otro: 'Otro',
+};
+
+/** A thirsty plant's look: this much of its color goes to gray, it gets this much darker, and its top droops. */
+export const THIRSTY_GRAY = 0.65;
+export const THIRSTY_DARKEN = 0.82;
+/** The top part of the sprite (this fraction of its height) slides down this many pixels. */
+export const THIRSTY_DROOP_PART = 0.45;
+export const THIRSTY_DROOP_PX = 1;
+
+export const PHOTO_PATH = '/api/jardin/fotos/';

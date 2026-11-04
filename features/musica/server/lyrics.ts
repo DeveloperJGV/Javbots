@@ -15,7 +15,17 @@ export interface Lyrics {
   synced: boolean;
   source: 'spotify' | 'lrclib';
   lines: MusicLyricLine[];
+  /** LRCLIB says the song is instrumental: no lines, and the page shows a note instead of lyrics. */
+  instrumental?: boolean;
 }
+
+/** What LRCLIB answers for an instrumental song. */
+export const INSTRUMENTAL: Lyrics = {
+  synced: false,
+  source: 'lrclib',
+  lines: [],
+  instrumental: true,
+};
 
 /** Which song a piece of lyrics belongs to (reports and lyrics arrive separately). */
 export function songKey(title: string, artist: string): string {
@@ -70,9 +80,12 @@ interface LrclibRecord {
   plainLyrics?: unknown;
 }
 
-/** One LRCLIB record → lyrics (synced if it has them, else plain), or undefined if it holds nothing usable. */
+/**
+ * One LRCLIB record → lyrics (synced if it has them, else plain), INSTRUMENTAL when the record says so, or undefined
+ * if it holds nothing usable.
+ */
 function fromRecord(record: LrclibRecord): Lyrics | undefined {
-  if (record.instrumental) return undefined;
+  if (record.instrumental) return INSTRUMENTAL;
   if (typeof record.syncedLyrics === 'string') {
     const lines = cleanLines(parseLrc(record.syncedLyrics), true);
     if (lines) return { synced: true, source: 'lrclib', lines };
@@ -88,8 +101,8 @@ function fromRecord(record: LrclibRecord): Lyrics | undefined {
 }
 
 /**
- * Best search result: usable lyrics, a duration close to the song's (when both are known), synced before plain,
- * then the closest duration.
+ * Best search result: usable lyrics, a duration close to the song's (when both are known), real lyrics before an
+ * "instrumental" record, synced before plain, then the closest duration.
  */
 export function pickSearchResult(records: LrclibRecord[], durationMs: number): Lyrics | undefined {
   const seconds = durationMs / 1000;
@@ -102,7 +115,12 @@ export function pickSearchResult(records: LrclibRecord[], durationMs: number): L
       (c): c is { lyrics: Lyrics; gap: number } =>
         Boolean(c.lyrics) && c.gap <= LRCLIB_MAX_DURATION_GAP_SEC,
     )
-    .sort((a, b) => Number(b.lyrics.synced) - Number(a.lyrics.synced) || a.gap - b.gap);
+    .sort(
+      (a, b) =>
+        Number(Boolean(a.lyrics.instrumental)) - Number(Boolean(b.lyrics.instrumental)) ||
+        Number(b.lyrics.synced) - Number(a.lyrics.synced) ||
+        a.gap - b.gap,
+    );
   return scored[0]?.lyrics;
 }
 

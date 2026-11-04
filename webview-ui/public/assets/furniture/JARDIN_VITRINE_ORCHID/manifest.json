@@ -1,0 +1,13 @@
+{
+  "id": "JARDIN_VITRINE_ORCHID",
+  "name": "Vitrina de orqu\u00eddeas",
+  "category": "decor",
+  "type": "asset",
+  "canPlaceOnWalls": false,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 2,
+  "width": 32,
+  "height": 48,
+  "footprintW": 2,
+  "footprintH": 3
+}

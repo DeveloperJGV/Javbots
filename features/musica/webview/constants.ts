@@ -14,6 +14,18 @@ export const LYRIC_LEAD_MS = 250;
 /** The bubble over the turntable: max width (CSS px) and how far above the sprite it floats (world px). */
 export const LYRIC_BUBBLE_MAX_WIDTH_PX = 280;
 export const LYRIC_BUBBLE_GAP_PX = 6;
+/**
+ * When the floor's player is off screen (or the floor has none) the bubble pins small at the top center: its max
+ * width and distance from the top (CSS px). Kept narrow so it never reaches the elevator at the top left.
+ */
+export const LYRIC_PIN_MAX_WIDTH_PX = 240;
+export const LYRIC_PIN_TOP_PX = 8;
+/** Breathing room between the bubble and the edges of the office (CSS px). */
+export const LYRIC_BUBBLE_MARGIN_PX = 8;
+/** What the bubble says between sung lines and for an instrumental song. */
+export const LYRIC_NOTE = '♪';
+/** Browser storage key remembering that the viewer turned the lyric bubble off (Settings). */
+export const LYRIC_BUBBLE_HIDDEN_KEY = 'javbots.musica.globitoOculto';
 
 export const TURNTABLE_TYPE = 'TURNTABLE';
 export const ALBUM_FRAME_TYPE = 'ALBUM_FRAME';

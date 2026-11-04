@@ -4,11 +4,16 @@ import { AgendaPanel } from '../../features/agenda/webview/AgendaPanel.js';
 import { useAgenda } from '../../features/agenda/webview/useAgenda.js';
 import { BodegaPanel } from '../../features/bodega/webview/BodegaPanel.js';
 import { bodegaStore } from '../../features/bodega/webview/bodegaStore.js';
+import { useSearchRoom } from '../../features/busquedas/webview/searchRoomStore.js';
 import { ConcertsPanel } from '../../features/conciertos/webview/ConcertsPanel.js';
 import { ConnectionsPanel } from '../../features/conexiones/webview/ConnectionsPanel.js';
 import { useConnections } from '../../features/conexiones/webview/useConnections.js';
+import { DirectorioPanel } from '../../features/directorio/webview/DirectorioPanel.js';
+import { directorioStore } from '../../features/directorio/webview/directorioStore.js';
 import { GithubPanel } from '../../features/github/webview/GithubPanel.js';
 import { useHerdrTabs } from '../../features/herdr/webview/useHerdrTabs.js';
+import { JardinPanel } from '../../features/jardin/webview/JardinPanel.js';
+import { useJardin } from '../../features/jardin/webview/useJardin.js';
 import { JukeboxPicker } from '../../features/musica/webview/JukeboxPicker.js';
 import { LyricBubble } from '../../features/musica/webview/LyricBubble.js';
 import { MusicColumn } from '../../features/musica/webview/MusicColumn.js';
@@ -77,6 +82,9 @@ function App() {
   // Optional feature (features/conexiones): listen from the start, the board is sent once when the page opens
   useConnections(transport);
   useAgenda(transport);
+  // Optional feature (features/jardin): the roof garden, sent once when the page opens
+  useJardin(transport);
+  useSearchRoom(transport, directorioStore);
   // Optional feature (features/herdr): each character named after its herdr terminal tab
   useHerdrTabs(transport, getOfficeState());
   // Browser runtime (dev or static dist): dispatch mock messages after the
@@ -466,11 +474,7 @@ function App() {
 
         {!isDebugMode ? (
           <>
-            <ZoomControls
-              zoom={editor.zoom}
-              onZoomChange={editor.handleZoomChange}
-              onZoomFit={editor.handleZoomFit}
-            />
+            <ZoomControls zoom={editor.zoom} onZoomChange={editor.handleZoomChange} />
 
             {/* Vignette overlay */}
             <div
@@ -643,20 +647,6 @@ function App() {
           </div>
         </Modal>
 
-        <BottomToolbar
-          isEditMode={editor.isEditMode}
-          onOpenClaude={editor.handleOpenClaude}
-          onToggleEditMode={editor.handleToggleEditMode}
-          isSettingsOpen={isSettingsOpen}
-          onToggleSettings={() => setIsSettingsOpen((v) => !v)}
-          workspaceFolders={workspaceFolders}
-          dayNightMode={dayNightMode}
-          onCycleDayNight={handleCycleDayNight}
-          onCapture={handleCapture}
-          isBoardOpen={isBoardOpen}
-          onToggleBoard={() => setIsBoardOpen((v) => !v)}
-        />
-
         <VersionIndicator
           currentVersion={extensionVersion}
           lastSeenVersion={lastSeenVersion}
@@ -666,8 +656,23 @@ function App() {
 
         <ConnectionIndicator />
 
-        {/* Buildings and floors (core/src/offices.ts): the elevator shows once there's more than one */}
-        <Elevator />
+        {/* The elevator plate top-left: buildings and floors (core/src/offices.ts) plus the office's function keys */}
+        <Elevator>
+          <BottomToolbar
+            isEditMode={editor.isEditMode}
+            onOpenClaude={editor.handleOpenClaude}
+            onToggleEditMode={editor.handleToggleEditMode}
+            isSettingsOpen={isSettingsOpen}
+            onToggleSettings={() => setIsSettingsOpen((v) => !v)}
+            workspaceFolders={workspaceFolders}
+            dayNightMode={dayNightMode}
+            onCycleDayNight={handleCycleDayNight}
+            onCapture={handleCapture}
+            isBoardOpen={isBoardOpen}
+            onToggleBoard={() => setIsBoardOpen((v) => !v)}
+            onZoomFit={isDebugMode ? undefined : editor.handleZoomFit}
+          />
+        </Elevator>
 
         {/* Optional feature (features/usage): Claude plan limits and cost per agent */}
         <UsageBar usage={usage} />
@@ -677,6 +682,10 @@ function App() {
         <ConcertsPanel transport={transport} />
         {/* Optional feature (features/agenda): today and this week, from the agenda room's furniture */}
         <AgendaPanel transport={transport} />
+        {/* Optional feature (features/jardin): the roof garden, from its control screen, shed, tool rack or plaque */}
+        <JardinPanel transport={transport} />
+        {/* Optional feature (features/directorio): searches by an agent with criteria, from the room's furniture */}
+        <DirectorioPanel transport={transport} />
         {/* Optional feature (features/conexiones): the outside services the office talks to, from the rack */}
         <ConnectionsPanel />
         {/* Optional feature (features/bodega): every piece of furniture not in the office, with thumbnails */}

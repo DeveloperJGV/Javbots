@@ -35,6 +35,7 @@ function fakeGoogle(
       calls.push(call);
       return answer(call) as Record<string, unknown>;
     },
+    download: async () => Buffer.alloc(0),
     reconnectInDays: () => undefined,
     forget: () => {},
     onChange: (l: () => void) => {

@@ -8,8 +8,14 @@ export const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 
 export const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar';
 export const GOOGLE_TASKS_SCOPE = 'https://www.googleapis.com/auth/tasks';
+/**
+ * Read the owner's Drive (features/jardin reads the notes and photos a phone leaves in a folder). `drive.file` is not
+ * enough: it only sees files this app created or the owner opened with it, and those files come from another app.
+ * Read only: the office never writes, moves or deletes anything in Drive.
+ */
+export const GOOGLE_DRIVE_READ_SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
 /** Everything any feature needs, asked once: one login serves them all. */
-export const GOOGLE_SCOPES = [GOOGLE_CALENDAR_SCOPE, GOOGLE_TASKS_SCOPE];
+export const GOOGLE_SCOPES = [GOOGLE_CALENDAR_SCOPE, GOOGLE_TASKS_SCOPE, GOOGLE_DRIVE_READ_SCOPE];
 
 export const GOOGLE_LOGIN_PATH = '/api/google/login';
 export const GOOGLE_CALLBACK_PATH = '/api/google/callback';

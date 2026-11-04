@@ -128,6 +128,7 @@ describe('concerts feature', () => {
       reconnectInDays: () => undefined,
       forget: () => calls.push('forget'),
       onChange: () => () => {},
+      download: async () => Buffer.alloc(0),
       api: async (url: string, init?: { method?: string; body?: unknown }) => {
         if (url.includes('/calendarList')) {
           calls.push('find');

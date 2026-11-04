@@ -1,0 +1,13 @@
+{
+  "id": "FREELANCE_BOXES",
+  "name": "Cajas de cart\u00f3n",
+  "category": "misc",
+  "type": "asset",
+  "canPlaceOnWalls": false,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 1,
+  "width": 32,
+  "height": 32,
+  "footprintW": 2,
+  "footprintH": 2
+}

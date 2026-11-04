@@ -37,9 +37,14 @@ export interface FloorDef {
   id: string;
   /** Where it sits in the building: 1, 2… above the ground floor (0), -1, -2… below it. Orders the elevator. */
   level: number;
-  /** Short text on its elevator button (from the level when absent: "1", "2", "S", "S2"). */
+  /** Short text on its elevator button (from the level when absent: "1", "2", "S", "S2"; "R" for the roof). */
   button?: string;
   label: string;
+  /**
+   * The roof: always the top floor of its building, however many floors come later. Its declared level is ignored;
+   * the registry gives it the one above the highest floor. One per building.
+   */
+  roof?: boolean;
 }
 
 /** A floor a feature (ServerFeature.floors) or a pack (pack.json) declares. */
@@ -62,16 +67,27 @@ export function isValidFloorLevel(level: unknown): level is number {
   );
 }
 
+/** The roof's elevator button when it doesn't bring its own. */
+export const ROOF_BUTTON = 'R';
+
 /** The text on a floor's elevator button. */
-export function floorButton(floor: Pick<FloorDef, 'level' | 'button'>): string {
+export function floorButton(floor: Pick<FloorDef, 'level' | 'button' | 'roof'>): string {
   if (floor.button) return floor.button;
+  if (floor.roof) return ROOF_BUTTON;
   if (floor.level > 0) return String(floor.level);
   return floor.level === -1 ? 'S' : `S${-floor.level}`;
 }
 
-/** Floors from the top of the building down (the order of an elevator panel). */
-export function sortFloorsTopDown<T extends { level: number }>(floors: readonly T[]): T[] {
-  return [...floors].sort((a, b) => b.level - a.level);
+/** Floors from the top of the building down (the order of an elevator panel); the roof always first. */
+export function sortFloorsTopDown<T extends { level: number; roof?: boolean }>(
+  floors: readonly T[],
+): T[] {
+  return [...floors].sort((a, b) => Number(!!b.roof) - Number(!!a.roof) || b.level - a.level);
+}
+
+/** The level a roof gets: one above the highest other floor (1 when the building only has its ground floor). */
+export function roofLevel(floors: ReadonlyArray<{ level: number; roof?: boolean }>): number {
+  return Math.max(0, ...floors.filter((f) => !f.roof).map((f) => f.level)) + 1;
 }
 
 const ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,39}$/;

@@ -1,4 +1,13 @@
 import {
+  DIGITAL_CLOCK_AMBER,
+  DIGITAL_CLOCK_AMBER_SCREEN,
+  DIGITAL_CLOCK_CACHE_MAX,
+  DIGITAL_CLOCK_COLON_SEC,
+  DIGITAL_CLOCK_CYAN,
+  DIGITAL_CLOCK_CYAN_SCREEN,
+  DIGITAL_CLOCK_DIGITS,
+  DIGITAL_CLOCK_RED,
+  DIGITAL_CLOCK_RED_SCREEN,
   FIRE_FLICKER_FRACTION,
   FIRE_FLICKER_PERIOD_SEC,
   FIRE_FLICKER_SWAPS,
@@ -88,6 +97,15 @@ type AmbientSpec =
       minuteLen: number;
       hourLen: number;
     }
+  | {
+      /** Live HH:MM (24 h) in 3x5 digits: top-left corner of each digit, in sprite px. */
+      kind: 'digital';
+      digits: ReadonlyArray<readonly [number, number]>;
+      /** Pixels of the colon (blinks once a second); stacked clocks have none. */
+      colon?: ReadonlyArray<readonly [number, number]>;
+      on: string;
+      off: string;
+    }
   | { kind: 'sway'; hanging: boolean }
   | { kind: 'led'; x: number; y: number }
   | {
@@ -112,8 +130,52 @@ type AmbientSpec =
       stars: Array<[number, number]>;
     };
 
+/** Hours on top, minutes below (the 1-tile clocks): HH at (x, y), MM 7 px lower. */
+function stackedDigits(x: number, y: number): Array<[number, number]> {
+  return [
+    [x, y],
+    [x + 4, y],
+    [x, y + 7],
+    [x + 4, y + 7],
+  ];
+}
+
 const AMBIENT_SPECS: Record<string, AmbientSpec> = {
   CLOCK: { kind: 'clock', cx: 7, cy: 16, face: [5, 16], hand: [7, 14], minuteLen: 3, hourLen: 2 },
+  // Digital clocks (the user prefers them to clocks with hands)
+  MANDO_CLOCK: {
+    kind: 'digital',
+    digits: [
+      [8, 5],
+      [12, 5],
+      [18, 5],
+      [22, 5],
+    ],
+    colon: [
+      [16, 6],
+      [16, 8],
+    ],
+    on: DIGITAL_CLOCK_CYAN,
+    off: DIGITAL_CLOCK_CYAN_SCREEN,
+  },
+  RELOJ_DIGITAL: {
+    kind: 'digital',
+    digits: stackedDigits(5, 7),
+    on: DIGITAL_CLOCK_CYAN,
+    off: DIGITAL_CLOCK_CYAN_SCREEN,
+  },
+  DIRECTORIO_CLOCK: {
+    kind: 'digital',
+    digits: stackedDigits(5, 2),
+    on: DIGITAL_CLOCK_AMBER,
+    off: DIGITAL_CLOCK_AMBER_SCREEN,
+  },
+  POMODORO_TIMER_WALL: {
+    kind: 'digital',
+    digits: stackedDigits(13, 14),
+    on: DIGITAL_CLOCK_RED,
+    off: DIGITAL_CLOCK_RED_SCREEN,
+  },
   PLANT: { kind: 'sway', hanging: false },
   PLANT_2: { kind: 'sway', hanging: false },
   LARGE_PLANT: { kind: 'sway', hanging: false },
@@ -282,6 +344,47 @@ export function clockSprite(
   handPixels(spec.cx, spec.cy, minuteAngle, spec.minuteLen).forEach(paint);
   handPixels(spec.cx, spec.cy, hourAngle, spec.hourLen).forEach(paint);
   out[spec.cy][spec.cx] = handColor;
+
+  variants.set(key, out);
+  return out;
+}
+
+// ── Digital clock ──────────────────────────────────────────────
+
+const digitalCache = new WeakMap<SpriteData, Map<string, SpriteData>>();
+
+/** The clock showing HH:MM (24 h); the colon, if any, lit when `colonOn`. */
+export function digitalClockSprite(
+  sprite: SpriteData,
+  spec: Extract<AmbientSpec, { kind: 'digital' }>,
+  hours: number,
+  minutes: number,
+  colonOn: boolean,
+): SpriteData {
+  const text = `${String(hours).padStart(2, '0')}${String(minutes).padStart(2, '0')}`;
+  const key = `${text}${colonOn ? ':' : ' '}`;
+  let variants = digitalCache.get(sprite);
+  if (!variants) {
+    variants = new Map();
+    digitalCache.set(sprite, variants);
+  }
+  const hit = variants.get(key);
+  if (hit) return hit;
+  // Only the current minute matters: don't keep a day's worth of variants
+  if (variants.size >= DIGITAL_CLOCK_CACHE_MAX) variants.clear();
+
+  const out = sprite.map((row) => row.slice());
+  const set = (x: number, y: number, color: string) => {
+    if (out[y]?.[x] !== undefined) out[y][x] = color;
+  };
+  spec.digits.forEach(([x, y], i) => {
+    const glyph = DIGITAL_CLOCK_DIGITS[text[i]];
+    glyph?.forEach((line, dy) => {
+      for (let dx = 0; dx < line.length; dx++)
+        set(x + dx, y + dy, line[dx] === '#' ? spec.on : spec.off);
+    });
+  });
+  spec.colon?.forEach(([x, y]) => set(x, y, colonOn ? spec.on : spec.off));
 
   variants.set(key, out);
   return out;
@@ -462,6 +565,9 @@ export function applyAmbientAnimation(
     let sprite = f.sprite;
     if (spec.kind === 'clock') {
       sprite = clockSprite(f.sprite, spec, now.getHours(), now.getMinutes());
+    } else if (spec.kind === 'digital') {
+      const colonOn = Math.floor(timeSec / DIGITAL_CLOCK_COLON_SEC) % 2 === 0;
+      sprite = digitalClockSprite(f.sprite, spec, now.getHours(), now.getMinutes(), colonOn);
     } else if (spec.kind === 'sway') {
       // Desync neighbours by their position
       const phase = (f.x + f.y * 3) / TILE_SIZE;

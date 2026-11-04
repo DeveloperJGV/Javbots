@@ -1,6 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 
 import type { DayNightMode } from '../../../core/src/messages.js';
+import {
+  ELEVATOR_KEY_ACTIVE_FACE,
+  ELEVATOR_KEY_ACTIVE_ICON,
+  ELEVATOR_KEY_FACE,
+  ELEVATOR_KEY_ICON,
+  ELEVATOR_KEY_ICON_PX,
+  ELEVATOR_KEY_SIZE_PX,
+  ELEVATOR_PLATE_DARK,
+  ELEVATOR_PLATE_LIGHT,
+  ELEVATOR_PX,
+} from '../constants.js';
 import type { WorkspaceFolder } from '../hooks/useExtensionMessages.js';
 import { isBrowserRuntime } from '../runtime.js';
 import { transport } from '../transport/index.js';
@@ -19,6 +30,8 @@ interface BottomToolbarProps {
   onCapture: () => void;
   isBoardOpen: boolean;
   onToggleBoard: () => void;
+  /** Fit the whole office to the window; no button when missing (debug view: no office drawn). */
+  onZoomFit?: () => void;
 }
 
 /** 8×8 pixel icons, one rect per row run, drawn in the button's text color. */
@@ -136,6 +149,18 @@ const SETTINGS_ICON = iconFromArt([
   '...##...',
 ]);
 
+/** Four corners pointing out (fit the whole office to the window). */
+const FIT_ICON = iconFromArt([
+  '###..###',
+  '#......#',
+  '#......#',
+  '........',
+  '........',
+  '#......#',
+  '#......#',
+  '###..###',
+]);
+
 const AGENT_ICON = iconFromArt([
   '..####..',
   '..####..',
@@ -147,14 +172,11 @@ const AGENT_ICON = iconFromArt([
   '########',
 ]);
 
-/** Toolbar icons: 3 device px per icon pixel, crisp inside the 40×40 buttons. */
-const TOOL_ICON_PX = 24;
-
 function PixelIcon({ rows }: { rows: Array<[number, number, number]> }) {
   return (
     <svg
-      width={TOOL_ICON_PX}
-      height={TOOL_ICON_PX}
+      width={ELEVATOR_KEY_ICON_PX}
+      height={ELEVATOR_KEY_ICON_PX}
       viewBox="0 0 8 8"
       shapeRendering="crispEdges"
       aria-hidden="true"
@@ -166,6 +188,52 @@ function PixelIcon({ rows }: { rows: Array<[number, number, number]> }) {
   );
 }
 
+interface KeyProps {
+  label: string;
+  /** Tooltip; the label when missing. */
+  title?: string;
+  /** An open tool (editor, board, settings): dark face, amber icon, and aria-pressed. */
+  active?: boolean;
+  /** Toggles report aria-pressed; one-shot buttons (capture, fit) don't. */
+  toggle?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}
+
+/** A square steel key of the elevator plate, raised (light top/left, dark bottom/right) or pressed when active. */
+function Key({ label, title, active = false, toggle = false, onClick, children }: KeyProps) {
+  const light = active ? ELEVATOR_PLATE_DARK : ELEVATOR_PLATE_LIGHT;
+  const dark = active ? ELEVATOR_PLATE_LIGHT : ELEVATOR_PLATE_DARK;
+  return (
+    <button
+      type="button"
+      className="flex items-center justify-center p-0 rounded-none cursor-pointer shadow-pixel hover:brightness-125"
+      style={{
+        width: ELEVATOR_KEY_SIZE_PX,
+        height: ELEVATOR_KEY_SIZE_PX,
+        background: active ? ELEVATOR_KEY_ACTIVE_FACE : ELEVATOR_KEY_FACE,
+        color: active ? ELEVATOR_KEY_ACTIVE_ICON : ELEVATOR_KEY_ICON,
+        borderStyle: 'solid',
+        borderWidth: ELEVATOR_PX,
+        borderTopColor: light,
+        borderLeftColor: light,
+        borderBottomColor: dark,
+        borderRightColor: dark,
+      }}
+      aria-label={label}
+      aria-pressed={toggle ? active : undefined}
+      title={title ?? label}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
+
+/**
+ * The office's function buttons, as square keys on the elevator plate (Elevator.tsx): new agent (VS Code only),
+ * layout editor, day/night, activity board, capture, fit to window and settings. Three per row.
+ */
 export function BottomToolbar({
   isEditMode,
   onOpenClaude,
@@ -178,6 +246,7 @@ export function BottomToolbar({
   onCapture,
   isBoardOpen,
   onToggleBoard,
+  onZoomFit,
 }: BottomToolbarProps) {
   const [isFolderPickerOpen, setIsFolderPickerOpen] = useState(false);
   const [isBypassMenuOpen, setIsBypassMenuOpen] = useState(false);
@@ -237,12 +306,9 @@ export function BottomToolbar({
     }
   };
 
-  // Same look as the zoom buttons (border + hard shadow); active ones keep the accent border.
-  const toolClass = (active: boolean) => `shadow-pixel ${active ? '' : 'border-border!'}`;
-
   return (
-    // One column under the zoom buttons (top-8, 3 × 40 px + gaps): out of the office's way.
-    <div className="absolute top-144 left-8 z-44 flex flex-col gap-4">
+    // Inside the elevator plate, under its groove: three keys per row.
+    <div className="grid grid-cols-1 gap-6">
       {/* Hide + Agent in standalone browser mode (no terminal to interact with) */}
       {!isBrowserRuntime && (
         <div
@@ -254,8 +320,10 @@ export function BottomToolbar({
           <Button
             variant="accent"
             size="icon_lg"
+            style={{ width: ELEVATOR_KEY_SIZE_PX, height: ELEVATOR_KEY_SIZE_PX }}
             onClick={handleAgentClick}
             title="Nuevo agente"
+            aria-label="Nuevo agente"
             className={`shadow-pixel ${
               isFolderPickerOpen || isBypassMenuOpen
                 ? 'bg-accent-bright'
@@ -282,49 +350,40 @@ export function BottomToolbar({
           </Dropdown>
         </div>
       )}
-      <Button
-        variant={isEditMode ? 'active' : 'default'}
-        size="icon_lg"
-        onClick={onToggleEditMode}
-        title="Editar la oficina"
-        className={toolClass(isEditMode)}
-      >
+      <Key label="Editar la oficina" active={isEditMode} toggle onClick={onToggleEditMode}>
         <PixelIcon rows={OFFICE_ICON} />
-      </Button>
-      <Button
-        size="icon_lg"
-        onClick={onCycleDayNight}
-        title={DAY_NIGHT_TITLES[dayNightMode]}
-        className={toolClass(false)}
-      >
+      </Key>
+      <Key label="Día y noche" title={DAY_NIGHT_TITLES[dayNightMode]} onClick={onCycleDayNight}>
         <PixelIcon rows={DAY_NIGHT_ICONS[dayNightMode]} />
-      </Button>
-      <Button
-        variant={isBoardOpen ? 'active' : 'default'}
-        size="icon_lg"
-        onClick={onToggleBoard}
+      </Key>
+      <Key
+        label="Pizarrón"
         title="Pizarrón: lo que hizo cada agente"
-        className={toolClass(isBoardOpen)}
+        active={isBoardOpen}
+        toggle
+        onClick={onToggleBoard}
       >
         <PixelIcon rows={BOARD_ICON} />
-      </Button>
-      <Button
-        size="icon_lg"
-        onClick={onCapture}
+      </Key>
+      <Key
+        label="Captura"
         title="Captura: guardar una imagen de toda la oficina"
-        className={toolClass(false)}
+        onClick={onCapture}
       >
         <PixelIcon rows={CAMERA_ICON} />
-      </Button>
-      <Button
-        variant={isSettingsOpen ? 'active' : 'default'}
-        size="icon_lg"
-        onClick={onToggleSettings}
-        title="Ajustes"
-        className={toolClass(isSettingsOpen)}
-      >
+      </Key>
+      {onZoomFit && (
+        <Key
+          label="Ver toda la oficina"
+          title="Ver toda la oficina (ajustar a la ventana)"
+          onClick={onZoomFit}
+        >
+          <PixelIcon rows={FIT_ICON} />
+        </Key>
+      )}
+      <Key label="Ajustes" active={isSettingsOpen} toggle onClick={onToggleSettings}>
         <PixelIcon rows={SETTINGS_ICON} />
-      </Button>
+      </Key>
     </div>
   );
 }

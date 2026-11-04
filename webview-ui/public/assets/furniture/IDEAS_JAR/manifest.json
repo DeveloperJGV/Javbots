@@ -1,0 +1,13 @@
+{
+  "id": "IDEAS_JAR",
+  "name": "Frasco de ideas",
+  "category": "decor",
+  "type": "asset",
+  "canPlaceOnWalls": false,
+  "canPlaceOnSurfaces": true,
+  "backgroundTiles": 0,
+  "width": 16,
+  "height": 16,
+  "footprintW": 1,
+  "footprintH": 1
+}

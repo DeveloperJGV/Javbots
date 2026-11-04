@@ -28,8 +28,12 @@ cambiamos el idioma, el arte, los cuartos y le agregamos cosas nuevas. La docume
 - **3 de noviembre de 2026**: pisos con elevador (cada oficina es un edificio; los pisos nuevos traen su propio
   plano y los agentes viven en la Planta baja), tablero de conexiones en el Sótano (un foco por servicio de fuera,
   con su estado y para qué sirve), un solo reproductor en la sala de música con cuatro estilos (tocadiscos o tres
-  rockolas) y los boletos del mostrador, que muestran tus próximos conciertos de Google Calendar y buscan más en
-  Ticketmaster México.
+  rockolas), los boletos del mostrador, que muestran tus próximos conciertos de Google Calendar y buscan más en
+  Ticketmaster México, y una azotea con jardín (siempre el piso de hasta arriba): plantas con sus cuidados, avisos en
+  un calendario y en Google Tasks que se recorren hasta que se hacen, notas y fotos desde el celular por Google Drive
+  e inventario del jardín; y el Directorio: un agente
+  de Claude Code busca técnicos o servicios con tus criterios (oficial primero, sin negocios fantasma) y deja los
+  resultados en un panel; y la letra de la canción en un globito encima del reproductor de cada piso.
 - **2 de noviembre de 2026**: sala de música (tienda de discos retro con cabina de DJ, instrumentos, karaoke y
   guiños geek), una rockola con tres estilos que se cambian con un clic y una bodega con miniaturas de todo lo que
   no está puesto en la oficina.

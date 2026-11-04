@@ -1,0 +1,13 @@
+{
+  "id": "JARDIN_ORBITAL_POD",
+  "name": "C\u00e1psula de cultivo orbital",
+  "category": "electronics",
+  "type": "asset",
+  "canPlaceOnWalls": false,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 2,
+  "width": 32,
+  "height": 48,
+  "footprintW": 2,
+  "footprintH": 3
+}

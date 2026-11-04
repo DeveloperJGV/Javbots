@@ -113,7 +113,7 @@ function apply(file) {
     for (const [j, col] of [44, 48, 52].entries()) deskPod(`computo-${i + 1}-${j + 1}`, col, row);
   }
   for (const c of [45, 49, 53]) put(`computo-ventana-${c}`, 'WINDOW', c, 0);
-  put('computo-reloj', 'CLOCK', 51, 0);
+  put('computo-reloj', 'RELOJ_DIGITAL', 51, 0);
   put('computo-letrero', 'ZONE_POST_INTERNS', 54, 9);
   // El pasillo se abre a la sala: la planta que tapaba la puerta baja una fila
   const plant = l.furniture.find((f) => f.type === 'PLANT_2' && f.col === 42 && f.row === 12);

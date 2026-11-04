@@ -1,0 +1,13 @@
+{
+  "id": "FREELANCE_FLOOR_CABLES",
+  "name": "Cables por el suelo",
+  "category": "misc",
+  "type": "asset",
+  "canPlaceOnWalls": false,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 1,
+  "width": 48,
+  "height": 16,
+  "footprintW": 3,
+  "footprintH": 1
+}

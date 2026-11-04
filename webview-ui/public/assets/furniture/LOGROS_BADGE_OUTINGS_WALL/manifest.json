@@ -1,0 +1,13 @@
+{
+  "id": "LOGROS_BADGE_OUTINGS_WALL",
+  "name": "Insignia de salidas (pared)",
+  "category": "wall",
+  "type": "asset",
+  "canPlaceOnWalls": true,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 0,
+  "width": 16,
+  "height": 16,
+  "footprintW": 1,
+  "footprintH": 1
+}

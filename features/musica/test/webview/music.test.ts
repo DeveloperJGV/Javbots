@@ -7,6 +7,7 @@ import {
   framedCover,
   glintPoint,
   lyricAnchorY,
+  lyricBubblePlacement,
   MusicNotes,
   spinSprite,
 } from '../../webview/musicFurniture.js';
@@ -16,6 +17,7 @@ import {
   formatTime,
   isColumnVisible,
   isMusicPlaying,
+  lyricBubbleText,
   lyricsStatus,
   type MusicState,
   playbackPositionMs,
@@ -103,6 +105,30 @@ describe('lyric bubble', () => {
     expect(lyricAnchorY(table, [table])).toBe(288);
     expect(lyricAnchorY(table, [table, frame, far])).toBe(246);
   });
+
+  const view = { width: 1000, height: 600 };
+  const size = { width: 200, height: 40 };
+
+  it('sits over the player while it is on screen, sliding sideways to stay inside', () => {
+    expect(lyricBubblePlacement({ x: 500, y: 300 }, view, size, 8)).toEqual({
+      kind: 'player',
+      left: 500,
+      top: 300,
+    });
+    expect(lyricBubblePlacement({ x: 30, y: 300 }, view, size, 8)).toEqual({
+      kind: 'player',
+      left: 108,
+      top: 300,
+    });
+  });
+
+  it('pins at the top center when the floor has no player or it is out of view', () => {
+    expect(lyricBubblePlacement(null, view, size, 8)).toEqual({ kind: 'pin' });
+    expect(lyricBubblePlacement({ x: -50, y: 300 }, view, size, 8)).toEqual({ kind: 'pin' });
+    expect(lyricBubblePlacement({ x: 500, y: 900 }, view, size, 8)).toEqual({ kind: 'pin' });
+    // too close to the top edge: the bubble would be cut
+    expect(lyricBubblePlacement({ x: 500, y: 30 }, view, size, 8)).toEqual({ kind: 'pin' });
+  });
 });
 
 describe('notes', () => {
@@ -186,6 +212,58 @@ describe('lyrics', () => {
   it('never shows the lyrics of another song', () => {
     expect(currentLyrics(state({ title: 'otra' }, { lyrics }))).toBeUndefined();
     expect(currentLyrics(state({}, { lyrics }))).toBe(lyrics);
+  });
+
+  const test = {
+    type: 'musicLyrics' as const,
+    title: 't',
+    artist: 'a',
+    synced: true,
+    lines: [
+      { timeMs: 10_000, text: 'línea de prueba uno' },
+      { timeMs: 20_000, text: '' },
+      { timeMs: 30_000, text: 'línea de prueba dos' },
+    ],
+  };
+
+  it('puts the line being sung in the bubble, a note between lines', () => {
+    expect(lyricBubbleText(state({ positionMs: 15_000 }, { lyrics: test }), 1_000)).toBe(
+      'línea de prueba uno',
+    );
+    expect(lyricBubbleText(state({ positionMs: 25_000 }, { lyrics: test }), 1_000)).toBe('♪');
+    expect(lyricBubbleText(state({ positionMs: 35_000 }, { lyrics: test }), 1_000)).toBe(
+      'línea de prueba dos',
+    );
+    // before the first line (the intro)
+    expect(lyricBubbleText(state({ positionMs: 0 }, { lyrics: test }), 1_000)).toBe('♪');
+  });
+
+  it('shows a note for an instrumental song', () => {
+    const instrumental = {
+      type: 'musicLyrics' as const,
+      title: 't',
+      artist: 'a',
+      instrumental: true,
+      lines: [],
+    };
+    expect(lyricsStatus(state({}, { lyrics: instrumental }))).toBe('instrumental');
+    expect(lyricBubbleText(state({}, { lyrics: instrumental }))).toBe('♪');
+  });
+
+  it('has no bubble without a song, without synced lyrics, paused, or turned off', () => {
+    expect(lyricBubbleText(state(undefined))).toBeNull();
+    expect(lyricBubbleText(state({}))).toBeNull(); // still loading
+    expect(
+      lyricBubbleText(state({}, { lyrics: { type: 'musicLyrics', title: 't', artist: 'a' } })),
+    ).toBeNull();
+    expect(lyricBubbleText(state({}, { lyrics: { ...test, synced: false } }))).toBeNull();
+    expect(lyricBubbleText(state({ isPaused: true }, { lyrics: test }))).toBeNull();
+    expect(
+      lyricBubbleText(
+        state({ positionMs: 15_000 }, { lyrics: test, lyricBubbleHidden: true }),
+        1_000,
+      ),
+    ).toBeNull();
   });
 });
 

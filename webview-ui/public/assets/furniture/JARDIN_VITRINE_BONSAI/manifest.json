@@ -1,0 +1,13 @@
+{
+  "id": "JARDIN_VITRINE_BONSAI",
+  "name": "Vitrina de bons\u00e1is",
+  "category": "decor",
+  "type": "asset",
+  "canPlaceOnWalls": false,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 2,
+  "width": 32,
+  "height": 48,
+  "footprintW": 2,
+  "footprintH": 3
+}

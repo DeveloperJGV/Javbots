@@ -1,0 +1,13 @@
+{
+  "id": "DIRECTORIO_KEYS",
+  "type": "asset",
+  "canPlaceOnWalls": true,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 0,
+  "width": 32,
+  "height": 32,
+  "footprintW": 2,
+  "footprintH": 2,
+  "name": "Tablero de llaves",
+  "category": "wall"
+}

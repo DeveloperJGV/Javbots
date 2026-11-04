@@ -1,0 +1,13 @@
+{
+  "id": "LOGROS_STREAK_BOARD_FULL",
+  "name": "Tablero de rachas (14 d\u00edas)",
+  "category": "wall",
+  "type": "asset",
+  "canPlaceOnWalls": true,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 0,
+  "width": 48,
+  "height": 32,
+  "footprintW": 3,
+  "footprintH": 2
+}

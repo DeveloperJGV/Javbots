@@ -8,7 +8,10 @@ artista, el álbum y el tiempo; un **reproductor** en la sala de música que sue
 digital, que muestra la carátula en su pantalla) y escondes o muestras la columna (el navegador lo recuerda).
 
 **Letras:** karaoke en la columna (línea anterior, la que se canta y la siguiente) y la línea actual en un globito
-arriba del tocadiscos. La extensión manda la letra de Spotify (la misma de la app, endpoint no oficial que puede
+arriba del reproductor del piso que estás viendo (una ♪ entre líneas y en las instrumentales, que LRCLIB marca así);
+si el reproductor no se ve en pantalla, el globito se queda chico arriba al centro. Se apaga en Ajustes (lo recuerda
+el navegador). Cada piso puede tener su propio reproductor: la Planta baja, el piso Personal y el Roof garden traen
+uno. La extensión manda la letra de Spotify (la misma de la app, endpoint no oficial que puede
 cambiar); si Spotify no tiene, o no contesta en 4 s, el servidor la busca en [LRCLIB](https://lrclib.net)
 (comunitaria: se descartan las que traen casi nada). Solo se muestran; no se guardan. Mientras se buscan, Hunter y
 Tango (los perros del autor) cruzan la columna corriendo; si no aparece, sale "No encontré la letra". La tira de los

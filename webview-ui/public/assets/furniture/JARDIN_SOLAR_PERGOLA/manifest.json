@@ -1,0 +1,13 @@
+{
+  "id": "JARDIN_SOLAR_PERGOLA",
+  "name": "P\u00e9rgola solar con banca",
+  "category": "decor",
+  "type": "asset",
+  "canPlaceOnWalls": false,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 2,
+  "width": 32,
+  "height": 48,
+  "footprintW": 2,
+  "footprintH": 3
+}

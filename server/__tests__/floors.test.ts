@@ -110,6 +110,46 @@ describe('floor registry', () => {
     expect(getFloors(MAIN_OFFICE).map((f) => f.id)).toEqual(['uno']);
   });
 
+  it('keeps the roof on top, above floors added before or after it', () => {
+    expect(addFloors([{ id: 'jardin', level: 0, label: 'Azotea', roof: true }], 'jardin')).toBe(1);
+    expect(getFloors(MAIN_OFFICE)).toEqual([
+      { id: 'jardin', level: 1, label: 'Azotea', roof: true },
+    ]);
+    // A floor added later at the roof's current level still fits, and the roof goes up
+    addFloors(
+      [
+        { id: 'personal', level: 1, label: 'Personal' },
+        { id: 'taller-alto', level: 3, label: 'Taller' },
+      ],
+      'otra',
+    );
+    const floors = getFloors(MAIN_OFFICE);
+    expect(floors.map((f) => [f.id, f.level])).toEqual([
+      ['jardin', 4],
+      ['taller-alto', 3],
+      ['personal', 1],
+    ]);
+    expect(floorButton(floors[0])).toBe('R');
+    expect(floorButton({ level: 4, roof: true, button: 'R' })).toBe('R');
+    // One roof per building
+    expect(addFloors([{ id: 'otra-azotea', level: 9, label: 'Otra', roof: true }], 'x')).toBe(0);
+  });
+
+  it('a roof can be the only floor of another building, and sorts first even with a tie', () => {
+    addFloors([{ id: 'techo', level: 0, label: 'Techo', roof: true, office: 'taller' }], 'x');
+    addFloors([{ id: 'bodega', level: -1, label: 'Bodega', office: 'taller' }], 'x');
+    expect(getFloors('taller').map((f) => [f.id, f.level])).toEqual([
+      ['techo', 1],
+      ['bodega', -1],
+    ]);
+    expect(
+      sortFloorsTopDown([
+        { id: 'a', level: 2 },
+        { id: 'r', level: 2, roof: true },
+      ]).map((f) => f.id),
+    ).toEqual(['r', 'a']);
+  });
+
   it('forgets the floors when the offices are set again', () => {
     addFloors(exampleFeature().floors!(), 'ejemplo');
     setOffices(OFFICES);

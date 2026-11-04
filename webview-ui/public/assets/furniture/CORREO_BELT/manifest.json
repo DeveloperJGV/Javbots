@@ -1,0 +1,13 @@
+{
+  "id": "CORREO_BELT",
+  "name": "Banda de cartas",
+  "category": "misc",
+  "type": "asset",
+  "canPlaceOnWalls": false,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 0,
+  "width": 48,
+  "height": 16,
+  "footprintW": 3,
+  "footprintH": 1
+}

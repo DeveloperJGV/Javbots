@@ -4,7 +4,9 @@ import { agendaStore } from '../../../../features/agenda/webview/agendaStore.js'
 import { bodegaStore } from '../../../../features/bodega/webview/bodegaStore.js';
 import { concertsStore } from '../../../../features/conciertos/webview/concertsStore.js';
 import { connectionsStore } from '../../../../features/conexiones/webview/connectionsStore.js';
+import { directorioStore } from '../../../../features/directorio/webview/directorioStore.js';
 import { githubStore } from '../../../../features/github/webview/githubStore.js';
+import { jardinStore } from '../../../../features/jardin/webview/jardinStore.js';
 import { musicStore } from '../../../../features/musica/webview/musicStore.js';
 import { usageStore } from '../../../../features/usage/webview/usageStore.js';
 import {
@@ -542,6 +544,7 @@ export function OfficeCanvas({
               officeState.isBodegaAt(pos.worldX, pos.worldY) ||
               officeState.isConcertTicketsAt(pos.worldX, pos.worldY) ||
               officeState.isAgendaAt(pos.worldX, pos.worldY) ||
+              officeState.jardinFurnitureAt(pos.worldX, pos.worldY) !== null ||
               officeState.isConnectionsRackAt(pos.worldX, pos.worldY) ||
               packHover(pos.worldX, pos.worldY, officeState) ||
               officeState.musicPlayerUidAt(pos.worldX, pos.worldY) !== null ||
@@ -809,6 +812,19 @@ export function OfficeCanvas({
       // Agenda room (features/agenda): today and this week.
       if (officeState.isAgendaAt(pos.worldX, pos.worldY)) {
         agendaStore.open();
+        return;
+      }
+
+      // Roof garden (features/jardin): the plants, their care and the supplies.
+      const jardin = officeState.jardinFurnitureAt(pos.worldX, pos.worldY);
+      if (jardin !== null) {
+        jardinStore.openFor(jardin);
+        return;
+      }
+
+      // Directorio room (features/directorio): searches by an agent with criteria.
+      if (officeState.isDirectorioAt(pos.worldX, pos.worldY)) {
+        directorioStore.open();
         return;
       }
 

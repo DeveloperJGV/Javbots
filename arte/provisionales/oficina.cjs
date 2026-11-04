@@ -26,7 +26,7 @@ const C = {
   garage: { h: 205, s: 14, b: -42, c: -20 },
   aperture: { h: 200, s: 6, b: 8, c: -45 },
   interns: { h: 209, s: 39, b: -25, c: -80 },
-  basement: { h: 26, s: 26, b: -30, c: -10 },
+  basement: { h: 35, s: 35, b: 5, c: -45 },
 };
 
 const tiles = new Array(COLS * ROWS).fill(VOID);
@@ -53,7 +53,7 @@ floor(1, 42, 12, 16, 6, C.hall); // Pasillo-galería
 floor(1, 13, 18, 28, 10, C.garage); // Taller DeLorean (piso epóxico, patrón nuevo floor_9)
 floor(15, 24, 18, 28, 2, C.aperture); // Aperture
 floor(26, 35, 18, 28, 1, C.interns); // Becarios
-floor(37, 42, 18, 28, 11, C.basement); // Sótano
+floor(37, 42, 18, 28, 7, C.basement); // Sótano: bodega ordenada, duela clara (bodega-ordenada.cjs)
 
 // ── Floor paint (carpets: walkable, drawn under furniture) ───
 /** carpet_3 = yellow painted line around a rectangle (garage bays). */
@@ -141,7 +141,7 @@ put('ZONE_POST_LIBRARY', 5, 8); // en (6,8) tapaba la entrada desde el pasillo
 put('WINDOW', 15, 0);
 quitar(); // put('WHITEBOARD', 17, 0);
 put('WINDOW', 20, 0);
-put('CLOCK', 22, 0);
+put('RELOJ_DIGITAL', 22, 0);
 quitar(); // put('WINDOW', 24, 0);
 quitar(); // put('SMALL_PAINTING', 26, 0);
 deskPod(15, 2);
@@ -184,7 +184,7 @@ put('ZONE_POST_PERMISSION', 41, 8);
 // stay free for the memorial paintings)
 put('SMALL_PAINTING', 3, 10);
 put('ZONE_SIGN_COMMIT', 24, 10);
-put('CLOCK', 33, 10);
+put('RELOJ_DIGITAL', 33, 10);
 put('SMALL_PAINTING_2', 41, 10);
 put('PLANT', 1, 12);
 put('PLANT_2', 42, 12);
@@ -225,7 +225,7 @@ put('ZONE_POST_TESTS', 19, 25);
 // Becarios
 quitar(); // put('LARGE_PAINTING', 27, 16);
 quitar(); // put('SMALL_PAINTING', 32, 16);
-put('CLOCK', 34, 16);
+put('RELOJ_DIGITAL', 34, 16);
 // lounge(27, 21): salita original, reemplazada por los sillones de Becarios v2
 quitar(); // put('SOFA_FRONT', 28, 21);
 quitar(); // put('SOFA_SIDE', 27, 22);
@@ -289,22 +289,32 @@ putFijo('senku-bandera', 'SCIENCE_FLAG', 39, 0);
 putFijo('anillo-pedestal', 'RING_PEDESTAL', 26, 12);
 // Archivo Jedi (las piezas privadas solo están en el plano local ~/.pixel-agents/layout.json)
 for (const c of [1, 3, 8, 10]) putFijo(`jedi-holocrones-${c}`, 'HOLOCRON_SHELF', c, 0); // en (6,0): los sables
-// Sótano (The Binding of Isaac)
+// Sótano: bodega ordenada (2026-11-03, bodega-ordenada.cjs). De Isaac solo queda el muñeco.
 putFijo('sotano-isaac', 'ISAAC', 39, 23);
-putFijo('sotano-corazon', 'HEART_PEDESTAL', 38, 20);
-putFijo('sotano-cofre', 'ISAAC_CHEST', 38, 27);
-putFijo('sotano-trampilla', 'TRAPDOOR', 39, 25);
+putFijo('almacen-estante-1', 'ALMACEN_SHELF', 37, 18);
+putFijo('almacen-estante-2', 'ALMACEN_SHELF', 41, 18);
+putFijo('almacen-cajas-1', 'ALMACEN_BOXES', 37, 20);
+putFijo('almacen-cajas-2', 'ALMACEN_BOXES', 38, 20);
+putFijo('almacen-diablito', 'ALMACEN_DOLLY', 41, 20);
+putFijo('almacen-rack-1', 'ALMACEN_RACK', 37, 25);
+putFijo('almacen-rack-2', 'ALMACEN_RACK', 41, 25);
+putFijo('almacen-escalera', 'ALMACEN_LADDER', 37, 27);
+putFijo('almacen-tarima', 'ALMACEN_PALLET', 41, 27);
+// Código: rincón del perrito (genérico) donde estaba el servidor
+putFijo('codigo-perrito-cama', 'DOG_BED', 14, 7);
+putFijo('codigo-perrito-cama-2', 'DOG_BED_2', 16, 7); // "son dos amigos" (perrito-amigo.cjs)
+putFijo('codigo-perrito-pelota', 'DOG_BALL', 16, 9);
+putFijo('codigo-perrito-hueso', 'DOG_BONE', 14, 9);
+putFijo('codigo-perrito-cuerda', 'DOG_ROPE', 15, 9);
+// Música: playlists del día (musica-playlist.cjs), de decoración hasta que exista la función
+putFijo('musica-playlist-prensa', 'MUSICA_PLAYLIST_PRESS', 21, 26);
+putFijo('musica-playlist-bote', 'MUSICA_PLAYLIST_REJECT_BIN', 23, 28);
+// (el neón de DISCOS, musica-neon, pasa a ser MUSICA_PLAYLIST_NEON en musica-playlist.cjs)
+putFijo('musica-rockband-guitarra', 'ROCKBAND_GUITAR_STAND', 15, 21);
+putFijo('musica-rockband-ampli', 'ROCKBAND_PRACTICE_AMP', 16, 22);
 // Becarios (cuarto de descanso)
 putFijo('becarios-dulces', 'VENDING_MACHINE', 33, 18);
 putFijo('sotano-puerta', 'BASEMENT_DOOR', 41, 16);
-putFijo('sotano-antorcha', 'BASEMENT_TORCH', 37, 16);
-putFijo('sotano-fogata-1', 'BASEMENT_FIRE', 37, 19);
-putFijo('sotano-fogata-2', 'BASEMENT_FIRE', 42, 19);
-putFijo('sotano-cebolla', 'ONION_PEDESTAL', 41, 20);
-putFijo('sotano-lagrimas-1', 'TEAR_STAINS', 40, 23);
-putFijo('sotano-roca-1', 'BASEMENT_ROCK', 37, 27);
-putFijo('sotano-roca-marcada', 'BASEMENT_ROCK_MARKED', 42, 27);
-putFijo('sotano-bomba', 'ISAAC_BOMB', 41, 27);
 putFijo('senku-telescopio', 'SENKU_TELESCOPE', 37, 2);
 putFijo('senku-rueda', 'SENKU_WATERWHEEL', 39, 2);
 putFijo('senku-estatua-totoro', 'STATUE_TOTORO', 41, 2);
@@ -373,7 +383,6 @@ putFijo('becarios-lava-2', 'LAVA_LAMP', 26, 26);
 putFijo('codigo-matrix', 'MATRIX_SCREEN', 17, 0);
 putFijo('codigo-mascara', 'FSOCIETY_MASK', 26, 0);
 putFijo('codigo-disco-tron', 'TRON_DISC', 24, 0);
-putFijo('codigo-rack', 'SERVER_RACK', 14, 7);
 putFijo('codigo-cafetera', 'COFFEE_MAKER', 27, 8);
 putFijo('codigo-rubik', 'RUBIK_CUBE', 20, 7);
 putFijo('codigo-pokebola', 'POKEBALL', 17, 3);

@@ -1,0 +1,13 @@
+{
+  "id": "JARDIN_BIODOME",
+  "name": "Biodomo geod\u00e9sico",
+  "category": "decor",
+  "type": "asset",
+  "canPlaceOnWalls": false,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 2,
+  "width": 48,
+  "height": 48,
+  "footprintW": 3,
+  "footprintH": 3
+}

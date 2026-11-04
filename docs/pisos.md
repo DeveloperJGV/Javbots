@@ -6,12 +6,19 @@ Javbots puede tener varias **oficinas** y cada oficina puede tener varios **piso
   los paquetes privados (`privado/<paquete>/pack.json`).
 - **Piso** = un plano propio dentro de un edificio. Cada edificio tiene su **Planta baja** (`pb`): es el plano de
   siempre.
-- **Elevador** = el panel de la izquierda (`webview-ui/src/components/Elevator.tsx`):
-  - arriba, los edificios;
-  - abajo, los botones de piso (S, PB, 1, 2…) con su nombre;
-  - el piso actual se ve prendido.
+- **Elevador** = la placa de acero de arriba a la izquierda (`webview-ui/src/components/Elevator.tsx`; las piezas
+  sin React, como los discos de pixeles y las letras de LED, están en `elevatorParts.ts`):
+  - arriba, los edificios, cada uno con su foquito (solo si hay más de una oficina);
+  - una pantallita de LED con el piso actual y ▲/▼ si estás arriba o abajo de la Planta baja; abajo, grabado, el
+    nombre del piso ("1 · Personal");
+  - los botones redondos de piso (S, PB, 1, 2…), de dos en dos y del piso más alto al más bajo. El piso actual se ve
+    prendido. El nombre de cada piso sale al pasar el mouse;
+  - debajo de una ranura, los botones de la oficina (`BottomToolbar.tsx`): editar la oficina, día y noche, pizarrón,
+    captura, ver toda la oficina y ajustes (y "Nuevo agente" en VS Code).
 
-  Con un solo edificio y un solo piso, el elevador se esconde y todo se ve igual que antes.
+  La placa siempre sale porque trae los botones de la oficina. Con un solo piso, solo trae la pantallita (PB), sin
+  botones de piso. En VS Code no hay pisos, así que solo trae los botones. El acercar y alejar quedó aparte, abajo a la
+  derecha (`ZoomControls.tsx`).
 
 ## Reglas
 
@@ -34,13 +41,14 @@ Javbots puede tener varias **oficinas** y cada oficina puede tener varios **piso
 
 Cada piso lleva estos campos:
 
-| Campo           | Qué es                                                                                                                                   |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`            | Minúsculas, números y guiones. No puede ser `pb`.                                                                                        |
-| `level`         | Entero distinto de 0: 1, 2… hacia arriba; -1, -2… hacia abajo (botones S, S2…). Ordena el elevador y no se repite dentro de un edificio. |
-| `button`        | Opcional, hasta 3 caracteres. Si falta, sale del nivel.                                                                                  |
-| `label`         | El nombre que se ve en el elevador.                                                                                                      |
-| `defaultLayout` | El plano con el que arranca el piso. Si no hay, sale un cuarto vacío.                                                                    |
+| Campo           | Qué es                                                                                                                                                                                                                     |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`            | Minúsculas, números y guiones. No puede ser `pb`.                                                                                                                                                                          |
+| `level`         | Entero distinto de 0: 1, 2… hacia arriba; -1, -2… hacia abajo (botones S, S2…). Ordena el elevador y no se repite dentro de un edificio.                                                                                   |
+| `button`        | Opcional, hasta 3 caracteres. Si falta, sale del nivel.                                                                                                                                                                    |
+| `label`         | El nombre que se ve en el elevador.                                                                                                                                                                                        |
+| `defaultLayout` | El plano con el que arranca el piso. Si no hay, sale un cuarto vacío.                                                                                                                                                      |
+| `roof`          | Opcional. `true` = la **azotea**: siempre el piso más alto del edificio, aunque después se agreguen pisos (su `level` se ignora y queda uno arriba del más alto). Botón `R` (de _roof_) si no trae otro. Una por edificio. |
 
 ### Desde una función (`features/<nombre>/`)
 
@@ -93,3 +101,5 @@ edificio y `.floor` es el piso.
   - **PB · Planta baja**: la oficina de siempre.
   - **1 · Agenda** (`features/agenda`): el panel "Hoy y esta semana", con el calendario compartido y las tareas de
     Google.
+  - **R · Roof garden** (`features/jardin`): el jardín, sus plantas y sus avisos en Google. Siempre el piso de hasta
+    arriba.

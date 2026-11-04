@@ -7,6 +7,12 @@ import {
   FLUX_LIGHT_COLOR,
   FLUX_LIGHT_INTENSITY,
   FLUX_LIGHT_RADIUS_PX,
+  GROW_LIGHT_COLOR,
+  GROW_LIGHT_INTENSITY,
+  GROW_LIGHT_RADIUS_PX,
+  HACKER_LIGHT_COLOR,
+  HACKER_LIGHT_INTENSITY,
+  HACKER_LIGHT_RADIUS_PX,
   IDLE_SCREEN_LIGHT_INTENSITY,
   IDLE_SCREEN_LIGHT_RADIUS_PX,
   JEDI_LIGHT_COLOR,
@@ -45,9 +51,14 @@ import {
   RING_LIGHT_COLOR,
   RING_LIGHT_INTENSITY,
   RING_LIGHT_RADIUS_PX,
+  ROOM_SCREEN_LIGHT_COLOR,
+  ROOM_SCREEN_LIGHT_INTENSITY,
+  ROOM_SCREEN_LIGHT_RADIUS_PX,
   SCREEN_LIGHT_COLOR,
   SCREEN_LIGHT_INTENSITY,
   SCREEN_LIGHT_RADIUS_PX,
+  STRING_LIGHT_INTENSITY,
+  STRING_LIGHT_RADIUS_PX,
   TELEPORT_BEAM_HEIGHT_PX,
   TELEPORT_LIGHT_COLOR,
   TELEPORT_LIGHT_INTENSITY,
@@ -113,6 +124,91 @@ const GLOW_SPECS: Record<string, { y: number; color: Rgb; radius: number; intens
     radius: MATRIX_LIGHT_RADIUS_PX,
     intensity: MATRIX_LIGHT_INTENSITY,
   },
+};
+/** The Personal floor and the roof garden: their lamps, screens, neons, grow lights and string lights, so the rooms
+ *  are not dark at night. `y` is where the light comes from, in sprite px from the top. */
+type Glow = { y: number; color: Rgb; radius: number; intensity: number };
+const SCREEN: Omit<Glow, 'y'> = {
+  color: hexToRgb(ROOM_SCREEN_LIGHT_COLOR),
+  radius: ROOM_SCREEN_LIGHT_RADIUS_PX,
+  intensity: ROOM_SCREEN_LIGHT_INTENSITY,
+};
+const GREEN_SCREEN: Omit<Glow, 'y'> = { ...SCREEN, color: hexToRgb(MATRIX_LIGHT_COLOR) };
+const GROW: Omit<Glow, 'y'> = {
+  color: hexToRgb(GROW_LIGHT_COLOR),
+  radius: GROW_LIGHT_RADIUS_PX,
+  intensity: GROW_LIGHT_INTENSITY,
+};
+const HACKER: Omit<Glow, 'y'> = {
+  color: hexToRgb(HACKER_LIGHT_COLOR),
+  radius: HACKER_LIGHT_RADIUS_PX,
+  intensity: HACKER_LIGHT_INTENSITY,
+};
+const WARM: Omit<Glow, 'y'> = {
+  color: hexToRgb(LAMP_LIGHT_COLOR),
+  radius: LAMP_LIGHT_RADIUS_PX,
+  intensity: LAMP_LIGHT_INTENSITY,
+};
+const STRING: Omit<Glow, 'y'> = {
+  color: hexToRgb(LAMP_LIGHT_COLOR),
+  radius: STRING_LIGHT_RADIUS_PX,
+  intensity: STRING_LIGHT_INTENSITY,
+};
+const at = (spec: Omit<Glow, 'y'>, y: number): Glow => ({ ...spec, y });
+const ROOM_GLOWS: Record<string, Glow> = {
+  // Agenda, "mando cálido"
+  AGENDA_CONSOLE: at(SCREEN, 12),
+  AGENDA_RADAR: at(GREEN_SCREEN, 16),
+  AGENDA_TASKS: at(SCREEN, 16),
+  AGENDA_WEEK_MAP: at(SCREEN, 16),
+  MANDO_STATUS: at(SCREEN, 12),
+  MANDO_CONSOLE: at(SCREEN, 12),
+  MANDO_HOLO_GLOBE: at(SCREEN, 12),
+  MANDO_SERVER: at(GREEN_SCREEN, 16),
+  MANDO_BEACON: at(WARM, 6),
+  MANDO_BRASS_LAMP: at(WARM, 10),
+  // Freelance, "sótano hacker"
+  FREELANCE_BULB: at(HACKER, 10),
+  FREELANCE_NEON_404: at(HACKER, 8),
+  FREELANCE_LAMP: at(GREEN_SCREEN, 12),
+  FREELANCE_DESK_LAMP: at(HACKER, 10),
+  FREELANCE_MINI_SERVER: at(GREEN_SCREEN, 8),
+  FREELANCE_WORLD_MAP: at(GREEN_SCREEN, 16),
+  FREELANCE_DESK: at(GREEN_SCREEN, 10),
+  FREELANCE_RACK: at(GREEN_SCREEN, 16),
+  FREELANCE_FRIDGE: at(SCREEN, 16),
+  // Directorio, ideas de salida y música
+  DIRECTORIO_LAMP: at(WARM, 10),
+  AGENDA_SALIDAS_JAR_GLOW: at(WARM, 8),
+  MUSICA_PLAYLIST_NEON: at(HACKER, 8),
+  // Cerebro, wellness y Rock Band
+  CEREBRO_DOME: at(SCREEN, 16),
+  CEREBRO_CONSOLE: at(SCREEN, 12),
+  CORREO_INBOX_SCREEN: at(SCREEN, 12),
+  PROYECTOS_PROGRESS_SCREEN: at(GREEN_SCREEN, 8),
+  SUSCRIPCIONES_NEXT_CHARGE: at(GREEN_SCREEN, 8),
+  IDEAS_BULB_ON: at(WARM, 8),
+  POMODORO_FOCUS_LAMP_ON: at(WARM, 6),
+  POMODORO_BREAK_SIGN: at(GREEN_SCREEN, 8),
+  ROCKBAND_PRACTICE_AMP: at(HACKER, 8),
+  // Roof garden
+  JARDIN_PERGOLA: at(STRING, 8),
+  JARDIN_SOLAR_PERGOLA: at(STRING, 8),
+  JARDIN_GREENHOUSE: at(STRING, 20),
+  JARDIN_HYDRO_RACK: at(GROW, 16),
+  JARDIN_HYDRO_TOWER: at(GROW, 16),
+  JARDIN_GERMINATION: at(GROW, 12),
+  JARDIN_ORBITAL_POD: at(GROW, 16),
+  JARDIN_BIOREACTOR: at(GREEN_SCREEN, 16),
+  JARDIN_TISSUE_LAB: at(GREEN_SCREEN, 12),
+  JARDIN_BIODOME: at(SCREEN, 16),
+  JARDIN_SEED_VAULT: at(SCREEN, 16),
+  JARDIN_SPACE_TERRARIUM: at(SCREEN, 12),
+  JARDIN_CONTROL: at(SCREEN, 12),
+  JARDIN_WEATHER_STATION: at(SCREEN, 8),
+  JARDIN_REFLECTING_POOL: at(SCREEN, 8),
+  JARDIN_SMART_POT: at(GREEN_SCREEN, 8),
+  JARDIN_SENSOR: at(GREEN_SCREEN, 8),
 };
 /** A private pack's light for this furniture type (WebviewPack.glow), its color parsed once. */
 const packRgb = new Map<string, Rgb>();
@@ -320,7 +416,7 @@ export function collectLights(
       });
       continue;
     }
-    const glow = GLOW_SPECS[type] ?? packGlowRgb(type);
+    const glow = GLOW_SPECS[type] ?? ROOM_GLOWS[type] ?? packGlowRgb(type);
     if (glow) {
       lights.push({
         x: f.x + w / 2,

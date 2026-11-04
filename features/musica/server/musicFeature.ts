@@ -362,7 +362,8 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
         ...(volume !== undefined ? { volume } : {}),
         ...(tempo !== undefined ? { tempo } : {}),
       },
-      lyrics: lyrics ?? null,
+      // Other screens keep their contract: an instrumental song still reads as "no lyrics" there.
+      lyrics: lyrics && !lyrics.instrumental ? lyrics : null,
       lyricsLoading: lyricsSearching,
     };
   }

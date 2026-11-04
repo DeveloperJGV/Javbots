@@ -404,6 +404,31 @@ export const RACK_BLINK_PERIOD_SEC = 1.3;
 export const RACK_BLINK_FRACTION = 0.3;
 /** Lava lamp (Fase 4, Becarios): its bands as drawn in LAVA_LAMP.png; they creep along slowly. */
 export const LAVA_BANDS = ['#ff5a3c', '#ff9a3c', '#b8389c', '#7a2a8a'] as const;
+
+// Digital wall clocks (ambientFurniture 'digital'): the live time in 3x5 digits over the art's fixed 09:30
+// (arte/pixellab/digital.py draws the art; same digit positions and colors).
+export const DIGITAL_CLOCK_DIGITS: Record<string, readonly string[]> = {
+  '0': ['###', '#.#', '#.#', '#.#', '###'],
+  '1': ['.#.', '##.', '.#.', '.#.', '###'],
+  '2': ['###', '..#', '###', '#..', '###'],
+  '3': ['###', '..#', '###', '..#', '###'],
+  '4': ['#.#', '#.#', '###', '..#', '..#'],
+  '5': ['###', '#..', '###', '..#', '###'],
+  '6': ['###', '#..', '###', '#.#', '###'],
+  '7': ['###', '..#', '..#', '..#', '..#'],
+  '8': ['###', '#.#', '###', '#.#', '###'],
+  '9': ['###', '#.#', '###', '..#', '###'],
+};
+export const DIGITAL_CLOCK_CYAN = '#22D3EE';
+export const DIGITAL_CLOCK_CYAN_SCREEN = '#0B1A2B';
+export const DIGITAL_CLOCK_AMBER = '#FFB347';
+export const DIGITAL_CLOCK_AMBER_SCREEN = '#1C0E0A';
+export const DIGITAL_CLOCK_RED = '#FF6B5A';
+export const DIGITAL_CLOCK_RED_SCREEN = '#1D1D22';
+/** Seconds the colon of a horizontal clock stays lit, then off, in a loop. */
+export const DIGITAL_CLOCK_COLON_SEC = 1;
+/** Variants a digital clock keeps cached (this minute with the colon on and off, plus slack). */
+export const DIGITAL_CLOCK_CACHE_MAX = 4;
 export const LAVA_CYCLE_STEP_SEC = 0.6;
 /** Jukebox lights (features/musica, arte/pixellab/musica/rockola/armar.py): exact colors of each style's tubes. */
 export const JUKEBOX_CLASSIC_BANDS = ['#ff5ffd', '#ffc94a', '#4fe3f0'] as const;
@@ -715,6 +740,18 @@ export const RING_LIGHT_INTENSITY = 0.5;
 export const TRON_LIGHT_COLOR = '#5ff3ff';
 export const TRON_LIGHT_RADIUS_PX = 24;
 export const TRON_LIGHT_INTENSITY = 0.6;
+// Lights of the Personal floor and the roof garden at night (office/effects/lighting.ts ROOM_GLOWS)
+export const ROOM_SCREEN_LIGHT_COLOR = '#6ad8ff';
+export const ROOM_SCREEN_LIGHT_RADIUS_PX = 26;
+export const ROOM_SCREEN_LIGHT_INTENSITY = 0.45;
+export const GROW_LIGHT_COLOR = '#d07aff';
+export const GROW_LIGHT_RADIUS_PX = 34;
+export const GROW_LIGHT_INTENSITY = 0.6;
+export const HACKER_LIGHT_COLOR = '#ff4fd8';
+export const HACKER_LIGHT_RADIUS_PX = 40;
+export const HACKER_LIGHT_INTENSITY = 0.7;
+export const STRING_LIGHT_RADIUS_PX = 44;
+export const STRING_LIGHT_INTENSITY = 0.8;
 export const MATRIX_LIGHT_COLOR = '#4dff6a';
 export const MATRIX_LIGHT_RADIUS_PX = 30;
 export const MATRIX_LIGHT_INTENSITY = 0.5;
@@ -815,24 +852,66 @@ export const OFFICE_STORAGE_KEY = 'javbots.oficina';
 /** Name of the main office on the switch when the pack doesn't give one. */
 export const MAIN_OFFICE_LABEL = 'Javbots';
 
-// ── Floors (core/src/offices.ts) and the elevator panel on the left that picks building and floor ──
+// ── Floors (core/src/offices.ts) and the elevator plate top-left that picks building and floor ──
 /** URL parameter that picks the floor of the office (?piso=x); also remembered per browser, per office. */
 export const FLOOR_URL_PARAM = 'piso';
 export const FLOOR_STORAGE_KEY_PREFIX = 'javbots.piso.';
 /** The ground floor on the elevator: the office's own layout, where the agents sit. */
 export const GROUND_FLOOR_LABEL = 'Planta baja';
 export const GROUND_FLOOR_BUTTON = 'PB';
-/** The panel: a steel plate with dark buttons; the floor you're on is lit. */
-export const ELEVATOR_PLATE_BG = '#3a3d4e';
-export const ELEVATOR_PLATE_BORDER = '#5c6078';
-export const ELEVATOR_BUTTON_BG = '#23243a';
-export const ELEVATOR_BUTTON_TEXT = '#c8cbe0';
-export const ELEVATOR_LIT_BG = '#ffb84a';
-export const ELEVATOR_LIT_BORDER = '#ffe2a8';
+/**
+ * The elevator (components/Elevator.tsx): a steel plate top-left with rivets, a dark LED display, round floor
+ * buttons (the one you're on lit amber) and, under a groove, the office's function buttons (editor, day/night,
+ * board, capture, fit, settings). Bevel = light top/left edge, dark bottom/right edge, hard shadow.
+ */
+export const ELEVATOR_PLATE_BG = '#4a4e62';
+export const ELEVATOR_PLATE_LIGHT = '#7a7f98';
+export const ELEVATOR_PLATE_DARK = '#25273a';
+/** Corner rivets: dark rim, steel face, one bright pixel. */
+export const ELEVATOR_RIVET_RIM = '#25273a';
+export const ELEVATOR_RIVET_FACE = '#8e93ad';
+export const ELEVATOR_RIVET_SHINE = '#d4d7e8';
+/** Engraved text on the plate (floor name, building names): light text over a dark 1 px line below. */
+export const ELEVATOR_ENGRAVED_TEXT = '#d4d7e8';
+export const ELEVATOR_ENGRAVED_SHADOW = '#1c1d2c';
+/** Round floor buttons: dark bezel ring, steel face, a highlight pixel run, a hard shadow. */
+export const ELEVATOR_BUTTON_RING = '#1c1d2c';
+export const ELEVATOR_BUTTON_FACE = '#a4a8c0';
+export const ELEVATOR_BUTTON_SHINE = '#dfe1ee';
+export const ELEVATOR_BUTTON_SHADOW = '#14151f';
+export const ELEVATOR_BUTTON_TEXT = '#1c1d2c';
+/** The lit floor: amber face, pale ring, a halo of see-through amber pixels around it. */
+export const ELEVATOR_LIT_FACE = '#ffb84a';
+export const ELEVATOR_LIT_RING = '#ffe2a8';
+export const ELEVATOR_LIT_SHINE = '#fff3d6';
+export const ELEVATOR_LIT_GLOW = 'rgba(255, 170, 60, 0.35)';
 export const ELEVATOR_LIT_TEXT = '#2a1a00';
-/** The little display over the buttons that says the floor you're on. */
+/** Square function buttons under the groove: steel face, dark icon; an open tool lights its icon amber. */
+export const ELEVATOR_KEY_FACE = '#5c6078';
+export const ELEVATOR_KEY_HOVER = '#6c7190';
+export const ELEVATOR_KEY_ICON = '#e4e6f2';
+export const ELEVATOR_KEY_ACTIVE_FACE = '#2a1a00';
+export const ELEVATOR_KEY_ACTIVE_ICON = '#ffb84a';
+/** The little display: almost black glass, red-amber LED text, unlit arrows still faintly visible. */
 export const ELEVATOR_DISPLAY_BG = '#120c08';
-export const ELEVATOR_DISPLAY_TEXT = '#ff9a2e';
+export const ELEVATOR_DISPLAY_TEXT = '#ff7a2e';
+export const ELEVATOR_DISPLAY_DIM = '#2e160a';
+/** Building lamps: lit = the one you're in. */
+export const ELEVATOR_LAMP_OFF = '#2a2c3e';
+export const ELEVATOR_LAMP_ON = '#ff7a2e';
+/** Sizes (CSS px). Floor button = disc of FLOOR_DISC_PX sprite pixels drawn at ELEVATOR_PX each. */
+export const ELEVATOR_PX = 2;
+export const ELEVATOR_FLOOR_DISC_PX = 16;
+/** Halo around the lit disc, in sprite pixels per side (the SVG keeps room for it on every button). */
+export const ELEVATOR_FLOOR_GLOW_PX = 2;
+export const ELEVATOR_KEY_SIZE_PX = 36;
+export const ELEVATOR_KEY_ICON_PX = 24;
+export const ELEVATOR_RIVET_PX = 4;
+/** The display's ▲▼ are drawn bigger than the plate's pixels, like real LED arrows. */
+export const ELEVATOR_ARROW_PX = 3;
+/** The display's dot-matrix letters: CSS px per dot cell, and the lit part of each cell (3 of 4 px, 1 px gap). */
+export const ELEVATOR_DISPLAY_PX = 4;
+export const ELEVATOR_LED_DOT = 3 / 4;
 
 // ── Walking staff (office/staff): furniture a private pack draws as people (WebviewPack.staff) ──
 /** How long a guard checks the piece on an alarm before going back to its post. */

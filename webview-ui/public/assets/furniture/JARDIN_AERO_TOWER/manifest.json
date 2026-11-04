@@ -1,0 +1,13 @@
+{
+  "id": "JARDIN_AERO_TOWER",
+  "name": "Torre aerop\u00f3nica",
+  "category": "decor",
+  "type": "asset",
+  "canPlaceOnWalls": false,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 2,
+  "width": 16,
+  "height": 48,
+  "footprintW": 1,
+  "footprintH": 3
+}

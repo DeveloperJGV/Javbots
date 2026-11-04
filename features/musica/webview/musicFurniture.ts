@@ -222,3 +222,26 @@ export class MusicNotes {
     }
   }
 }
+
+/**
+ * Where the lyric bubble goes, in CSS px inside the office: over the floor's player while it is on screen, else
+ * pinned at the top center ("pin"). `anchor` is the middle of the player's top edge (null when the floor has none);
+ * `bubble` is the bubble's last measured size. Over the player, the bubble slides sideways to stay inside the office.
+ */
+export function lyricBubblePlacement(
+  anchor: { x: number; y: number } | null,
+  view: { width: number; height: number },
+  bubble: { width: number; height: number },
+  margin: number,
+): { kind: 'pin' } | { kind: 'player'; left: number; top: number } {
+  if (!anchor) return { kind: 'pin' };
+  const onScreen =
+    anchor.x >= 0 &&
+    anchor.x <= view.width &&
+    anchor.y <= view.height &&
+    anchor.y - bubble.height >= margin;
+  if (!onScreen) return { kind: 'pin' };
+  const half = bubble.width / 2;
+  const left = Math.min(Math.max(anchor.x, margin + half), view.width - margin - half);
+  return { kind: 'player', left, top: anchor.y };
+}

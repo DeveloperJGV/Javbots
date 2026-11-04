@@ -1,11 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import type { OfficeState } from '../../../webview-ui/src/office/engine/officeState.js';
 import { overlayProjection } from '../../../webview-ui/src/office/projection.js';
 import { renderDpr } from '../../../webview-ui/src/viewScale.js';
-import { LYRIC_BUBBLE_GAP_PX, LYRIC_BUBBLE_MAX_WIDTH_PX } from './constants.js';
-import { isMusicPlayer, lyricAnchorY } from './musicFurniture.js';
-import { currentLyricIndex, currentLyrics, isMusicPlaying, type MusicState } from './musicStore.js';
+import {
+  LYRIC_BUBBLE_GAP_PX,
+  LYRIC_BUBBLE_MARGIN_PX,
+  LYRIC_BUBBLE_MAX_WIDTH_PX,
+  LYRIC_NOTE,
+  LYRIC_PIN_MAX_WIDTH_PX,
+  LYRIC_PIN_TOP_PX,
+} from './constants.js';
+import { isMusicPlayer, lyricAnchorY, lyricBubblePlacement } from './musicFurniture.js';
+import { isMusicPlaying, lyricBubbleText, type MusicState } from './musicStore.js';
 
 interface LyricBubbleProps {
   music: MusicState;
@@ -15,13 +22,17 @@ interface LyricBubbleProps {
   panRef: React.RefObject<{ x: number; y: number }>;
 }
 
-/** The line being sung, in a speech bubble over the turntable (synced lyrics only, while playing). */
+/**
+ * The line being sung, in a speech bubble over the music player of the floor on screen (synced lyrics only, while
+ * playing; a note between lines and for instrumentals). With no player in view (another floor without one, or
+ * panned away) it pins small at the top center, so it can always be read. Sits under the elevator and the panels.
+ */
 export function LyricBubble({ music, officeState, containerRef, zoom, panRef }: LyricBubbleProps) {
-  const playing = isMusicPlaying(music) && Boolean(currentLyrics(music)?.synced);
+  const live = isMusicPlaying(music) && !music.lyricBubbleHidden;
   // Follow pans, zooms and the lyrics' clock frame by frame, like the agents' labels.
   const [, setTick] = useState(0);
   useEffect(() => {
-    if (!playing) return;
+    if (!live) return;
     let rafId = 0;
     const tick = () => {
       setTick((n) => n + 1);
@@ -29,38 +40,81 @@ export function LyricBubble({ music, officeState, containerRef, zoom, panRef }: 
     };
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
-  }, [playing]);
+  }, [live]);
+  const bubbleRef = useRef<HTMLDivElement>(null);
 
-  if (!playing) return null;
-  const lyrics = currentLyrics(music);
-  const idx = currentLyricIndex(music);
-  const text = idx >= 0 ? lyrics?.lines?.[idx]?.text : undefined;
-  const turntable = officeState.furniture.find(isMusicPlayer);
+  const text = live ? lyricBubbleText(music) : null;
   const el = containerRef.current;
-  if (!text || !turntable || !el) return null;
+  if (!text || !el) return null;
 
-  const project = overlayProjection(
-    officeState.getLayout(),
-    el.getBoundingClientRect(),
-    zoom,
-    panRef.current,
-    renderDpr(),
+  const rect = el.getBoundingClientRect();
+  const player = officeState.furniture.find(isMusicPlayer);
+  let anchor: { x: number; y: number } | null = null;
+  if (player) {
+    const project = overlayProjection(
+      officeState.getLayout(),
+      rect,
+      zoom,
+      panRef.current,
+      renderDpr(),
+    );
+    anchor = {
+      x: project.toScreenX(player.x + (player.sprite[0]?.length ?? 0) / 2),
+      y: project.toScreenY(lyricAnchorY(player, officeState.furniture) - LYRIC_BUBBLE_GAP_PX),
+    };
+  }
+  // Last frame's size: the bubble re-renders every frame, so this lags one frame at most.
+  const measured = bubbleRef.current;
+  const place = lyricBubblePlacement(
+    anchor,
+    { width: rect.width, height: rect.height },
+    {
+      width: measured?.offsetWidth ?? LYRIC_BUBBLE_MAX_WIDTH_PX,
+      height: measured?.offsetHeight ?? 0,
+    },
+    LYRIC_BUBBLE_MARGIN_PX,
   );
-  const x = project.toScreenX(turntable.x + (turntable.sprite[0]?.length ?? 0) / 2);
-  const y = project.toScreenY(lyricAnchorY(turntable, officeState.furniture) - LYRIC_BUBBLE_GAP_PX);
+
+  if (place.kind === 'pin') {
+    return (
+      <div
+        ref={bubbleRef}
+        data-lyric-bubble="pin"
+        className="absolute pointer-events-none z-10 left-1/2 -translate-x-1/2 bg-bg text-text text-2xs border-2 border-border shadow-pixel py-2 px-8 text-center leading-snug"
+        style={{ top: LYRIC_PIN_TOP_PX, maxWidth: LYRIC_PIN_MAX_WIDTH_PX, width: 'max-content' }}
+      >
+        {text === LYRIC_NOTE ? text : `${LYRIC_NOTE} ${text}`}
+      </div>
+    );
+  }
 
   return (
     <div
-      className="absolute pointer-events-none z-10 bg-bg text-text text-xs border-2 border-border shadow-pixel py-4 px-8 text-center leading-snug"
+      data-lyric-bubble="player"
+      className="absolute pointer-events-none z-10 flex flex-col items-center"
       style={{
-        left: x,
-        top: y,
+        left: place.left,
+        top: place.top,
         transform: 'translate(-50%, -100%)',
-        maxWidth: LYRIC_BUBBLE_MAX_WIDTH_PX,
         width: 'max-content',
       }}
     >
-      {text}
+      <div
+        ref={bubbleRef}
+        className="bg-bg text-text text-xs border-2 border-border shadow-pixel py-4 px-8 text-center leading-snug"
+        style={{ maxWidth: LYRIC_BUBBLE_MAX_WIDTH_PX }}
+      >
+        {text}
+      </div>
+      {/* Stepped pixel tail pointing down at the player (stays over it when the bubble slides sideways) */}
+      <div
+        className="flex flex-col items-center"
+        style={{ transform: `translateX(${(anchor?.x ?? place.left) - place.left}px)` }}
+      >
+        <div className="bg-border w-12 h-3" />
+        <div className="bg-border w-8 h-3" />
+        <div className="bg-border w-4 h-3" />
+      </div>
     </div>
   );
 }

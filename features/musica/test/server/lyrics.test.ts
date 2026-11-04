@@ -3,13 +3,20 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { FeatureClient } from '../../../../server/src/serverFeature.js';
 import { CoverCache } from '../../server/cover.js';
-import { cleanLines, fetchLrclib, type Lyrics, parseLrc, songKey } from '../../server/lyrics.js';
+import {
+  cleanLines,
+  fetchLrclib,
+  INSTRUMENTAL,
+  type Lyrics,
+  parseLrc,
+  songKey,
+} from '../../server/lyrics.js';
 import { createMusicFeature } from '../../server/musicFeature.js';
 import { readMusicConfig } from '../../server/musicConfig.js';
 
 const LINES = [
-  { timeMs: 1000, text: 'We are no strangers to love' },
-  { timeMs: 5000, text: 'You know the rules and so do I' },
+  { timeMs: 1000, text: 'línea de prueba uno' },
+  { timeMs: 5000, text: 'línea de prueba dos' },
   { timeMs: 9000, text: '♪' },
 ];
 
@@ -92,10 +99,28 @@ describe('LRCLIB', () => {
     expect(urls[1]).not.toContain('album');
   });
 
-  it('returns nothing for misses, instrumentals and junk', async () => {
+  it('returns nothing for misses and junk', async () => {
     expect(await fetchLrclib(song, answer({}, 404))).toBeUndefined();
-    expect(await fetchLrclib(song, answer({ instrumental: true }))).toBeUndefined();
     expect(await fetchLrclib(song, answer({ syncedLyrics: '[00:00.00]probe' }))).toBeUndefined();
+  });
+
+  it('says so when the song is instrumental, but real lyrics win in a search', async () => {
+    expect(await fetchLrclib(song, answer({ instrumental: true }))).toEqual(INSTRUMENTAL);
+    const search = (records: unknown[]) => async (url: string) =>
+      url.includes('/api/get')
+        ? new Response('{}', { status: 404 })
+        : new Response(JSON.stringify(records), { status: 200 });
+    expect(await fetchLrclib(song, search([{ duration: 200, instrumental: true }]))).toEqual(
+      INSTRUMENTAL,
+    );
+    const found = await fetchLrclib(
+      song,
+      search([
+        { duration: 200, instrumental: true },
+        { duration: 205, plainLyrics: 'línea de prueba uno\nlínea de prueba dos' },
+      ]),
+    );
+    expect(found).toMatchObject({ synced: false, lines: [{ text: 'línea de prueba uno' }, {}] });
   });
 });
 
@@ -187,6 +212,17 @@ describe('lyrics in the music feature', () => {
     await post(feature, '/api/music/lyrics', { title: 'Una', artist: 'Otra', lines: null });
     await new Promise((r) => setTimeout(r, 0));
     expect(lastLyrics()).toEqual({ type: 'musicLyrics', title: 'Una', artist: 'Otra' });
+    feature.dispose?.();
+  });
+
+  it('tells the page an instrumental song is instrumental, and other screens just "no lyrics"', async () => {
+    const { feature, sent } = setup(INSTRUMENTAL);
+    await post(feature, '/api/music', { track: { title: 'Una', artist: 'Otra' } });
+    await post(feature, '/api/music/lyrics', { title: 'Una', artist: 'Otra', lines: null });
+    await new Promise((r) => setTimeout(r, 0));
+    const last = [...sent].reverse().find((m) => m.type === 'musicLyrics');
+    expect(last).toMatchObject({ title: 'Una', instrumental: true, lines: [] });
+    expect(feature.screenState().lyrics).toBeNull();
     feature.dispose?.();
   });
 

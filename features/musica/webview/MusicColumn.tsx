@@ -4,6 +4,7 @@ import type { MusicControl } from '../../../core/src/messages.js';
 import type { MessageTransport } from '../../../core/src/transport.js';
 import perrosUrl from './assets/perros-corriendo.png';
 import {
+  LYRIC_NOTE,
   MUSIC_COLUMN_WIDTH_PX,
   MUSIC_COVER_DISPLAY_PX,
   MUSIC_PROGRESS_TICK_MS,
@@ -171,11 +172,15 @@ const LYRICS_SOURCE_LABEL = { spotify: 'Letra: Spotify', lrclib: 'Letra: LRCLIB'
 /** Karaoke: the line being sung, bright, between the previous and the next. Unsynced lyrics just scroll. */
 function Lyrics({ music, now }: { music: MusicState; now: number }) {
   const status = lyricsStatus(music);
-  if (status === 'loading' || status === 'none') {
+  if (status === 'loading' || status === 'none' || status === 'instrumental') {
     return (
       <div className="flex-1 min-h-0 flex flex-col gap-8 border-t-2 border-border pt-10">
         {status === 'loading' ? (
           <LyricsLoader />
+        ) : status === 'instrumental' ? (
+          <span className="text-xs text-text-muted">
+            {LYRIC_NOTE} Instrumental: no tiene letra.
+          </span>
         ) : (
           <span className="text-xs text-text-muted">No encontré la letra de esta canción.</span>
         )}
