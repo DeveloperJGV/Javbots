@@ -49,6 +49,7 @@ export type ServerMessage =
   | ConcertsStatus
   | AgendaStatus
   | JardinStatus
+  | PomodoroStatus
   | SearchRoomStatus
   | ConnectionsStatus;
 
@@ -96,6 +97,10 @@ export type ClientMessage =
   | SaveJardinSupply
   | DeleteJardinSupply
   | ResolveJardinInbox
+  | StartPomodoro
+  | PausePomodoro
+  | ResumePomodoro
+  | StopPomodoro
   | CreateSearchRequest
   | LaunchSearchAgent
   | MarkSearchResult
@@ -667,6 +672,20 @@ export interface JardinCheck {
 
 export type ConnectionState = 'ok' | 'warn' | 'off' | 'idea';
 
+export interface PomodoroStatus {
+  type: 'pomodoroStatus';
+  phase: PomodoroPhase;
+  running: boolean;
+  endsAt?: string;
+  remainingMs?: number;
+  totalMs: number;
+  doneToday: number;
+  untilLong: number;
+  suggested: PomodoroPhase;
+}
+
+export type PomodoroPhase = 'idle' | 'focus' | 'short' | 'long';
+
 export interface SearchRoomStatus {
   type: 'searchRoomStatus';
   room: string;
@@ -884,10 +903,10 @@ export interface InstallMusicExtension {
 
 export interface MusicControl {
   type: 'musicControl';
-  action: AnonymousSchema_489;
+  action: AnonymousSchema_496;
 }
 
-export type AnonymousSchema_489 = 'previous' | 'togglePlay' | 'next';
+export type AnonymousSchema_496 = 'previous' | 'togglePlay' | 'next';
 
 export interface DisconnectSpotify {
   type: 'disconnectSpotify';
@@ -977,6 +996,25 @@ export interface ResolveJardinInbox {
 }
 
 export type JardinInboxAction = 'care' | 'photo' | 'discard';
+
+export interface StartPomodoro {
+  type: 'startPomodoro';
+  phase: PomodoroBlock;
+}
+
+export type PomodoroBlock = 'focus' | 'short' | 'long';
+
+export interface PausePomodoro {
+  type: 'pausePomodoro';
+}
+
+export interface ResumePomodoro {
+  type: 'resumePomodoro';
+}
+
+export interface StopPomodoro {
+  type: 'stopPomodoro';
+}
 
 export interface CreateSearchRequest {
   type: 'createSearchRequest';

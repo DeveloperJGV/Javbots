@@ -136,6 +136,8 @@ components:
         - $ref: '#/components/schemas/AgendaStatus'
         # Roof garden (feature: features/jardin)
         - $ref: '#/components/schemas/JardinStatus'
+        # Pomodoro on the roof (feature: features/pomodoro)
+        - $ref: '#/components/schemas/PomodoroStatus'
         # Agent searches with criteria (features/busquedas; rooms: features/directorio)
         - $ref: '#/components/schemas/SearchRoomStatus'
         # Outside connections board (feature: features/conexiones)
@@ -191,6 +193,11 @@ components:
         - $ref: '#/components/schemas/SaveJardinSupply'
         - $ref: '#/components/schemas/DeleteJardinSupply'
         - $ref: '#/components/schemas/ResolveJardinInbox'
+        # Pomodoro on the roof (feature: features/pomodoro)
+        - $ref: '#/components/schemas/StartPomodoro'
+        - $ref: '#/components/schemas/PausePomodoro'
+        - $ref: '#/components/schemas/ResumePomodoro'
+        - $ref: '#/components/schemas/StopPomodoro'
         # Agent searches with criteria (features/busquedas; rooms: features/directorio)
         - $ref: '#/components/schemas/CreateSearchRequest'
         - $ref: '#/components/schemas/LaunchSearchAgent'
@@ -1807,6 +1814,90 @@ components:
           type: string
         kind:
           $ref: '#/components/schemas/JardinCareKind'
+    # ── Pomodoro on the roof (feature: features/pomodoro) ──────────
+
+    PomodoroPhase:
+      type: string
+      description: A focus block, a short break or a long break; idle when nothing runs.
+      enum: [idle, focus, short, long]
+
+    PomodoroBlock:
+      type: string
+      description: A block that can be started.
+      enum: [focus, short, long]
+
+    PomodoroStatus:
+      description: >-
+        The pomodoro timer, kept by the server so it rings with the page closed. A running block has endsAt; a paused
+        one has remainingMs instead. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, phase, running, totalMs, doneToday, untilLong, suggested]
+      properties:
+        type:
+          const: pomodoroStatus
+        phase:
+          $ref: '#/components/schemas/PomodoroPhase'
+        running:
+          type: boolean
+          description: Counting down now (false when idle or paused).
+        endsAt:
+          type: string
+          description: ISO time the running block ends.
+        remainingMs:
+          type: integer
+          description: What is left of a paused block.
+        totalMs:
+          type: integer
+          description: Length of the current block (0 when idle).
+        doneToday:
+          type: integer
+          description: Focus blocks finished today (local day).
+        untilLong:
+          type: integer
+          description: Focus blocks left before the long break is suggested.
+        suggested:
+          $ref: '#/components/schemas/PomodoroPhase'
+          description: What the panel offers first (focus, or the break that follows a finished focus block).
+
+    StartPomodoro:
+      description: Start a focus block or a break now (replaces whatever runs). Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, phase]
+      properties:
+        type:
+          const: startPomodoro
+        phase:
+          $ref: '#/components/schemas/PomodoroBlock'
+
+    PausePomodoro:
+      description: Pause the running block. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: pausePomodoro
+
+    ResumePomodoro:
+      description: Resume a paused block. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: resumePomodoro
+
+    StopPomodoro:
+      description: Stop the current block without counting it. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: stopPomodoro
+
     # ── Agent searches with criteria (feature: features/busquedas) ─
     # A room (features/directorio today) keeps requests; a Claude Code agent
     # searches the web for each one with the room's criteria and leaves its

@@ -3,6 +3,18 @@
 Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
 (Pixel Agents) está en [CHANGELOG.md](CHANGELOG.md).
 
+## 4 de noviembre de 2026
+
+- **El pomodoro de la azotea ya funciona.** Un clic en el reloj de jitomate (o en el reloj de arena) del rincón de
+  descanso abre el pomodoro: **Enfoque 25 min**, **Descanso 5 min** o **Descanso largo 15 min** (te lo sugiere después
+  de 4 pomodoros), con **Pausar**, **Seguir** y **Parar**, y cuántos llevas hoy. Mientras corre, el jitomate de la
+  pared cuenta hacia atrás (minutos arriba, segundos abajo), el letrero de **DESCANSO** solo se prende en los
+  descansos y en el reloj de arena grande va cayendo la arena. El tiempo lo lleva la oficina, no la página: al
+  terminar te llega un aviso de la Mac aunque la tengas cerrada, y si reinicias la oficina sigue donde iba. El
+  siguiente bloque siempre lo empiezas tú.
+  No depende de la azotea: sus piezas funcionan en cualquier oficina o piso donde las pongas con el editor, y el
+  temporizador es uno solo para todas.
+
 ## 3 de noviembre de 2026
 
 - **Relojes digitales con la hora de verdad.** Los relojes de manecillas se cambiaron por digitales: el de pared de la

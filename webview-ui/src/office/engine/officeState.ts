@@ -26,6 +26,11 @@ import {
   MusicNotes,
 } from '../../../../features/musica/webview/musicFurniture.js';
 import { musicStore } from '../../../../features/musica/webview/musicStore.js';
+import { applyPomodoroFurniture } from '../../../../features/pomodoro/webview/pomodoroFurniture.js';
+import {
+  isPomodoroFurniture,
+  pomodoroStore,
+} from '../../../../features/pomodoro/webview/pomodoroStore.js';
 import {
   applyUsageFurniture,
   isUsageMeter,
@@ -1199,8 +1204,14 @@ export class OfficeState {
     );
     // Optional feature: plants with late watering look thirsty on the roof (features/jardin)
     const withJardin = applyJardinFurniture(withAgenda, jardinStore.get().status);
+    // Optional feature: the pomodoro corner follows the timer (features/pomodoro): countdown, DESCANSO sign, hourglass
+    const withPomodoro = applyPomodoroFurniture(
+      withJardin,
+      pomodoroStore.get().status,
+      this.furnitureAnimTimer,
+    );
     // Private packs (webview-ui/src/packs/registry.ts)
-    const withPacks = applyPackFurniture(withJardin, {
+    const withPacks = applyPackFurniture(withPomodoro, {
       timeSec: this.furnitureAnimTimer,
       officeState: this,
     });
@@ -1351,6 +1362,13 @@ export class OfficeState {
       (f) => isJardinFurniture(f.type, status) && hitsPaintedPixel(f, worldX, worldY),
     );
     return hit?.type ?? null;
+  }
+
+  /** Whether a world point lands on a tomato timer or an hourglass of the roof (features/pomodoro). */
+  isPomodoroAt(worldX: number, worldY: number): boolean {
+    return this.furniture.some(
+      (f) => isPomodoroFurniture(f.type) && hitsPaintedPixel(f, worldX, worldY),
+    );
   }
 
   /** Whether a world point lands on a piece of the Directorio room (features/directorio). */

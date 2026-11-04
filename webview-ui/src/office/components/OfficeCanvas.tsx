@@ -8,6 +8,7 @@ import { directorioStore } from '../../../../features/directorio/webview/directo
 import { githubStore } from '../../../../features/github/webview/githubStore.js';
 import { jardinStore } from '../../../../features/jardin/webview/jardinStore.js';
 import { musicStore } from '../../../../features/musica/webview/musicStore.js';
+import { pomodoroStore } from '../../../../features/pomodoro/webview/pomodoroStore.js';
 import { usageStore } from '../../../../features/usage/webview/usageStore.js';
 import {
   CAMERA_FOLLOW_LERP,
@@ -545,6 +546,7 @@ export function OfficeCanvas({
               officeState.isConcertTicketsAt(pos.worldX, pos.worldY) ||
               officeState.isAgendaAt(pos.worldX, pos.worldY) ||
               officeState.jardinFurnitureAt(pos.worldX, pos.worldY) !== null ||
+              officeState.isPomodoroAt(pos.worldX, pos.worldY) ||
               officeState.isConnectionsRackAt(pos.worldX, pos.worldY) ||
               packHover(pos.worldX, pos.worldY, officeState) ||
               officeState.musicPlayerUidAt(pos.worldX, pos.worldY) !== null ||
@@ -819,6 +821,12 @@ export function OfficeCanvas({
       const jardin = officeState.jardinFurnitureAt(pos.worldX, pos.worldY);
       if (jardin !== null) {
         jardinStore.openFor(jardin);
+        return;
+      }
+
+      // Pomodoro corner of the roof (features/pomodoro): the timer.
+      if (officeState.isPomodoroAt(pos.worldX, pos.worldY)) {
+        pomodoroStore.open();
         return;
       }
 

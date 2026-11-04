@@ -26,6 +26,7 @@ import { createHerdrFeature } from '../../features/herdr/server/herdrFeature.js'
 import { JARDIN_FLOOR_LAYOUT_FILE } from '../../features/jardin/server/constants.js';
 import { createJardinFeature } from '../../features/jardin/server/jardinFeature.js';
 import { createMusicFeature } from '../../features/musica/server/musicFeature.js';
+import { createPomodoroFeature } from '../../features/pomodoro/server/pomodoroFeature.js';
 import { runUsageCommand } from '../../features/usage/server/usageCommand.js';
 import { createUsageFeature } from '../../features/usage/server/usageFeature.js';
 import { AgentRuntime } from './agentRuntime.js';
@@ -311,6 +312,9 @@ async function main(): Promise<void> {
         floorLayout: () =>
           readLayoutFile(path.join(distRoot, 'jardin', 'planos', JARDIN_FLOOR_LAYOUT_FILE)),
       }),
+      // Optional feature: the pomodoro corner of the roof, timed by the server so it rings with the page closed
+      // (features/pomodoro).
+      createPomodoroFeature(),
     ];
     // Private packs (privado/<pack>/server.ts, found by scripts/generate-packs.mjs): their own features.
     const publicFeatures = [...features];

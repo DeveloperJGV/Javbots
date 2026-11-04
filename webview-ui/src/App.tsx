@@ -19,6 +19,8 @@ import { LyricBubble } from '../../features/musica/webview/LyricBubble.js';
 import { MusicColumn } from '../../features/musica/webview/MusicColumn.js';
 import { MusicSettings } from '../../features/musica/webview/MusicSettings.js';
 import { useMusic } from '../../features/musica/webview/useMusic.js';
+import { PomodoroPanel } from '../../features/pomodoro/webview/PomodoroPanel.js';
+import { usePomodoro } from '../../features/pomodoro/webview/usePomodoro.js';
 import { UsageBar } from '../../features/usage/webview/UsageBar.js';
 import { useUsage } from '../../features/usage/webview/useUsage.js';
 import { toMajorMinor } from './changelogData.js';
@@ -84,6 +86,8 @@ function App() {
   useAgenda(transport);
   // Optional feature (features/jardin): the roof garden, sent once when the page opens
   useJardin(transport);
+  // Optional feature (features/pomodoro): the roof's timer, sent when the page opens (the wall clock needs it)
+  usePomodoro(transport);
   useSearchRoom(transport, directorioStore);
   // Optional feature (features/herdr): each character named after its herdr terminal tab
   useHerdrTabs(transport, getOfficeState());
@@ -684,6 +688,8 @@ function App() {
         <AgendaPanel transport={transport} />
         {/* Optional feature (features/jardin): the roof garden, from its control screen, shed, tool rack or plaque */}
         <JardinPanel transport={transport} />
+        {/* Optional feature (features/pomodoro): the timer, from the tomato clock or the hourglass on the roof */}
+        <PomodoroPanel transport={transport} />
         {/* Optional feature (features/directorio): searches by an agent with criteria, from the room's furniture */}
         <DirectorioPanel transport={transport} />
         {/* Optional feature (features/conexiones): the outside services the office talks to, from the rack */}
