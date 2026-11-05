@@ -38,7 +38,8 @@ export default [
     },
   },
   {
-    files: ['adapters/vscode/constants.ts'],
+    // The colors' home on the server side, like webview constants.ts (a private pack's too: a page it prints)
+    files: ['adapters/vscode/constants.ts', 'privado/*/features/*/server/constants.ts'],
     rules: {
       'pixel-agents/no-inline-colors': 'off',
     },
