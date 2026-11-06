@@ -13,6 +13,7 @@ import type {
 import type { MessageTransport } from '../../../core/src/transport.js';
 import { Button } from '../../../webview-ui/src/components/ui/Button.js';
 import { Modal } from '../../../webview-ui/src/components/ui/Modal.js';
+import { officeToken } from '../../../webview-ui/src/officeToken.js';
 import {
   CARE_DEFAULT_DAYS,
   CARE_LABEL,
@@ -34,9 +35,6 @@ import {
   todayCares,
   upcomingCares,
 } from './jardinText.js';
-
-/** The office token of this page: photos and the Google login link carry it. */
-const officeToken = (): string | null => new URLSearchParams(window.location.search).get('token');
 
 const inputClass = 'py-2 px-4 bg-bg-dark border-2 border-border rounded-none text-text';
 const sectionTitle = 'text-lg text-accent-bright';

@@ -104,6 +104,7 @@ components:
         - $ref: '#/components/schemas/LayoutLoaded'
         # Offices (core/src/offices.ts)
         - $ref: '#/components/schemas/OfficesLoaded'
+        - $ref: '#/components/schemas/OfficeAccess'
         # Assets
         - $ref: '#/components/schemas/FurnitureAssetsLoaded'
         - $ref: '#/components/schemas/CharacterSpritesLoaded'
@@ -138,6 +139,8 @@ components:
         - $ref: '#/components/schemas/JardinStatus'
         # Pomodoro on the roof (feature: features/pomodoro)
         - $ref: '#/components/schemas/PomodoroStatus'
+        # Personality screen of the freelance room (feature: features/perfil)
+        - $ref: '#/components/schemas/PerfilStatus'
         # Agent searches with criteria (features/busquedas; rooms: features/directorio)
         - $ref: '#/components/schemas/SearchRoomStatus'
         # Outside connections board (feature: features/conexiones)
@@ -887,6 +890,21 @@ components:
             type: object
 
     # ── Client message variants ────────────────────────────────────
+
+    OfficeAccess:
+      description: >-
+        Whether this connection holds the owner's office token (standalone only).
+        Sent when the socket opens and again on webviewReady. A page that is not
+        privileged still renders the office, but private panels get no data, so
+        the page tells the owner to reopen it from the shortcut.
+      type: object
+      additionalProperties: false
+      required: [type, privileged]
+      properties:
+        type:
+          const: officeAccess
+        privileged:
+          type: boolean
 
     OfficesLoaded:
       description: >-
@@ -1825,6 +1843,68 @@ components:
       type: string
       description: A block that can be started.
       enum: [focus, short, long]
+
+    PerfilStatus:
+      description: >-
+        The owner's personality test result for the screen of the freelance room, read from a private file in
+        ~/.pixel-agents (never in the repository). No profile means the file is missing or unreadable. Privileged
+        connections only.
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: perfilStatus
+        profile:
+          $ref: '#/components/schemas/PerfilProfile'
+
+    PerfilProfile:
+      description: A personality test result (e.g. a four-letter type with its traits).
+      type: object
+      additionalProperties: false
+      required: [code, name, traits]
+      properties:
+        code:
+          type: string
+          description: The type as the test writes it, e.g. a four-letter code with a suffix.
+        name:
+          type: string
+          description: The type's name.
+        role:
+          type: string
+        strategy:
+          type: string
+        traits:
+          type: array
+          items:
+            $ref: '#/components/schemas/PerfilTrait'
+        facts:
+          type: array
+          description: Short fun facts about the type, for the panel.
+          items:
+            type: string
+        source:
+          type: string
+          description: Where the result comes from (the test's name).
+        date:
+          type: string
+          description: Day of the result (YYYY-MM-DD).
+
+    PerfilTrait:
+      description: One trait of the result.
+      type: object
+      additionalProperties: false
+      required: [letter, name, percent]
+      properties:
+        letter:
+          type: string
+          description: The letter this trait gives the code.
+        name:
+          type: string
+        percent:
+          type: integer
+          minimum: 0
+          maximum: 100
 
     PomodoroStatus:
       description: >-

@@ -25,18 +25,12 @@ cambiamos el idioma, el arte, los cuartos y le agregamos cosas nuevas. La docume
 
 ## Novedades
 
-- **3 de noviembre de 2026**: pisos con elevador (cada oficina es un edificio; los pisos nuevos traen su propio
-  plano y los agentes viven en la Planta baja), tablero de conexiones en el Sótano (un foco por servicio de fuera,
-  con su estado y para qué sirve), un solo reproductor en la sala de música con cuatro estilos (tocadiscos o tres
-  rockolas), los boletos del mostrador, que muestran tus próximos conciertos de Google Calendar y buscan más en
-  Ticketmaster México, y una azotea con jardín (siempre el piso de hasta arriba): plantas con sus cuidados, avisos en
-  un calendario y en Google Tasks que se recorren hasta que se hacen, notas y fotos desde el celular por Google Drive
-  e inventario del jardín; y el Directorio: un agente
-  de Claude Code busca técnicos o servicios con tus criterios (oficial primero, sin negocios fantasma) y deja los
-  resultados en un panel; y la letra de la canción en un globito encima del reproductor de cada piso.
-- **2 de noviembre de 2026**: sala de música (tienda de discos retro con cabina de DJ, instrumentos, karaoke y
-  guiños geek), una rockola con tres estilos que se cambian con un clic y una bodega con miniaturas de todo lo que
-  no está puesto en la oficina.
+- **5 de noviembre de 2026**: el piso Personal queda de 2×2 en vez de una fila larga, pantalla de perfil en el cuarto de freelance (tu tipo de personalidad, sus rasgos y
+  datos curiosos, desde un archivo privado) y avisos del pomodoro también en Windows.
+- **4 de noviembre de 2026**: el pomodoro del rincón de descanso funciona (enfoque y descansos, con la cuenta en el
+  reloj de jitomate y el tiempo en el servidor); el acceso directo abre la oficina en su propia ventana, sin barra de direcciones; la
+  llave ya no se ve en la dirección ni cambia al reiniciar, y una pestaña sin llave lo avisa en lugar de mostrar
+  paneles vacíos.
 
 Todo lo nuevo, por fecha, en [NOVEDADES.md](NOVEDADES.md).
 

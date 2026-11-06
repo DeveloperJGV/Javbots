@@ -852,6 +852,12 @@ export const OFFICE_STORAGE_KEY = 'javbots.oficina';
 /** Name of the main office on the switch when the pack doesn't give one. */
 export const MAIN_OFFICE_LABEL = 'Javbots';
 
+// ── Office token (webview-ui/src/officeToken.ts): the owner's key, kept out of the address bar ──
+/** URL parameter the shortcut and the CLI open the office with (?token=x). */
+export const OFFICE_TOKEN_URL_PARAM = 'token';
+/** Where this browser remembers it once it is taken off the address bar. */
+export const OFFICE_TOKEN_STORAGE_KEY = 'javbots.llave';
+
 // ── Floors (core/src/offices.ts) and the elevator plate top-left that picks building and floor ──
 /** URL parameter that picks the floor of the office (?piso=x); also remembered per browser, per office. */
 export const FLOOR_URL_PARAM = 'piso';

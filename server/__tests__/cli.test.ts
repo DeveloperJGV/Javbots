@@ -78,6 +78,11 @@ describe('parseArgs', () => {
     expect(parseArgs(['-p', '8080']).port).toBe(8080);
   });
 
+  it('reads --nueva-llave (new office token)', () => {
+    expect(parseArgs([]).newToken).toBeUndefined();
+    expect(parseArgs(['--port', '3100', '--nueva-llave']).newToken).toBe(true);
+  });
+
   // 3. Boundary values are accepted
   it('accepts the boundary ports 1 and 65535', () => {
     expect(parseArgs(['--port', '1']).port).toBe(1);

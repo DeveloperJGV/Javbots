@@ -409,6 +409,49 @@ describe('/ws privileged-message gate', () => {
 
   // The first-run ask is solicited by the server during the webviewReady
   // handshake, and only where the answer could be honored: a tokened client.
+  // officeAccess tells the page whether it holds the token (a stale tab after a restart says so instead of
+  // showing empty private panels). It is re-sent on webviewReady, which is what these listen for.
+  it('answers officeAccess privileged=true to the tokened page', async () => {
+    const { port, token } = await startStandalone();
+    const result = await connectTo(
+      `ws://127.0.0.1:${port.toString()}/ws?token=${encodeURIComponent(token)}`,
+      { Origin: `http://127.0.0.1:${port.toString()}` },
+    );
+    sockets.push(result.socket);
+    const access = waitForMessage(result.socket, 'officeAccess');
+    result.socket.send(JSON.stringify({ type: 'webviewReady' }));
+    expect(await access).toEqual({ type: 'officeAccess', privileged: true });
+  });
+
+  it('answers officeAccess privileged=false to a page with a stale token', async () => {
+    const { port } = await startStandalone();
+    const result = await connectTo(
+      `ws://127.0.0.1:${port.toString()}/ws?token=00000000-0000-4000-8000-000000000000`,
+      { Origin: `http://127.0.0.1:${port.toString()}` },
+    );
+    sockets.push(result.socket);
+    const access = waitForMessage(result.socket, 'officeAccess');
+    result.socket.send(JSON.stringify({ type: 'webviewReady' }));
+    expect(await access).toEqual({ type: 'officeAccess', privileged: false });
+  });
+
+  it('requires the token it was started with', async () => {
+    const fixed = '11111111-2222-4333-8444-555555555555';
+    const config = await server.start({
+      embedded: false,
+      store: new AgentStateStore(),
+      token: fixed,
+    });
+    expect(config.token).toBe(fixed);
+    const result = await connectTo(`ws://127.0.0.1:${config.port.toString()}/ws?token=${fixed}`, {
+      Origin: `http://127.0.0.1:${config.port.toString()}`,
+    });
+    sockets.push(result.socket);
+    const access = waitForMessage(result.socket, 'officeAccess');
+    result.socket.send(JSON.stringify({ type: 'webviewReady' }));
+    expect(await access).toEqual({ type: 'officeAccess', privileged: true });
+  });
+
   it('sends hooksConsentRequest on the tokened handshake', async () => {
     const { port, token } = await startStandalone();
 

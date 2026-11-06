@@ -114,7 +114,8 @@ describe('pomodoro (server)', () => {
     const p = feature();
     p.handleClientMessage!({ type: 'startPomodoro', phase: 'focus' }, client(true));
     const file = pomodoroPath(home);
-    expect(fs.statSync(file).mode & 0o777).toBe(0o600);
+    // Windows has no POSIX mode bits (it always reports 0o666)
+    if (process.platform !== 'win32') expect(fs.statSync(file).mode & 0o777).toBe(0o600);
 
     // Back before it ended: still running
     now = at(9, 20);

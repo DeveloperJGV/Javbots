@@ -1281,8 +1281,8 @@
   ],
   "furniture": [
     {
-      "uid": "freelance-poster",
-      "type": "FREELANCE_POSTER",
+      "uid": "freelance-perfil",
+      "type": "PERFIL_SCREEN",
       "col": 1,
       "row": 0
     },

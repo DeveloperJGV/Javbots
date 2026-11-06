@@ -8,6 +8,7 @@ import { directorioStore } from '../../../../features/directorio/webview/directo
 import { githubStore } from '../../../../features/github/webview/githubStore.js';
 import { jardinStore } from '../../../../features/jardin/webview/jardinStore.js';
 import { musicStore } from '../../../../features/musica/webview/musicStore.js';
+import { perfilStore } from '../../../../features/perfil/webview/perfilStore.js';
 import { pomodoroStore } from '../../../../features/pomodoro/webview/pomodoroStore.js';
 import { usageStore } from '../../../../features/usage/webview/usageStore.js';
 import {
@@ -547,6 +548,7 @@ export function OfficeCanvas({
               officeState.isAgendaAt(pos.worldX, pos.worldY) ||
               officeState.jardinFurnitureAt(pos.worldX, pos.worldY) !== null ||
               officeState.isPomodoroAt(pos.worldX, pos.worldY) ||
+              officeState.isPerfilAt(pos.worldX, pos.worldY) ||
               officeState.isConnectionsRackAt(pos.worldX, pos.worldY) ||
               packHover(pos.worldX, pos.worldY, officeState) ||
               officeState.musicPlayerUidAt(pos.worldX, pos.worldY) !== null ||
@@ -821,6 +823,12 @@ export function OfficeCanvas({
       const jardin = officeState.jardinFurnitureAt(pos.worldX, pos.worldY);
       if (jardin !== null) {
         jardinStore.openFor(jardin);
+        return;
+      }
+
+      // Personality screen of the freelance room (features/perfil): the result's panel.
+      if (officeState.isPerfilAt(pos.worldX, pos.worldY)) {
+        perfilStore.open();
         return;
       }
 

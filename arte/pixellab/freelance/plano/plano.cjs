@@ -38,7 +38,7 @@ for (let r = 7; r <= 8; r++) for (let c = 3; c <= 6; c++) carpetTiles[r * COLS +
 
 const furniture = [
   // En la pared
-  ['freelance-poster', 'FREELANCE_POSTER', 1, 0],
+  ['freelance-perfil', 'PERFIL_SCREEN', 1, 0], // features/perfil: the padlock poster went to the storage room
   ['freelance-repisa', 'FREELANCE_SHELF', 3, 0],
   ['freelance-mapa', 'FREELANCE_WORLD_MAP', 7, 0],
   ['freelance-misiones', 'FREELANCE_MISSIONS', 12, 0],

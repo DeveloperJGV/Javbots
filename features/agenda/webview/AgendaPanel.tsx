@@ -4,6 +4,7 @@ import type { AgendaItem, AgendaStatus } from '../../../core/src/messages.js';
 import type { MessageTransport } from '../../../core/src/transport.js';
 import { Button } from '../../../webview-ui/src/components/ui/Button.js';
 import { Modal } from '../../../webview-ui/src/components/ui/Modal.js';
+import { officeToken } from '../../../webview-ui/src/officeToken.js';
 import { agendaStore } from './agendaStore.js';
 import {
   type AgendaDraft,
@@ -19,9 +20,6 @@ import {
   timeText,
 } from './agendaText.js';
 import { AGENDA_KINDS } from './constants.js';
-
-/** The office token of this page: the Google login link carries it (only the owner can connect). */
-const officeToken = (): string | null => new URLSearchParams(window.location.search).get('token');
 
 const linkClass = 'text-accent-bright underline';
 const inputClass = 'py-2 px-4 bg-bg-dark border-2 border-border rounded-none text-text';

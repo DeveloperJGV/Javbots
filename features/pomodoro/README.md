@@ -7,7 +7,7 @@ El rincón de descanso del **Roof garden** (features/jardin) tiene un reloj de j
   abre el panel: **Enfoque 25 min**, **Descanso 5 min**, **Descanso largo 15 min**, **Pausar** / **Seguir**,
   **Parar** y cuántos pomodoros llevas hoy. El botón resaltado es el que toca: enfoque, o el descanso que sigue a un
   enfoque terminado (el largo después de 4).
-- **El tiempo lo lleva el servidor**, no la página: al terminar un bloque manda un aviso de la Mac
+- **El tiempo lo lleva el servidor**, no la página: al terminar un bloque manda un aviso de escritorio (Mac o Windows)
   ("Terminó tu pomodoro: toma 5 minutos", "Se acabó el descanso: ¿otro pomodoro?") aunque la página esté cerrada. Nunca
   empieza el siguiente bloque solo. **Parar** no cuenta el bloque.
 - **Sobrevive a un reinicio**: el bloque que corría sigue; uno que terminó con la oficina cerrada cuenta al arrancar
@@ -22,7 +22,7 @@ El rincón de descanso del **Roof garden** (features/jardin) tiene un reloj de j
 
 ## Archivos
 
-- `server/pomodoroFeature.ts`: el `ServerFeature` (mensajes, el temporizador, el aviso de la Mac).
+- `server/pomodoroFeature.ts`: el `ServerFeature` (mensajes, el temporizador, el aviso de escritorio, `server/src/notifyDesktop.ts`).
 - `server/pomodoroData.ts`: `~/.pixel-agents/pomodoro.json` (600, escritura atómica): el bloque (`endsAt` si corre,
   `remainingMs` si está en pausa), los pomodoros del día y la racha hacia el descanso largo.
 - `server/constants.ts`: duraciones (25 / 5 / 15 min) y cada cuántos va el largo (4).

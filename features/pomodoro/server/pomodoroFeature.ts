@@ -1,7 +1,7 @@
 import * as os from 'os';
 
 import type { PomodoroBlock } from '../../../core/src/messages.js';
-import { notifyMac } from '../../../server/src/notifyMac.js';
+import { notifyDesktop } from '../../../server/src/notifyDesktop.js';
 import type { FeatureClient, ServerFeature } from '../../../server/src/serverFeature.js';
 import {
   LOG_PREFIX,
@@ -53,7 +53,7 @@ export function createPomodoroFeature(opts: PomodoroFeatureOptions = {}): Server
 } {
   const home = opts.home ?? os.homedir();
   const now = opts.now ?? (() => new Date());
-  const notify = opts.notify ?? notifyMac;
+  const notify = opts.notify ?? notifyDesktop;
   const clients = new Set<FeatureClient>();
   let data: PomodoroData = readData(home, localDay(now()));
   let timer: NodeJS.Timeout | null = null;

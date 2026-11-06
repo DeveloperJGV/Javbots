@@ -71,6 +71,8 @@ export class PixelAgentsServer {
     onSetHooksEnabled?: SetHooksEnabledSideEffect;
     onReloadAssets?: ReloadAssetsSideEffect;
     features?: ServerFeature[];
+    /** Token to require instead of a fresh random one (the standalone CLI keeps one across restarts). */
+    token?: string;
   }): Promise<ServerConfig> {
     const embedded = options?.embedded ?? true;
     const wantsSpa = !embedded;
@@ -93,7 +95,7 @@ export class PixelAgentsServer {
     }
 
     // Start our own server
-    const token = crypto.randomUUID();
+    const token = options?.token ?? crypto.randomUUID();
     const store = options?.store;
 
     const { app, port } = await createHttpServer({

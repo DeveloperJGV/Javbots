@@ -3,6 +3,19 @@
 Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
 (Pixel Agents) está en [CHANGELOG.md](CHANGELOG.md).
 
+## 5 de noviembre de 2026
+
+- **El piso Personal en cuadro.** Sus cuatro cuartos ya no van en una sola fila larga: quedan de 2×2 (agenda y
+  freelance arriba, Directorio y Cerebro abajo), con puertas entre los de al lado y una puerta en la pared de en medio
+  para bajar de cada cuarto al de abajo. Se ve completo sin tanto desplazarse.
+- **Pantalla de perfil en el cuarto de freelance.** En la pared del cuarto de freelance (piso Personal), en lugar del
+  póster del candado, hay una pantalla verde con tu tipo de personalidad, una barra por rasgo y un cursor que
+  parpadea. Un clic abre el panel con los porcentajes, el rol, la estrategia y los datos curiosos. El resultado se lee
+  de un archivo privado en tu carpeta de Javbots y no se sube a ningún lado; sin ese archivo la pantalla es una
+  terminal vacía. Detalles en [features/perfil](features/perfil/README.md).
+- **Avisos del pomodoro también en Windows.** Al terminar un bloque sale la notificación de Windows, aunque la oficina
+  esté cerrada (antes solo avisaba en la Mac).
+
 ## 4 de noviembre de 2026
 
 - **El pomodoro de la azotea ya funciona.** Un clic en el reloj de jitomate (o en el reloj de arena) del rincón de
@@ -10,10 +23,19 @@ Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
   de 4 pomodoros), con **Pausar**, **Seguir** y **Parar**, y cuántos llevas hoy. Mientras corre, el jitomate de la
   pared cuenta hacia atrás (minutos arriba, segundos abajo), el letrero de **DESCANSO** solo se prende en los
   descansos y en el reloj de arena grande va cayendo la arena. El tiempo lo lleva la oficina, no la página: al
-  terminar te llega un aviso de la Mac aunque la tengas cerrada, y si reinicias la oficina sigue donde iba. El
+  terminar te llega un aviso de escritorio (en la Mac o en Windows) aunque la tengas cerrada, y si reinicias la oficina sigue donde iba. El
   siguiente bloque siempre lo empiezas tú.
   No depende de la azotea: sus piezas funcionan en cualquier oficina o piso donde las pongas con el editor, y el
   temporizador es uno solo para todas.
+- **La oficina en su propia ventana, sin la llave a la vista.** El acceso directo Javbots abre la oficina en una
+  ventana propia del navegador (Chrome o Edge en modo app): sin barra de direcciones y con su lugar en la barra de
+  tareas. La llave de la oficina se quita de la dirección en cuanto carga la página y se recuerda en el navegador,
+  así que ya no queda en el historial y F5 sigue funcionando.
+- **La llave ya no cambia al reiniciar.** Antes, cada arranque inventaba una llave nueva y una pestaña abierta de
+  antes se quedaba sin datos de GitHub, agenda, jardín, Directorio, conexiones y uso (solo seguía la música). Ahora
+  la llave se guarda y es la misma en cada arranque. Si alguna vez quieres cambiarla: `pixel-agents --nueva-llave`.
+- **Aviso de pestaña sin llave.** Si una pestaña no tiene la llave buena, la oficina lo dice arriba al centro en
+  lugar de mostrar paneles vacíos: hay que abrirla otra vez desde el acceso directo.
 
 ## 3 de noviembre de 2026
 

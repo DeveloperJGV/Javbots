@@ -1,4 +1,4 @@
-﻿# Abre la oficina de Javbots en el navegador; la arranca primero si no está corriendo.
+﻿# Abre la oficina de Javbots en su propia ventana del navegador (modo app); la arranca primero si no está corriendo.
 # Uso: el acceso directo "Javbots" (scripts/crear-acceso-directo.ps1), o
 #   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/abrir-oficina.ps1 [-Port 3100]
 # La oficina corre en una consola minimizada: ciérrala para apagarla.
@@ -50,11 +50,27 @@ if (-not (Test-Office)) {
   }
 }
 
-# The token changes on every start; the server writes it here.
+# The server writes its port and token here (the token stays the same across restarts: ~/.pixel-agents/office-token.json).
 $deadline = (Get-Date).AddSeconds(10)
 while (-not (Test-Path $serverJson)) {
   if ((Get-Date) -gt $deadline) { throw "No apareció $serverJson." }
   Start-Sleep -Milliseconds 300
 }
 $info = Get-Content $serverJson -Raw | ConvertFrom-Json
-Start-Process "http://127.0.0.1:$($info.port)/?token=$($info.token)"
+# The page takes the token off the address bar as soon as it loads and remembers it in the browser.
+$url = "http://127.0.0.1:$($info.port)/?token=$($info.token)"
+
+# Its own app window (no address bar, own taskbar entry): Chrome, else Edge, else a normal tab.
+$browsers = @(
+  (Join-Path $env:ProgramFiles 'Google\Chrome\Application\chrome.exe'),
+  (Join-Path ${env:ProgramFiles(x86)} 'Google\Chrome\Application\chrome.exe'),
+  (Join-Path $env:LOCALAPPDATA 'Google\Chrome\Application\chrome.exe'),
+  (Join-Path ${env:ProgramFiles(x86)} 'Microsoft\Edge\Application\msedge.exe'),
+  (Join-Path $env:ProgramFiles 'Microsoft\Edge\Application\msedge.exe')
+)
+$browser = $browsers | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+if ($browser) {
+  Start-Process $browser -ArgumentList "--app=$url"
+} else {
+  Start-Process $url
+}

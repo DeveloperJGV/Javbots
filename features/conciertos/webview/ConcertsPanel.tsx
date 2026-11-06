@@ -1,13 +1,11 @@
-import { useEffect, useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
 
 import type { MessageTransport } from '../../../core/src/transport.js';
 import { Button } from '../../../webview-ui/src/components/ui/Button.js';
 import { Modal } from '../../../webview-ui/src/components/ui/Modal.js';
+import { officeToken } from '../../../webview-ui/src/officeToken.js';
 import { concertsStore } from './concertsStore.js';
 import { CONCERT_SOON_DAYS, dateText, daysLeftText, daysUntil } from './concertsText.js';
-
-/** The office token of this page: the Google login link carries it (only the owner can connect). */
-const officeToken = (): string | null => new URLSearchParams(window.location.search).get('token');
 
 const linkClass = 'text-accent-bright underline';
 
@@ -16,13 +14,6 @@ const linkClass = 'text-accent-bright underline';
  * owner's Google calendar (events titled "Concierto: …"), and a search of Ticketmaster México for the artists the owner listens to most.
  */
 export function ConcertsPanel({ transport }: { transport: MessageTransport }) {
-  useEffect(
-    () =>
-      transport.onMessage((msg) => {
-        if (msg.type === 'concertsStatus') concertsStore.setStatus(msg);
-      }),
-    [transport],
-  );
   const { status, open } = useSyncExternalStore(concertsStore.subscribe, concertsStore.get);
   if (!open || !status) return null;
   const token = officeToken();

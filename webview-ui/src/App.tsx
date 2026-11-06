@@ -6,11 +6,13 @@ import { BodegaPanel } from '../../features/bodega/webview/BodegaPanel.js';
 import { bodegaStore } from '../../features/bodega/webview/bodegaStore.js';
 import { useSearchRoom } from '../../features/busquedas/webview/searchRoomStore.js';
 import { ConcertsPanel } from '../../features/conciertos/webview/ConcertsPanel.js';
+import { useConcerts } from '../../features/conciertos/webview/useConcerts.js';
 import { ConnectionsPanel } from '../../features/conexiones/webview/ConnectionsPanel.js';
 import { useConnections } from '../../features/conexiones/webview/useConnections.js';
 import { DirectorioPanel } from '../../features/directorio/webview/DirectorioPanel.js';
 import { directorioStore } from '../../features/directorio/webview/directorioStore.js';
 import { GithubPanel } from '../../features/github/webview/GithubPanel.js';
+import { useGithub } from '../../features/github/webview/useGithub.js';
 import { useHerdrTabs } from '../../features/herdr/webview/useHerdrTabs.js';
 import { JardinPanel } from '../../features/jardin/webview/JardinPanel.js';
 import { useJardin } from '../../features/jardin/webview/useJardin.js';
@@ -19,6 +21,8 @@ import { LyricBubble } from '../../features/musica/webview/LyricBubble.js';
 import { MusicColumn } from '../../features/musica/webview/MusicColumn.js';
 import { MusicSettings } from '../../features/musica/webview/MusicSettings.js';
 import { useMusic } from '../../features/musica/webview/useMusic.js';
+import { PerfilPanel } from '../../features/perfil/webview/PerfilPanel.js';
+import { usePerfil } from '../../features/perfil/webview/usePerfil.js';
 import { PomodoroPanel } from '../../features/pomodoro/webview/PomodoroPanel.js';
 import { usePomodoro } from '../../features/pomodoro/webview/usePomodoro.js';
 import { UsageBar } from '../../features/usage/webview/UsageBar.js';
@@ -33,6 +37,7 @@ import { EditActionBar } from './components/EditActionBar.js';
 import { Elevator } from './components/Elevator.js';
 import { IntroBubble } from './components/IntroBubble.js';
 import { MigrationNotice } from './components/MigrationNotice.js';
+import { OfficeAccessNotice } from './components/OfficeAccessNotice.js';
 import { SettingsModal } from './components/SettingsModal.js';
 import { Tooltip } from './components/Tooltip.js';
 import { Modal } from './components/ui/Modal.js';
@@ -84,10 +89,16 @@ function App() {
   // Optional feature (features/conexiones): listen from the start, the board is sent once when the page opens
   useConnections(transport);
   useAgenda(transport);
+  // Optional feature (features/github): listen from the start too. On a reload (a floor change reloads the page)
+  // the server sends the last answer on webviewReady, before layoutLoaded; GithubPanel only mounts after the layout,
+  // so on its own it missed it and the cabinets stayed empty until the next refresh (10 min).
+  useGithub(transport);
+  useConcerts(transport);
   // Optional feature (features/jardin): the roof garden, sent once when the page opens
   useJardin(transport);
   // Optional feature (features/pomodoro): the roof's timer, sent when the page opens (the wall clock needs it)
   usePomodoro(transport);
+  usePerfil(transport);
   useSearchRoom(transport, directorioStore);
   // Optional feature (features/herdr): each character named after its herdr terminal tab
   useHerdrTabs(transport, getOfficeState());
@@ -659,6 +670,7 @@ function App() {
         />
 
         <ConnectionIndicator />
+        <OfficeAccessNotice />
 
         {/* The elevator plate top-left: buildings and floors (core/src/offices.ts) plus the office's function keys */}
         <Elevator>
@@ -690,6 +702,7 @@ function App() {
         <JardinPanel transport={transport} />
         {/* Optional feature (features/pomodoro): the timer, from the tomato clock or the hourglass on the roof */}
         <PomodoroPanel transport={transport} />
+        <PerfilPanel />
         {/* Optional feature (features/directorio): searches by an agent with criteria, from the room's furniture */}
         <DirectorioPanel transport={transport} />
         {/* Optional feature (features/conexiones): the outside services the office talks to, from the rack */}

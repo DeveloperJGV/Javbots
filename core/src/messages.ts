@@ -27,6 +27,7 @@ export type ServerMessage =
   | AgentContextUsage
   | LayoutLoaded
   | OfficesLoaded
+  | OfficeAccess
   | FurnitureAssetsLoaded
   | CharacterSpritesLoaded
   | PetSpritesLoaded
@@ -50,6 +51,7 @@ export type ServerMessage =
   | AgendaStatus
   | JardinStatus
   | PomodoroStatus
+  | PerfilStatus
   | SearchRoomStatus
   | ConnectionsStatus;
 
@@ -269,6 +271,11 @@ export interface OfficeInfo {
   floors?: FloorInfo[];
 }
 
+export interface OfficeAccess {
+  type: 'officeAccess';
+  privileged: boolean;
+}
+
 export interface FurnitureAssetsLoaded {
   type: 'furnitureAssetsLoaded';
   catalog: FurnitureAssetMessage[];
@@ -423,10 +430,10 @@ export interface MusicStatus {
   message?: string;
   spotifyConfigured?: boolean;
   spotifyConnected?: boolean;
-  source?: AnonymousSchema_241;
+  source?: AnonymousSchema_243;
 }
 
-export type AnonymousSchema_241 = 'extension' | 'spotify';
+export type AnonymousSchema_243 = 'extension' | 'spotify';
 
 export interface MusicLyrics {
   type: 'musicLyrics';
@@ -435,11 +442,11 @@ export interface MusicLyrics {
   loading?: boolean;
   synced?: boolean;
   instrumental?: boolean;
-  source?: AnonymousSchema_248;
+  source?: AnonymousSchema_250;
   lines?: MusicLyricLine[];
 }
 
-export type AnonymousSchema_248 = 'spotify' | 'lrclib';
+export type AnonymousSchema_250 = 'spotify' | 'lrclib';
 
 export interface MusicLyricLine {
   text: string;
@@ -686,6 +693,28 @@ export interface PomodoroStatus {
 
 export type PomodoroPhase = 'idle' | 'focus' | 'short' | 'long';
 
+export interface PerfilStatus {
+  type: 'perfilStatus';
+  profile?: PerfilProfile;
+}
+
+export interface PerfilProfile {
+  code: string;
+  name: string;
+  role?: string;
+  strategy?: string;
+  traits: PerfilTrait[];
+  facts?: string[];
+  source?: string;
+  date?: string;
+}
+
+export interface PerfilTrait {
+  letter: string;
+  name: string;
+  percent: number;
+}
+
 export interface SearchRoomStatus {
   type: 'searchRoomStatus';
   room: string;
@@ -903,10 +932,10 @@ export interface InstallMusicExtension {
 
 export interface MusicControl {
   type: 'musicControl';
-  action: AnonymousSchema_496;
+  action: AnonymousSchema_511;
 }
 
-export type AnonymousSchema_496 = 'previous' | 'togglePlay' | 'next';
+export type AnonymousSchema_511 = 'previous' | 'togglePlay' | 'next';
 
 export interface DisconnectSpotify {
   type: 'disconnectSpotify';

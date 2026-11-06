@@ -197,6 +197,13 @@ function registerWebSocketRoute(app: FastifyInstance, options: HttpServerOptions
     // SPA forwarded on this handshake. Nothing about a network POSITION is
     // consulted, because every position is reproducible by a forwarder.
     const privileged = options.embedded || standaloneTokenValid(request.url, options.token);
+    // Standalone: tell the page whether it holds the owner's token, so a tab with a stale or missing one says so
+    // instead of silently showing empty private panels. Again on webviewReady, in case this first one landed
+    // before the page subscribed.
+    const sendAccess = () => {
+      if (!options.embedded) safeSend(socket, { type: 'officeAccess', privileged });
+    };
+    sendAccess();
 
     const { store } = options;
 
@@ -251,6 +258,7 @@ function registerWebSocketRoute(app: FastifyInstance, options: HttpServerOptions
         if (!options.embedded && msg.type) {
           console.log('[Pixel Agents] WS client message:', msg.type);
         }
+        if (msg.type === 'webviewReady') sendAccess();
         if (features.some((f) => f.handleClientMessage?.(msg, client))) return;
         handleClientMessage(msg, (m) => safeSend(socket, m), {
           store,

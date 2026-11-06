@@ -86,8 +86,8 @@ export function PomodoroPanel({ transport }: { transport: MessageTransport }) {
 
         <p className="text-text-muted">{todayText(status)}</p>
         <p className="text-text-muted">
-          Al terminar te llega un aviso de la Mac, aunque la página esté cerrada. El siguiente
-          bloque lo empiezas tú.
+          Al terminar te llega un aviso de escritorio (Mac o Windows), aunque la página esté
+          cerrada. El siguiente bloque lo empiezas tú.
         </p>
       </div>
     </Modal>

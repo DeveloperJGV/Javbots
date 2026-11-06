@@ -26,6 +26,8 @@ import {
   MusicNotes,
 } from '../../../../features/musica/webview/musicFurniture.js';
 import { musicStore } from '../../../../features/musica/webview/musicStore.js';
+import { applyPerfilFurniture } from '../../../../features/perfil/webview/perfilFurniture.js';
+import { isPerfilFurniture, perfilStore } from '../../../../features/perfil/webview/perfilStore.js';
 import { applyPomodoroFurniture } from '../../../../features/pomodoro/webview/pomodoroFurniture.js';
 import {
   isPomodoroFurniture,
@@ -1210,8 +1212,14 @@ export class OfficeState {
       pomodoroStore.get().status,
       this.furnitureAnimTimer,
     );
+    // Optional feature: the personality screen of the freelance room (features/perfil): code, trait bars, cursor
+    const withPerfil = applyPerfilFurniture(
+      withPomodoro,
+      perfilStore.get().profile,
+      this.furnitureAnimTimer,
+    );
     // Private packs (webview-ui/src/packs/registry.ts)
-    const withPacks = applyPackFurniture(withPomodoro, {
+    const withPacks = applyPackFurniture(withPerfil, {
       timeSec: this.furnitureAnimTimer,
       officeState: this,
     });
@@ -1362,6 +1370,13 @@ export class OfficeState {
       (f) => isJardinFurniture(f.type, status) && hitsPaintedPixel(f, worldX, worldY),
     );
     return hit?.type ?? null;
+  }
+
+  /** Whether a world point lands on the personality screen of the freelance room (features/perfil). */
+  isPerfilAt(worldX: number, worldY: number): boolean {
+    return this.furniture.some(
+      (f) => isPerfilFurniture(f.type) && hitsPaintedPixel(f, worldX, worldY),
+    );
   }
 
   /** Whether a world point lands on a tomato timer or an hourglass of the roof (features/pomodoro). */

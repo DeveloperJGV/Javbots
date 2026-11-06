@@ -26,6 +26,7 @@ import { createHerdrFeature } from '../../features/herdr/server/herdrFeature.js'
 import { JARDIN_FLOOR_LAYOUT_FILE } from '../../features/jardin/server/constants.js';
 import { createJardinFeature } from '../../features/jardin/server/jardinFeature.js';
 import { createMusicFeature } from '../../features/musica/server/musicFeature.js';
+import { createPerfilFeature } from '../../features/perfil/server/perfilFeature.js';
 import { createPomodoroFeature } from '../../features/pomodoro/server/pomodoroFeature.js';
 import { runUsageCommand } from '../../features/usage/server/usageCommand.js';
 import { createUsageFeature } from '../../features/usage/server/usageFeature.js';
@@ -47,6 +48,7 @@ import {
 import { MAX_PORT, MIN_PORT } from './constants.js';
 import { FileStateAdapter } from './fileStateAdapter.js';
 import { addFloors, setOffices } from './officeRegistry.js';
+import { loadOrCreateOfficeToken } from './officeToken.js';
 import { loadPacks, readLayoutFile } from './packLoader.js';
 import { PACK_SERVERS } from './packs.generated.js';
 import {
@@ -67,6 +69,8 @@ export interface CliArgs {
    *  can run at once without a collision. --port picks a fixed one. */
   port?: number;
   host: string;
+  /** --nueva-llave: mint a new office token, locking out every tab opened with the old one. */
+  newToken?: boolean;
 }
 
 /** Thrown by parseArgs on an invalid --port. Kept separate from process.exit so
@@ -95,12 +99,15 @@ export function parseArgs(argv: string[]): CliArgs {
     } else if (argv[i] === '--host' && argv[i + 1]) {
       args.host = argv[i + 1];
       i++;
+    } else if (argv[i] === '--nueva-llave') {
+      args.newToken = true;
     } else if (argv[i] === '--help') {
       console.log(`Usage: pixel-agents [options]
 
 Options:
   --port, -p <number>   Port to listen on (default: OS-assigned ephemeral port)
   --host <string>       Host to bind to (default: 127.0.0.1)
+  --nueva-llave         New office token (tabs opened with the old one lose owner access)
   --help                Show this help message`);
       process.exit(0);
     }
@@ -315,6 +322,8 @@ async function main(): Promise<void> {
       // Optional feature: the pomodoro corner of the roof, timed by the server so it rings with the page closed
       // (features/pomodoro).
       createPomodoroFeature(),
+      // Optional feature: the owner's personality screen in the freelance room, from a private file (features/perfil).
+      createPerfilFeature(),
     ];
     // Private packs (privado/<pack>/server.ts, found by scripts/generate-packs.mjs): their own features.
     const publicFeatures = [...features];
@@ -355,6 +364,7 @@ async function main(): Promise<void> {
       onSetHooksEnabled,
       onReloadAssets,
       features,
+      token: loadOrCreateOfficeToken({ fresh: args.newToken }),
     });
     currentConfig = { port: config.port, token: config.token };
 

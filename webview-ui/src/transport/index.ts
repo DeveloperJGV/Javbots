@@ -1,5 +1,6 @@
 import type { ServerMessage } from '../../../core/src/messages.js';
 import { requestedFloor, requestedOffice } from '../offices.js';
+import { officeToken } from '../officeToken.js';
 import { isBrowserRuntime } from '../runtime.js';
 import { PostMessageTransport } from './postMessageTransport.js';
 import type { MessageTransport } from './types.js';
@@ -14,13 +15,13 @@ function createTransport(): MessageTransport {
   // the tokened URL the CLI printed — that is what makes the session privileged
   // enough to approve a hook install (server/src/httpServer.ts). Without it the
   // socket still connects and the office still renders; only the hooks toggle
-  // is refused. WebSocketTransport captures the url once, so the token survives
-  // reconnects even if the address bar is later cleared.
+  // is refused. officeToken() takes it off the address bar and remembers it in
+  // this browser, so F5 and reconnects keep it.
   // The office and floor this page shows ride the handshake too, so a reconnect (the server restarted) lands in
   // the same office and floor: webviewReady is only sent once per page.
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const params = new URLSearchParams({ office: requestedOffice, floor: requestedFloor });
-  const token = new URLSearchParams(window.location.search).get('token');
+  const token = officeToken();
   if (token) params.set('token', token);
   const wsUrl = `${protocol}//${window.location.host}/ws?${params}`;
   const ws = new WebSocketTransport(wsUrl);

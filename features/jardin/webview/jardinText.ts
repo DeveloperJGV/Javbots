@@ -162,6 +162,6 @@ export function supplyReview(
   return [];
 }
 
-/** The panel's photo URL (the office token is on the page's own URL). */
+/** The panel's photo URL (the office token comes from webview-ui/src/officeToken.ts). */
 export const photoUrl = (name: string, token: string | null): string =>
   `/api/jardin/fotos/${encodeURIComponent(name)}${token ? `?token=${encodeURIComponent(token)}` : ''}`;

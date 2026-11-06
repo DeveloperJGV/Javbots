@@ -120,3 +120,8 @@ export const HUE_SHIFT_MAX_DEG = 360;
  *  with its own background work still running: it resumes later, so the spawn is
  *  not finished (its final notification follows). */
 export const BACKGROUND_AGENT_PAUSED_PATTERN = /background work of its own still running/i;
+
+// ── Office token (standalone) ───────────────────────────────
+/** File (under SERVER_JSON_DIR) keeping the standalone office token across restarts, so a tab opened before a
+ *  restart keeps its owner access. `pixel-agents --nueva-llave` (or deleting the file) mints a new one. */
+export const OFFICE_TOKEN_FILE = 'office-token.json';
