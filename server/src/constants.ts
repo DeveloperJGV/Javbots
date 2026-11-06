@@ -81,6 +81,8 @@ export const MAX_PORT = 65_535;
  *  fields (servesSpa, protocol itself) don't require a bump -- readers already
  *  tolerate unknown/missing fields (see ServerConfig.debugLog precedent). */
 export const SERVER_REGISTRY_PROTOCOL_VERSION = 1;
+/** How long a starting server waits for a registered one to answer /api/health before treating it as stale. */
+export const SERVER_REUSE_PROBE_MS = 1500;
 
 // ── WebSocket close codes (application range 4000-4999) ────
 /** Embedded mode: Bearer token missing or wrong. */

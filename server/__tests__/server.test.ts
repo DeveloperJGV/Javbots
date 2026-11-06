@@ -257,6 +257,38 @@ describe('PixelAgentsServer', () => {
     expect(registryFiles()).toHaveLength(1); // only the freshly-started server's entry remains
   });
 
+  // 16b. A live PID is not proof (Windows reuses PIDs): an entry whose port doesn't answer as that PID is stale
+  it('does not reuse a live-pid entry whose port does not answer as that server; prunes it', async () => {
+    const net = await import('net');
+    const freePort = await new Promise<number>((resolve) => {
+      const probe = net.createServer().listen(0, '127.0.0.1', () => {
+        const { port } = probe.address() as { port: number };
+        probe.close(() => resolve(port));
+      });
+    });
+    fs.mkdirSync(registryDir, { recursive: true });
+    // This test runner's own PID: alive, like the unrelated process that inherited a crashed server's PID
+    const staleFile = path.join(registryDir, `${process.pid}-${freePort}.json`);
+    fs.writeFileSync(
+      staleFile,
+      JSON.stringify({
+        port: freePort,
+        pid: process.pid,
+        token: 'stale',
+        startedAt: 0,
+        servesSpa: true,
+        protocol: 1,
+      }),
+    );
+
+    const config = await server.start({ embedded: false });
+
+    expect(fs.existsSync(staleFile)).toBe(false);
+    expect(config.port).not.toBe(freePort);
+    expect(config.token).not.toBe('stale');
+    expect(registryFiles()).toHaveLength(1);
+  });
+
   // 17. Structurally invalid live-pid entries are malformed, not reusable
   it('prunes a structurally invalid live-pid entry instead of reusing it', async () => {
     fs.mkdirSync(registryDir, { recursive: true });

@@ -15,6 +15,7 @@ import {
   SERVER_JSON_DIR,
   SERVER_JSON_NAME,
   SERVER_REGISTRY_PROTOCOL_VERSION,
+  SERVER_REUSE_PROBE_MS,
   SERVERS_DIR,
 } from './constants.js';
 import { createHttpServer } from './httpServer.js';
@@ -83,8 +84,25 @@ export class PixelAgentsServer {
     // used to leave a standalone attached to VS Code's SPA-less embedded
     // server (blank page). Prune dead entries first so a crashed server's
     // stale file never blocks discovery of a live one.
-    const registry = this.readAndPruneRegistry();
-    const candidate = registry.find((e) => e.servesSpa === wantsSpa);
+    // A live PID is not proof: Windows reuses PIDs, so a crashed server's entry can point at an unrelated process
+    // (it happened with a Spotify helper) and a new start would "reuse" a server that isn't there. Only reuse one
+    // that answers its health check as that same PID; prune the rest.
+    let candidate: ServerConfig | undefined;
+    for (const entry of this.readAndPruneRegistry()) {
+      if (entry.servesSpa !== wantsSpa) continue;
+      if (await answersAsServer(entry)) {
+        candidate = entry;
+        break;
+      }
+      console.log(
+        `[Pixel Agents] Ignoring stale server entry on port ${entry.port} (PID ${entry.pid} is alive but is not that server)`,
+      );
+      try {
+        fs.unlinkSync(this.getRegistryFilePath(entry));
+      } catch {
+        /* already gone */
+      }
+    }
     if (candidate) {
       this.config = candidate;
       this.ownsServer = false;
@@ -281,6 +299,20 @@ export class PixelAgentsServer {
     } catch {
       // File may already be gone
     }
+  }
+}
+
+/** Whether a registered server really answers on its port, as the PID it registered with. Never throws. */
+async function answersAsServer(entry: Pick<ServerConfig, 'port' | 'pid'>): Promise<boolean> {
+  try {
+    const res = await fetch(`http://127.0.0.1:${entry.port}/api/health`, {
+      signal: AbortSignal.timeout(SERVER_REUSE_PROBE_MS),
+    });
+    if (!res.ok) return false;
+    const body = (await res.json()) as { status?: unknown; pid?: unknown };
+    return body.status === 'ok' && body.pid === entry.pid;
+  } catch {
+    return false;
   }
 }
 

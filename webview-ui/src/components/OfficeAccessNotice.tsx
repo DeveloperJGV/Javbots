@@ -1,7 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 
+import { createOfficeAccessStore } from '../officeAccess.js';
 import { isBrowserRuntime } from '../runtime.js';
 import { transport } from '../transport/index.js';
+
+// Created with the module (App imports it at startup), before the server's answers arrive.
+const officeAccess = createOfficeAccessStore(transport);
 
 /**
  * Standalone: the server answers every connection with `officeAccess`. Without the owner's token the office
@@ -9,25 +13,8 @@ import { transport } from '../transport/index.js';
  * looked like a broken office. Say so. Renders nothing in VS Code, while unknown, and while privileged.
  */
 export function OfficeAccessNotice() {
-  const [privileged, setPrivileged] = useState<boolean | null>(null);
-  const [connected, setConnected] = useState(transport.state === 'connected');
-
-  useEffect(() => {
-    const offMessage = transport.onMessage((msg) => {
-      if (msg.type === 'officeAccess') setPrivileged(msg.privileged);
-    });
-    // While the socket is down ConnectionIndicator holds this spot; the next connection answers again.
-    const offState = transport.onStateChange((state) => {
-      setConnected(state === 'connected');
-      if (state !== 'connected') setPrivileged(null);
-    });
-    return () => {
-      offMessage();
-      offState();
-    };
-  }, []);
-
-  if (!isBrowserRuntime || !connected || privileged !== false) return null;
+  const privileged = useSyncExternalStore(officeAccess.subscribe, officeAccess.get);
+  if (!isBrowserRuntime || privileged !== false) return null;
 
   return (
     <div className="absolute top-8 left-1/2 -translate-x-1/2 z-20 pixel-panel py-6 px-12 flex items-center gap-8 text-sm max-w-[90%]">
