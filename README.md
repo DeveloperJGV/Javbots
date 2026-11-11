@@ -25,12 +25,10 @@ cambiamos el idioma, el arte, los cuartos y le agregamos cosas nuevas. La docume
 
 ## Novedades
 
+- **9 de noviembre de 2026**: la agenda ve todos tus calendarios (cada uno con su color, el del trabajo como
+  "Ocupado") y cada evento va al calendario que escojas; los servicios del Directorio, al de la casa.
 - **5 de noviembre de 2026**: el piso Personal queda de 2×2 en vez de una fila larga, pantalla de perfil en el cuarto de freelance (tu tipo de personalidad, sus rasgos y
   datos curiosos, desde un archivo privado) y avisos del pomodoro también en Windows.
-- **4 de noviembre de 2026**: el pomodoro del rincón de descanso funciona (enfoque y descansos, con la cuenta en el
-  reloj de jitomate y el tiempo en el servidor); el acceso directo abre la oficina en su propia ventana, sin barra de direcciones; la
-  llave ya no se ve en la dirección ni cambia al reiniciar, y una pestaña sin llave lo avisa en lugar de mostrar
-  paneles vacíos.
 
 Todo lo nuevo, por fecha, en [NOVEDADES.md](NOVEDADES.md).
 

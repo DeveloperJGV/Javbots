@@ -562,6 +562,9 @@ export interface AgendaStatus {
   items: AgendaItem[];
   saving: boolean;
   error?: string;
+  calendars?: AgendaCalendar[];
+  sharedCalendar?: string;
+  homeCalendar?: string;
 }
 
 export interface AgendaItem {
@@ -573,9 +576,19 @@ export interface AgendaItem {
   allDay: boolean;
   location?: string;
   link?: string;
+  calendar?: string;
+  busy?: boolean;
 }
 
 export type AgendaItemKind = 'event' | 'task';
+
+export interface AgendaCalendar {
+  id: string;
+  name: string;
+  color?: string;
+  writable: boolean;
+  busyOnly: boolean;
+}
 
 export interface JardinStatus {
   type: 'jardinStatus';
@@ -932,10 +945,10 @@ export interface InstallMusicExtension {
 
 export interface MusicControl {
   type: 'musicControl';
-  action: AnonymousSchema_511;
+  action: AnonymousSchema_521;
 }
 
-export type AnonymousSchema_511 = 'previous' | 'togglePlay' | 'next';
+export type AnonymousSchema_521 = 'previous' | 'togglePlay' | 'next';
 
 export interface DisconnectSpotify {
   type: 'disconnectSpotify';
@@ -969,6 +982,7 @@ export interface AddAgendaItem {
   date?: string;
   time?: string;
   endTime?: string;
+  calendar?: string;
 }
 
 export interface CompleteAgendaTask {

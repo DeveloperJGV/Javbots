@@ -3,6 +3,15 @@
 Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
 (Pixel Agents) está en [CHANGELOG.md](CHANGELOG.md).
 
+## 9 de noviembre de 2026
+
+- **La agenda ve todos tus calendarios.** "Hoy y esta semana" ya no lee solo el calendario compartido: muestra los
+  eventos de todos tus calendarios de Google, cada uno con su color y su nombre, y los que solo compartes como
+  libre/ocupado (como el del trabajo) salen como bloques "Ocupado". Los choques de horario se revisan entre todos.
+- **Cada evento a su calendario.** Al agregar un evento escoges el calendario. Por defecto, `Concierto:` y `Salida:`
+  van al compartido y lo demás a tu calendario de la casa (`casa` en `agenda.json`). Las citas que agenda el
+  Directorio (`Servicio:`) también van al de la casa.
+
 ## 5 de noviembre de 2026
 
 - **El piso Personal en cuadro.** Sus cuatro cuartos ya no van en una sola fila larga: quedan de 2×2 (agenda y

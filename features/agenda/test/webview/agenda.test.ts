@@ -12,10 +12,13 @@ import {
 import { isAgendaFurniture } from '../../webview/agendaStore.js';
 import {
   conflictKeys,
+  defaultCalendar,
   draftConflicts,
   draftSummary,
   findConflicts,
   groupByDay,
+  itemKey,
+  rangeText,
   splitPrefix,
 } from '../../webview/agendaText.js';
 import {
@@ -74,6 +77,8 @@ const STATUS: AgendaStatus = {
 const blank = (w: number, h: number, c = ''): string[][] =>
   Array.from({ length: h }, () => Array<string>(w).fill(c));
 
+const CALS = [{ id: 'fam', name: 'Familia', writable: true, busyOnly: false }];
+
 describe('agenda text', () => {
   it('reads the type word of a title', () => {
     expect(splitPrefix('Salida: Cena')).toEqual({ prefix: 'Salida', rest: 'Cena' });
@@ -108,7 +113,10 @@ describe('agenda text', () => {
     expect(draftConflicts(d, ITEMS).map((i) => i.id)).toEqual(['b']);
     expect(draftConflicts({ ...d, time: '23:00' }, ITEMS)).toEqual([]);
     expect(draftConflicts({ kind: 'task', title: 'x', date: '2026-11-07' }, ITEMS)).toEqual([]);
-    expect(draftSummary(d, '2026-11-03')).toContain('el calendario compartido');
+    expect(draftSummary({ ...d, calendar: 'fam' }, '2026-11-03', CALS)).toContain(
+      'el calendario "Familia"',
+    );
+    expect(draftSummary(d, '2026-11-03')).toContain('→ el calendario');
     expect(draftSummary({ kind: 'task', title: 'Podar' }, '2026-11-03')).toBe(
       '"Podar" · sin fecha → tus tareas (solo tú las ves)',
     );
@@ -167,5 +175,24 @@ describe('agenda furniture', () => {
     expect(dark[1]).toBe(list[1]);
     const none = [inst('DESK')];
     expect(applyAgendaFurniture(none, STATUS, 0)).toBe(none);
+  });
+
+  it('several calendars: default calendar by type, keys by calendar, busy ranges', () => {
+    expect(defaultCalendar('salida', 'fam', 'casa')).toBe('fam');
+    expect(defaultCalendar('concierto', 'fam', 'casa')).toBe('fam');
+    expect(defaultCalendar('evento', 'fam', 'casa')).toBe('casa');
+    expect(defaultCalendar('evento', 'fam', undefined)).toBe('fam');
+    const a: AgendaItem = { id: 'e1', kind: 'event', title: 'A', allDay: true, calendar: 'fam' };
+    expect(itemKey(a)).not.toBe(itemKey({ ...a, calendar: 'casa' }));
+    const busy: AgendaItem = {
+      id: 'w#0',
+      kind: 'event',
+      title: 'Ocupado',
+      allDay: false,
+      start: new Date(2026, 10, 4, 9, 0).toISOString(),
+      end: new Date(2026, 10, 4, 18, 0).toISOString(),
+      busy: true,
+    };
+    expect(rangeText(busy)).toBe('09:00–18:00');
   });
 });

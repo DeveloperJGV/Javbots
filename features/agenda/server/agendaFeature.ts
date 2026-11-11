@@ -1,9 +1,14 @@
-import type { AgendaItem, AgendaStatus, ConnectionInfo } from '../../../core/src/messages.js';
+import type {
+  AgendaCalendar,
+  AgendaItem,
+  AgendaStatus,
+  ConnectionInfo,
+} from '../../../core/src/messages.js';
 import type { FeatureClient, ServerFeature } from '../../../server/src/serverFeature.js';
 import { GOOGLE_TASKS_SCOPE } from '../../google/server/constants.js';
 import { GoogleApiError, GoogleReconnectNeeded } from '../../google/server/googleAccount.js';
 import type { GoogleSession } from '../../google/server/googleFeature.js';
-import { readAgendaCalendarName } from './agendaConfig.js';
+import { type AgendaConfig, readAgendaConfig } from './agendaConfig.js';
 import {
   addDays,
   CalendarNotFound,
@@ -25,7 +30,9 @@ import {
 export interface AgendaFeatureOptions {
   /** The shared Google session (features/google). */
   google: GoogleSession;
-  /** Name of the shared calendar (default: agenda.json's `calendario`, else DEFAULT_AGENDA_CALENDAR). */
+  /** agenda.json (shared and own calendars, display names); read again on every refresh. */
+  config?: () => AgendaConfig;
+  /** Name of the shared calendar, overriding the config's (tests). */
   calendarName?: () => string;
   now?: () => number;
   /** The agenda room's layout, shown as its own floor of the main office (null: an empty room). */
@@ -38,23 +45,32 @@ const TASKS_SCOPE_MISSING =
 const TASKS_FORBIDDEN =
   'Google no dejó usar tus tareas: activa la Google Tasks API en tu proyecto de Google Cloud y vuelve a conectar.';
 
+/** Titles that belong on the shared calendar when the panel names none: things for both people. */
+const SHARED_PREFIXES = /^\s*(concierto|salida)\s*:/i;
+
 /**
- * The agenda room (features/agenda): today and the next days from the shared Google calendar (events, outings,
- * proposals: their title says the type, "Salida: …") and from the owner's Google Tasks (their own chores). Adds what
- * the owner wrote and confirmed in the panel, and marks tasks done. Never creates, shares or deletes calendars or
- * events. Privileged pages only.
+ * The agenda room (features/agenda): today and the next days from every Google calendar the owner sees (each with
+ * its color; free/busy-only ones such as work as busy blocks) and from the owner's Google Tasks. The shared calendar
+ * is only for things for both people ("Salida: …", "Concierto: …"); the rest goes to the owner's own calendar
+ * (agenda.json `casa`). Adds what the owner wrote and confirmed in the panel, and marks tasks done. Never creates,
+ * shares or deletes calendars or events. Privileged pages only.
  */
 export function createAgendaFeature(opts: AgendaFeatureOptions): ServerFeature & {
   refresh(): Promise<void>;
 } {
   const now = opts.now ?? Date.now;
-  const calendarName = opts.calendarName ?? (() => readAgendaCalendarName());
+  const config = (): AgendaConfig => {
+    const c = (opts.config ?? (() => readAgendaConfig()))();
+    return opts.calendarName ? { ...c, shared: opts.calendarName() } : c;
+  };
+  const calendarName = () => config().shared;
   const google = opts.google;
   const api = createAgendaGoogle((url, init) => google.api(url, init));
   const clients = new Set<FeatureClient>();
   let items: AgendaItem[] = [];
-  let calendarId: string | undefined;
-  let calendarIdFor: string | undefined;
+  let calendars: AgendaCalendar[] = [];
+  let sharedId: string | undefined;
+  let homeId: string | undefined;
   let saving = false;
   let error: string | undefined;
   let tasksError: string | undefined;
@@ -75,7 +91,10 @@ export function createAgendaFeature(opts: AgendaFeatureOptions): ServerFeature &
       days: AGENDA_DAYS,
       items,
       saving,
+      calendars,
     };
+    if (sharedId) msg.sharedCalendar = sharedId;
+    if (homeId) msg.homeCalendar = homeId;
     const shown = [error, tasksError].filter(Boolean).join(' ');
     if (shown) msg.error = shown;
     return msg;
@@ -86,19 +105,23 @@ export function createAgendaFeature(opts: AgendaFeatureOptions): ServerFeature &
     for (const c of clients) c.send(msg);
   };
 
-  /** The calendar's id, looked up by name once (again if the name changes in agenda.json). */
-  async function findCalendar(): Promise<string> {
-    const name = calendarName();
-    if (calendarIdFor !== name) calendarId = undefined;
-    calendarId = await api.findCalendar(name, calendarId);
-    calendarIdFor = name;
-    return calendarId;
+  const byName = (name: string) =>
+    calendars.find((c) => c.writable && c.name.toLowerCase() === name.toLowerCase())?.id;
+
+  /** Where a new event goes: the calendar the panel picked if it's writable, else by its title. */
+  function targetCalendar(item: NewAgendaItem): string {
+    const picked = calendars.find((c) => c.id === item.calendar && c.writable);
+    if (picked) return picked.id;
+    const shared = SHARED_PREFIXES.test(item.title);
+    const id = shared ? sharedId : homeId;
+    if (!id) throw new CalendarNotFound(shared ? calendarName() : config().home);
+    return id;
   }
 
   const describe = (err: unknown, what: 'calendar' | 'tasks'): string => {
     if (err instanceof GoogleReconnectNeeded) return RECONNECT;
     if (err instanceof CalendarNotFound)
-      return `No encontré el calendario "${calendarName()}" en tu cuenta.`;
+      return `No encontré el calendario "${err.message || calendarName()}" en tu cuenta.`;
     if (what === 'tasks' && err instanceof GoogleApiError && err.status === 403)
       return TASKS_FORBIDDEN;
     return what === 'tasks' ? 'No pude leer tus tareas.' : 'No pude leer el calendario.';
@@ -113,11 +136,37 @@ export function createAgendaFeature(opts: AgendaFeatureOptions): ServerFeature &
     }
     const from = today();
     const until = addDays(from, AGENDA_DAYS);
+    const cfg = config();
     let events: AgendaItem[] = [];
     let tasks: AgendaItem[] = [];
     try {
-      events = await api.listEvents(await findCalendar(), from, until);
-      error = undefined;
+      calendars = await api.listCalendars(cfg.names);
+      sharedId = byName(cfg.shared);
+      homeId = byName(cfg.home);
+      const readable = calendars.filter((c) => !c.busyOnly);
+      const busyOnly = calendars.filter((c) => c.busyOnly).map((c) => c.id);
+      const failed: string[] = [];
+      const lists = await Promise.all([
+        ...readable.map((c) =>
+          api.listEvents(c.id, from, until).catch((err: unknown) => {
+            if (err instanceof GoogleReconnectNeeded) throw err;
+            failed.push(c.name);
+            console.warn(`${LOG_PREFIX} Calendario ${c.name}:`, (err as Error).message);
+            return [] as AgendaItem[];
+          }),
+        ),
+        api.freeBusy(busyOnly, from, until).catch((err: unknown) => {
+          if (err instanceof GoogleReconnectNeeded) throw err;
+          console.warn(`${LOG_PREFIX} Libre/ocupado:`, (err as Error).message);
+          return [] as AgendaItem[];
+        }),
+      ]);
+      events = lists.flat();
+      error = !sharedId
+        ? describe(new CalendarNotFound(cfg.shared), 'calendar')
+        : failed.length
+          ? `No pude leer: ${failed.join(', ')}.`
+          : undefined;
     } catch (err) {
       error = describe(err, 'calendar');
       console.warn(`${LOG_PREFIX} Calendario:`, (err as Error).message);
@@ -178,7 +227,7 @@ export function createAgendaFeature(opts: AgendaFeatureOptions): ServerFeature &
     if (item.kind === 'task') return write('agregar la tarea', () => api.addTask(item), 'tasks');
     return write(
       'agregar el evento al calendario',
-      async () => api.addEvent(await findCalendar(), item),
+      async () => api.addEvent(targetCalendar(item), item),
       'calendar',
     );
   }
@@ -189,7 +238,8 @@ export function createAgendaFeature(opts: AgendaFeatureOptions): ServerFeature &
   }
 
   const offGoogle = google.onChange(() => {
-    calendarId = undefined;
+    calendars = [];
+    sharedId = homeId = undefined;
     void refresh();
   });
   let timer: ReturnType<typeof setInterval> | undefined = setInterval(() => {

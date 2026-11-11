@@ -7,6 +7,10 @@ export const AGENDA_CONFIG_FILE = 'agenda.json';
  * exist: the office never creates or shares calendars.
  */
 export const DEFAULT_AGENDA_CALENDAR = 'Familia';
+/** The owner's own calendar for house things (services, chores), when agenda.json doesn't name one (`casa`). */
+export const DEFAULT_HOME_CALENDAR = 'Casa';
+/** Title shown for a block of a calendar the owner can only see as free/busy (e.g. work). */
+export const BUSY_TITLE = 'Ocupado';
 export const AGENDA_TIME_ZONE = 'America/Mexico_City';
 
 export const CALENDAR_API = 'https://www.googleapis.com/calendar/v3';

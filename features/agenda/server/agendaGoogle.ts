@@ -1,7 +1,8 @@
-import type { AgendaItem } from '../../../core/src/messages.js';
+import type { AgendaCalendar, AgendaItem } from '../../../core/src/messages.js';
 import type { GoogleApi } from '../../google/server/googleAccount.js';
 import {
   AGENDA_TIME_ZONE,
+  BUSY_TITLE,
   CALENDAR_API,
   DEFAULT_EVENT_MINUTES,
   MAX_TITLE_LENGTH,
@@ -27,8 +28,8 @@ export const localDay = (d: Date): string =>
 export const addDays = (d: Date, n: number): Date =>
   new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 
-/** Calendar events → agenda items (cancelled ones left out), in Google's order. */
-export function parseEvents(raw: unknown): AgendaItem[] {
+/** Calendar events → agenda items (cancelled ones left out), in Google's order, tagged with their calendar. */
+export function parseEvents(raw: unknown, calendarId?: string): AgendaItem[] {
   const out: AgendaItem[] = [];
   for (const e of items(raw)) {
     if (e.status === 'cancelled') continue;
@@ -47,6 +48,7 @@ export function parseEvents(raw: unknown): AgendaItem[] {
     if (until) item.end = until;
     if (str(e.location)) item.location = str(e.location);
     if (str(e.htmlLink)) item.link = str(e.htmlLink);
+    if (calendarId) item.calendar = calendarId;
     out.push(item);
   }
   return out;
@@ -72,6 +74,52 @@ export function parseTasks(raw: unknown, untilDay: string): AgendaItem[] {
   return out;
 }
 
+/**
+ * The owner's calendar list → the calendars the agenda reads. Hidden ones (unticked in Google Calendar) stay out;
+ * a free/busy-only one (e.g. a work calendar shared that way) is read as busy blocks. `names` renames by name or id.
+ */
+export function parseCalendars(raw: unknown, names: Record<string, string> = {}): AgendaCalendar[] {
+  const out: AgendaCalendar[] = [];
+  for (const c of items(raw)) {
+    const id = str(c.id);
+    const role = str(c.accessRole);
+    if (!id || c.deleted === true || c.hidden === true || !role) continue;
+    const own = str(c.summaryOverride) || str(c.summary) || id;
+    const cal: AgendaCalendar = {
+      id,
+      name: names[own] ?? names[id] ?? own,
+      writable: role === 'owner' || role === 'writer',
+      busyOnly: role === 'freeBusyReader',
+    };
+    if (/^#[0-9a-f]{6}$/i.test(str(c.backgroundColor))) cal.color = str(c.backgroundColor);
+    out.push(cal);
+  }
+  return out;
+}
+
+/** A free/busy answer → one busy block per busy span of each asked calendar. */
+export function parseFreeBusy(raw: unknown): AgendaItem[] {
+  const out: AgendaItem[] = [];
+  const cals = obj(obj(raw).calendars);
+  for (const [calendar, v] of Object.entries(cals)) {
+    const busy = Array.isArray(obj(v).busy) ? (obj(v).busy as unknown[]).map(obj) : [];
+    busy.forEach((b, i) => {
+      if (!str(b.start) || !str(b.end)) return;
+      out.push({
+        id: `${calendar}#${i}`,
+        kind: 'event',
+        title: BUSY_TITLE,
+        start: str(b.start),
+        end: str(b.end),
+        allDay: false,
+        calendar,
+        busy: true,
+      });
+    });
+  }
+  return out;
+}
+
 /** What the panel sends to add, already checked. */
 export interface NewAgendaItem {
   kind: 'event' | 'task';
@@ -79,6 +127,8 @@ export interface NewAgendaItem {
   date?: string;
   time?: string;
   endTime?: string;
+  /** A calendar id the panel picked (checked against the writable ones before use). */
+  calendar?: string;
 }
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -98,7 +148,16 @@ export function readNewItem(msg: Record<string, unknown>): NewAgendaItem | null 
   if (date === false || time === false || endTime === false) return null;
   if (kind === 'event' && !date) return null;
   if (!date && time) return null;
-  return { kind, title, date, time: time || undefined, endTime: time ? endTime : undefined };
+  const out: NewAgendaItem = {
+    kind,
+    title,
+    date,
+    time: time || undefined,
+    endTime: time ? endTime : undefined,
+  };
+  if (kind === 'event' && typeof msg.calendar === 'string' && msg.calendar)
+    out.calendar = msg.calendar;
+  return out;
 }
 
 /** "YYYY-MM-DD" + "HH:MM" (+ minutes) → local "YYYY-MM-DDTHH:MM:00" (rolls over midnight). */
@@ -151,6 +210,30 @@ export function createAgendaGoogle(api: GoogleApi) {
       return str(found.id);
     },
 
+    /** Every calendar the owner sees (not only the writable ones). */
+    async listCalendars(names?: Record<string, string>): Promise<AgendaCalendar[]> {
+      return parseCalendars(
+        await api(`${CALENDAR_API}/users/me/calendarList?maxResults=250`),
+        names,
+      );
+    },
+
+    /** Busy blocks of calendars that show only free/busy. */
+    async freeBusy(calendarIds: string[], from: Date, to: Date): Promise<AgendaItem[]> {
+      if (!calendarIds.length) return [];
+      return parseFreeBusy(
+        await api(`${CALENDAR_API}/freeBusy`, {
+          method: 'POST',
+          body: {
+            timeMin: from.toISOString(),
+            timeMax: to.toISOString(),
+            timeZone: AGENDA_TIME_ZONE,
+            items: calendarIds.map((id) => ({ id })),
+          },
+        }),
+      );
+    },
+
     async listEvents(calendarId: string, from: Date, to: Date): Promise<AgendaItem[]> {
       const q = new URLSearchParams({
         timeMin: from.toISOString(),
@@ -163,6 +246,7 @@ export function createAgendaGoogle(api: GoogleApi) {
         await api(
           `${CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events?${q.toString()}`,
         ),
+        calendarId,
       );
     },
 

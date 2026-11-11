@@ -1,6 +1,6 @@
 import { useState, useSyncExternalStore } from 'react';
 
-import type { AgendaItem, AgendaStatus } from '../../../core/src/messages.js';
+import type { AgendaCalendar, AgendaItem, AgendaStatus } from '../../../core/src/messages.js';
 import type { MessageTransport } from '../../../core/src/transport.js';
 import { Button } from '../../../webview-ui/src/components/ui/Button.js';
 import { Modal } from '../../../webview-ui/src/components/ui/Modal.js';
@@ -10,12 +10,14 @@ import {
   type AgendaDraft,
   conflictKeys,
   dayLabel,
+  defaultCalendar,
   draftConflicts,
   draftSummary,
   findConflicts,
   groupByDay,
   itemDay,
   itemKey,
+  rangeText,
   splitPrefix,
   timeText,
 } from './agendaText.js';
@@ -24,29 +26,46 @@ import { AGENDA_KINDS } from './constants.js';
 const linkClass = 'text-accent-bright underline';
 const inputClass = 'py-2 px-4 bg-bg-dark border-2 border-border rounded-none text-text';
 
+/** A square in the calendar's own Google color. */
+function CalendarDot({ calendar }: { calendar?: AgendaCalendar }) {
+  if (!calendar?.color) return null;
+  return (
+    <span
+      aria-hidden
+      className="inline-block w-8 h-8 mr-4 border border-border align-middle"
+      style={{ backgroundColor: calendar.color }}
+    />
+  );
+}
+
 function ItemLine({
   item,
+  calendar,
   clash,
   overdue,
   onDone,
   busy,
 }: {
   item: AgendaItem;
+  calendar?: AgendaCalendar;
   clash: boolean;
   overdue?: boolean;
   onDone?: () => void;
   busy: boolean;
 }) {
   const { prefix, rest } = splitPrefix(item.title);
-  const time = timeText(item);
+  const time = item.busy ? rangeText(item) : timeText(item);
   return (
     <li className="flex items-start justify-between gap-8">
       <span className="flex flex-col">
-        <span className="text-base">
+        <span className={`text-base ${item.busy ? 'text-text-muted' : ''}`}>
           {item.kind === 'task' ? (
             <span className="text-status-permission">☐ </span>
           ) : (
-            <span className="text-text-muted">{time || 'todo el día'} · </span>
+            <span className="text-text-muted">
+              <CalendarDot calendar={calendar} />
+              {time || 'todo el día'} ·{' '}
+            </span>
           )}
           {prefix && <span className="text-accent-bright">{prefix}: </span>}
           {item.link ? (
@@ -56,6 +75,7 @@ function ItemLine({
           ) : (
             rest
           )}
+          {calendar && <span className="text-text-muted"> · {calendar.name}</span>}
           {clash && <span className="text-status-error"> · choca con otro</span>}
           {overdue && <span className="text-status-error"> · atrasada</span>}
         </span>
@@ -78,18 +98,23 @@ function AddForm({ status, send }: { status: AgendaStatus; send: (d: AgendaDraft
   const [time, setTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [review, setReview] = useState<AgendaDraft | null>(null);
+  const [pickedCalendar, setPickedCalendar] = useState<string | undefined>(undefined);
   const kind = AGENDA_KINDS.find((k) => k.id === kindId) ?? AGENDA_KINDS[0];
   const isTask = kind.kind === 'task';
+  const writable = (status.calendars ?? []).filter((c) => c.writable);
+  const calendar =
+    pickedCalendar ?? defaultCalendar(kind.id, status.sharedCalendar, status.homeCalendar);
 
   const draft = (): AgendaDraft | null => {
     const rest = text.trim();
-    if (!rest || (!isTask && !date)) return null;
+    if (!rest || (!isTask && (!date || !calendar))) return null;
     return {
       kind: kind.kind,
       title: kind.prefix ? `${kind.prefix} ${rest}` : rest,
       date: date || undefined,
       time: !isTask && time ? time : undefined,
       endTime: !isTask && time && endTime ? endTime : undefined,
+      calendar: !isTask ? calendar : undefined,
     };
   };
 
@@ -98,7 +123,9 @@ function AddForm({ status, send }: { status: AgendaStatus; send: (d: AgendaDraft
     return (
       <div className="flex flex-col gap-4 border-2 border-border p-8">
         <span>¿Lo agrego así?</span>
-        <span className="text-base text-accent-bright">{draftSummary(review, status.from)}</span>
+        <span className="text-base text-accent-bright">
+          {draftSummary(review, status.from, status.calendars)}
+        </span>
         {clashes.length > 0 && (
           <span className="text-status-error">
             Choca con: {clashes.map((c) => `${c.title} (${timeText(c)})`).join(', ')}
@@ -136,7 +163,10 @@ function AddForm({ status, send }: { status: AgendaStatus; send: (d: AgendaDraft
             key={k.id}
             size="sm"
             variant={k.id === kindId ? 'active' : 'default'}
-            onClick={() => setKindId(k.id)}
+            onClick={() => {
+              setKindId(k.id);
+              setPickedCalendar(undefined);
+            }}
           >
             {k.label}
           </Button>
@@ -191,6 +221,23 @@ function AddForm({ status, send }: { status: AgendaStatus; send: (d: AgendaDraft
           </>
         )}
       </span>
+      {!isTask && writable.length > 0 && (
+        <label className="flex flex-wrap items-center gap-4 text-text-muted">
+          Calendario
+          <select
+            value={calendar ?? ''}
+            onChange={(e) => setPickedCalendar(e.target.value || undefined)}
+            className={inputClass}
+          >
+            {!calendar && <option value="">(escoge uno)</option>}
+            {writable.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <Button
         size="sm"
         className="self-start"
@@ -218,6 +265,8 @@ export function AgendaPanel({ transport }: { transport: MessageTransport }) {
   const clash = conflictKeys(status.items);
   const pairs = findConflicts(status.items);
   const done = (id: string) => transport.send({ type: 'completeAgendaTask', id });
+  const calendarOf = (i: AgendaItem) => status.calendars?.find((c) => c.id === i.calendar);
+  const homeMissing = status.connected && !!status.calendars?.length && !status.homeCalendar;
 
   return (
     <Modal
@@ -240,6 +289,12 @@ export function AgendaPanel({ transport }: { transport: MessageTransport }) {
           </p>
         )}
         {status.error && <p className="text-status-error">{status.error}</p>}
+        {homeMissing && (
+          <p className="text-text-muted">
+            No encontré tu calendario de la casa (el de `casa` en agenda.json): los eventos que no
+            son de los dos necesitan que escojas el calendario.
+          </p>
+        )}
 
         {status.connected && (
           <>
@@ -275,6 +330,7 @@ export function AgendaPanel({ transport }: { transport: MessageTransport }) {
                       <ItemLine
                         key={itemKey(e)}
                         item={e}
+                        calendar={calendarOf(e)}
                         clash={clash.has(itemKey(e))}
                         busy={status.saving}
                       />

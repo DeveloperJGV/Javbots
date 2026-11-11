@@ -48,8 +48,8 @@ function fakeGoogle(
 
 const CALENDARS = {
   items: [
-    { id: 'cal-1', summary: 'Familia' },
-    { id: 'cal-2', summary: 'Otro' },
+    { id: 'cal-1', summary: 'Familia', accessRole: 'owner', backgroundColor: '#16a765' },
+    { id: 'cal-2', summary: 'Otro', accessRole: 'reader' },
   ],
 };
 const EVENTS = {
@@ -357,5 +357,125 @@ describe('agenda feature', () => {
     await f.refresh();
     expect(sent.length).toBeGreaterThan(before);
     f.dispose?.();
+  });
+
+  describe('several calendars', () => {
+    const MANY = {
+      items: [
+        { id: 'fam', summary: 'Familia', accessRole: 'owner', backgroundColor: '#ff887c' },
+        { id: 'casa', summary: 'Casa', accessRole: 'owner' },
+        { id: 'work', summary: 'yo@trabajo.com', accessRole: 'freeBusyReader' },
+        { id: 'oculto', summary: 'Oculto', accessRole: 'owner', hidden: true },
+      ],
+    };
+    const many = (c: Call): unknown => {
+      if (c.url.includes('/calendarList')) return MANY;
+      if (c.url.includes('/calendars/fam/events') && c.method === 'GET') return EVENTS;
+      if (c.url.includes('/calendars/casa/events') && c.method === 'GET')
+        return {
+          items: [
+            {
+              id: 'e1', // same id as in Familia: a different event
+              summary: 'Limpiar el garage',
+              start: { dateTime: '2026-11-07T21:00:00-06:00' },
+              end: { dateTime: '2026-11-07T21:15:00-06:00' },
+            },
+          ],
+        };
+      if (c.url.endsWith('/freeBusy'))
+        return {
+          calendars: {
+            work: { busy: [{ start: '2026-11-04T15:00:00Z', end: '2026-11-05T00:00:00Z' }] },
+          },
+        };
+      return {};
+    };
+    const feature = (g: ReturnType<typeof fakeGoogle>) =>
+      createAgendaFeature({
+        google: g.session,
+        config: () => ({
+          shared: 'Familia',
+          home: 'Casa',
+          names: { 'yo@trabajo.com': 'Trabajo' },
+        }),
+        now: () => NOW,
+      });
+
+    it('reads every visible calendar, free/busy ones as busy blocks', async () => {
+      const g = fakeGoogle(many);
+      const f = feature(g);
+      const { c, last } = client();
+      f.connect?.(c);
+      await f.refresh();
+      const st = last();
+      expect(st.error).toBeUndefined();
+      expect(st.sharedCalendar).toBe('fam');
+      expect(st.homeCalendar).toBe('casa');
+      expect(st.calendars?.map((x) => [x.id, x.name, x.writable, x.busyOnly])).toEqual([
+        ['fam', 'Familia', true, false],
+        ['casa', 'Casa', true, false],
+        ['work', 'Trabajo', false, true],
+      ]);
+      expect(st.calendars?.[0].color).toBe('#ff887c');
+      expect(g.calls.some((x) => x.url.includes('/calendars/oculto/'))).toBe(false);
+      expect(g.calls.some((x) => x.url.includes('/calendars/work/events'))).toBe(false);
+      const events = st.items.filter((i) => i.kind === 'event');
+      expect(events.map((i) => [i.calendar, i.id])).toEqual([
+        ['fam', 'e1'],
+        ['fam', 'e3'],
+        ['casa', 'e1'],
+        ['work', 'work#0'],
+      ]);
+      expect(events[3]).toMatchObject({ title: 'Ocupado', busy: true, allDay: false });
+      const fb = g.calls.find((x) => x.url.endsWith('/freeBusy'));
+      expect(fb?.body).toMatchObject({ items: [{ id: 'work' }] });
+      f.dispose?.();
+    });
+
+    it('a new event goes where the panel says, else by its title', async () => {
+      const g = fakeGoogle(many);
+      const f = feature(g);
+      const { c } = client();
+      f.connect?.(c);
+      await f.refresh();
+      const add = async (msg: Record<string, unknown>) => {
+        g.calls.length = 0;
+        f.handleClientMessage?.(
+          { type: 'addAgendaItem', kind: 'event', date: '2026-11-08', ...msg },
+          c,
+        );
+        await flush();
+        return g.calls.find((x) => x.method === 'POST' && x.url.endsWith('/events'))?.url;
+      };
+      expect(await add({ title: 'Salida: Cine' })).toBe(`${CAL}/calendars/fam/events`);
+      expect(await add({ title: 'Concierto: Algo' })).toBe(`${CAL}/calendars/fam/events`);
+      expect(await add({ title: 'Limpiar el garage' })).toBe(`${CAL}/calendars/casa/events`);
+      expect(await add({ title: 'Salida: Solo yo', calendar: 'casa' })).toBe(
+        `${CAL}/calendars/casa/events`,
+      );
+      // Not writable (work) or unknown: falls back to the title's rule.
+      expect(await add({ title: 'Junta', calendar: 'work' })).toBe(`${CAL}/calendars/casa/events`);
+      f.dispose?.();
+    });
+
+    it('no own calendar: a plain event is not saved and says which calendar is missing', async () => {
+      const g = fakeGoogle((c) =>
+        c.url.includes('/calendarList') ? { items: [MANY.items[0]] } : many(c),
+      );
+      const f = feature(g);
+      const { c, last } = client();
+      f.connect?.(c);
+      await f.refresh();
+      expect(last().homeCalendar).toBeUndefined();
+      g.calls.length = 0;
+      f.handleClientMessage?.(
+        { type: 'addAgendaItem', kind: 'event', title: 'Orejas', date: '2026-11-08' },
+        c,
+      );
+      await flush();
+      expect(g.calls.some((x) => x.method === 'POST')).toBe(false);
+      expect(last().error).toContain('"Casa"');
+      f.dispose?.();
+    });
   });
 });

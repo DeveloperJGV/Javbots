@@ -1,4 +1,4 @@
-import type { AgendaItem } from '../../../core/src/messages.js';
+import type { AgendaCalendar, AgendaItem } from '../../../core/src/messages.js';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 /** YYYY-MM-DD of a Date in local time. */
@@ -54,6 +54,14 @@ export function timeText(item: AgendaItem): string {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+/** "09:00–18:00" of a timed event (just the start when it has no end). */
+export function rangeText(item: AgendaItem): string {
+  const start = timeText(item);
+  if (!start || !item.end || item.end.length <= 10) return start;
+  const e = new Date(item.end);
+  return `${start}–${pad(e.getHours())}:${pad(e.getMinutes())}`;
+}
+
 /** The type word of a title ("Salida" for "Salida: Cena") and the rest; no type when there's no "Word:" start. */
 export function splitPrefix(title: string): { prefix?: string; rest: string } {
   const m = /^\s*([A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+):\s*(.*)$/.exec(title);
@@ -94,7 +102,17 @@ export function conflictKeys(items: readonly AgendaItem[]): Set<string> {
   return out;
 }
 
-export const itemKey = (i: AgendaItem): string => `${i.kind}:${i.id}`;
+export const itemKey = (i: AgendaItem): string =>
+  `${i.kind}:${i.calendar ? `${i.calendar}:` : ''}${i.id}`;
+
+/** The calendar a new event goes to by default: the shared one for things for both, the owner's own for the rest. */
+export function defaultCalendar(
+  kindId: string,
+  shared: string | undefined,
+  home: string | undefined,
+): string | undefined {
+  return kindId === 'concierto' || kindId === 'salida' ? shared : (home ?? shared);
+}
 
 /** What the owner is about to add, as the panel holds it. */
 export interface AgendaDraft {
@@ -103,6 +121,8 @@ export interface AgendaDraft {
   date?: string;
   time?: string;
   endTime?: string;
+  /** Calendar id for an event. */
+  calendar?: string;
 }
 
 /** The draft as an item (to check clashes before saving); the end defaults to one hour later. */
@@ -137,12 +157,22 @@ export function draftConflicts(d: AgendaDraft, items: readonly AgendaItem[]): Ag
     .map(([a, b]) => (a === draft ? b : a));
 }
 
-/** One line saying what will be saved and where ("Salida: Cena · sáb 7 nov, 20:00 → calendario"). */
-export function draftSummary(d: AgendaDraft, today: string): string {
+/** One line saying what will be saved and where ("Salida: Cena · sáb 7 nov, 20:00 → Familia"). */
+export function draftSummary(
+  d: AgendaDraft,
+  today: string,
+  calendars: readonly AgendaCalendar[] = [],
+): string {
   const when = d.date
     ? `${dayLabel(d.date, today).toLowerCase()}${d.time ? `, ${d.time}${d.endTime ? `–${d.endTime}` : ''}` : d.kind === 'event' ? ', todo el día' : ''}`
     : 'sin fecha';
-  const where = d.kind === 'task' ? 'tus tareas (solo tú las ves)' : 'el calendario compartido';
+  const cal = calendars.find((c) => c.id === d.calendar);
+  const where =
+    d.kind === 'task'
+      ? 'tus tareas (solo tú las ves)'
+      : cal
+        ? `el calendario "${cal.name}"`
+        : 'el calendario';
   return `"${d.title}" · ${when} → ${where}`;
 }
 

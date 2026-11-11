@@ -1376,9 +1376,10 @@ components:
 
     AgendaStatus:
       description: >-
-        Today and the next days: the events of the shared Google calendar and
-        the owner's own Google Tasks (pending ones due in that span, overdue or
-        without a date). Privileged connections only.
+        Today and the next days: the events of every Google calendar the owner
+        sees (busy blocks only for the free/busy ones) and the owner's own Google
+        Tasks (pending ones due in that span, overdue or without a date).
+        Privileged connections only.
       type: object
       additionalProperties: false
       required: [type, connected, from, days, items, saving]
@@ -1403,6 +1404,37 @@ components:
           description: Something is being added or marked done right now.
         error:
           type: string
+        calendars:
+          type: array
+          description: The calendars read, in Google's order.
+          items:
+            $ref: '#/components/schemas/AgendaCalendar'
+        sharedCalendar:
+          type: string
+          description: Id of the shared calendar (agenda.json `calendario`), when found.
+        homeCalendar:
+          type: string
+          description: Id of the owner's own calendar for the rest (agenda.json `casa`), when found.
+
+    AgendaCalendar:
+      type: object
+      additionalProperties: false
+      required: [id, name, writable, busyOnly]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          description: The name to show (agenda.json `nombres`, else Google's).
+        color:
+          type: string
+          description: Google's background color for it (#rrggbb).
+        writable:
+          type: boolean
+          description: Events can be added to it.
+        busyOnly:
+          type: boolean
+          description: Only free/busy can be read (no titles), e.g. a work calendar.
 
     AgendaItem:
       type: object
@@ -1430,6 +1462,12 @@ components:
           type: string
         link:
           type: string
+        calendar:
+          type: string
+          description: Id of the calendar an event comes from (absent for tasks).
+        busy:
+          type: boolean
+          description: A free/busy block with no details (from a busyOnly calendar).
 
     AgendaItemKind:
       description: An event of the shared calendar, or a task of the owner's Google Tasks.
@@ -1469,6 +1507,11 @@ components:
         endTime:
           type: string
           description: HH:MM (local) end of a timed event; absent = one hour later.
+        calendar:
+          type: string
+          description: >-
+            Id of a writable calendar for an event. Absent = the shared one for
+            Concierto/Salida, the owner's own one for the rest.
 
     CompleteAgendaTask:
       description: Mark a task (its id in agendaStatus.items) as done. Privileged connections only.

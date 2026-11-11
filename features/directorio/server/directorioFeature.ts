@@ -4,7 +4,7 @@ import * as path from 'path';
 
 import type { SearchRoomStatus } from '../../../core/src/messages.js';
 import type { FeatureClient, ServerFeature } from '../../../server/src/serverFeature.js';
-import { readAgendaCalendarName } from '../../agenda/server/agendaConfig.js';
+import { readHomeCalendarName } from '../../agenda/server/agendaConfig.js';
 import {
   CalendarNotFound,
   createAgendaGoogle,
@@ -39,7 +39,7 @@ export interface DirectorioFeatureOptions {
   skillFile: string;
   /** ~/.pixel-agents by default. */
   home?: string;
-  /** Name of the shared calendar (default: the agenda's, agenda.json). */
+  /** Name of the calendar for services (default: the owner's own one, agenda.json `casa`). */
   calendarName?: () => string;
   now?: () => number;
   pollMs?: number;
@@ -68,7 +68,7 @@ export function createDirectorioFeature(opts: DirectorioFeatureOptions): ServerF
 } {
   const home = opts.home ?? path.join(os.homedir(), '.pixel-agents');
   const google = opts.google;
-  const calendarName = opts.calendarName ?? (() => readAgendaCalendarName());
+  const calendarName = opts.calendarName ?? (() => readHomeCalendarName());
   const clients = new Set<FeatureClient>();
   let saving = false;
   let error: string | undefined;

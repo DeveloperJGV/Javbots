@@ -14,7 +14,7 @@ mostrador con campanita, tablero de llaves y teléfono de disco. Un clic en cual
 4. **Resultados.** El agente escribe un archivo; el panel lo lee solo en unos segundos y los muestra ordenados:
    recomendados por puntuación, luego los descartados, cada uno con tipo (oficial, establecido u otro), calificación,
    reseñas, teléfono, dirección, liga, fuente y **por qué**.
-5. **Contacté / Descartado / Agendar.** Agendar crea la cita en el calendario compartido de la agenda con el título
+5. **Contacté / Descartado / Agendar.** Agendar crea la cita en tu calendario de la casa (`casa` en el `agenda.json` de la agenda) con el título
    `Servicio: <nombre>`, la dirección y el teléfono, después de mostrar **"¿Lo agrego así?"**. Necesita la sesión de
    Google ([features/google](../google/README.md)).
 

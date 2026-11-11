@@ -3,14 +3,16 @@
 Un cuarto estilo **centro de mando**: un clic en la consola o en cualquiera de sus pantallas abre **"Hoy y esta
 semana"**:
 
-- **Tu agenda de hoy y los 6 días siguientes:** los eventos de un calendario compartido de Google (el tipo lo dice
-  la primera palabra del título: `Concierto: …`, `Salida: …`) y tus **tareas de Google Tasks**, que solo ves tú
-  (las atrasadas salen en "Hoy"; las que no tienen fecha, al final).
+- **Tu agenda de hoy y los 6 días siguientes:** los eventos de **todos tus calendarios de Google** (los que tienes
+  visibles), cada uno con su color; los que solo compartes como libre/ocupado (por ejemplo el del trabajo) salen
+  como bloques "Ocupado". El tipo lo dice la primera palabra del título (`Concierto: …`, `Salida: …`). Además, tus
+  **tareas de Google Tasks**, que solo ves tú (las atrasadas salen en "Hoy"; las que no tienen fecha, al final).
 - **Agregar escribiendo:** escoge el tipo con un botón (`Concierto:`, `Salida:`, evento normal o tarea), escribe,
-  pon el día y, si quieres, la hora. Antes de guardar se muestra cómo quedará y dónde, y se pide confirmar. Un
-  evento va al calendario; una tarea, a Tasks.
+  pon el día y, si quieres, la hora. Antes de guardar se muestra cómo quedará y dónde, y se pide confirmar. Una
+  tarea va a Tasks. Un evento va al calendario que escojas: por defecto `Concierto:` y `Salida:` van al
+  **compartido** (lo de los dos) y lo demás a **tu calendario de la casa**.
 - **Marcar una tarea como hecha** con un clic.
-- **Choques de horario:** se avisan en el panel, antes de agregar algo que se empalma, en el mapa de la semana
+- **Choques de horario** (entre todos los calendarios, trabajo incluido): se avisan en el panel, antes de agregar algo que se empalma, en el mapa de la semana
   (marca roja) y con el foco rojo de la consola.
 
 Las pantallas del cuarto están vivas: el **mapa de la semana** pinta un bloque por evento (cian) o tarea (ámbar)
@@ -19,12 +21,21 @@ en cada día, la **lista de tareas** prende una casilla por pendiente y el **rad
 ## Configurar
 
 Usa la sesión de Google de la oficina ([features/google](../google/README.md)), con los permisos de Calendar y
-Tasks (en Google Cloud hay que activar también **Google Tasks API**). El calendario se busca por nombre entre los
-tuyos; por defecto `Familia`, o el que digas en `~/.pixel-agents/agenda.json`:
+Tasks (en Google Cloud hay que activar también **Google Tasks API**). Los calendarios se buscan por nombre entre los
+tuyos, en `~/.pixel-agents/agenda.json` (todo opcional):
 
 ```json
-{ "calendario": "Mi calendario" }
+{
+  "calendario": "Compartido",
+  "casa": "Casa",
+  "nombres": { "yo@trabajo.com": "Trabajo" }
+}
 ```
+
+- `calendario`: el compartido, solo para lo de los dos (por defecto `Familia`).
+- `casa`: el tuyo para lo demás: servicios, pendientes de la casa, la mascota (por defecto `Casa`). El
+  [Directorio](../directorio/README.md) agenda ahí sus `Servicio:`.
+- `nombres`: cómo mostrar un calendario (por su nombre o id), útil para el del trabajo.
 
 La oficina **no crea ni comparte calendarios**, y nunca borra eventos ni tareas.
 
