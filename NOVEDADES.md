@@ -3,6 +3,28 @@
 Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
 (Pixel Agents) está en [CHANGELOG.md](CHANGELOG.md).
 
+## 11 de noviembre de 2026
+
+- **El panel del jardín, pensado para muchas plantas.** Las fichas se abren y se cierran: cerrada enseña la foto, el
+  nombre, la especie y el lugar; abierta, la nota completa y todas las fotos. Un clic en una foto la abre en grande,
+  con su fecha y con anterior y siguiente. Arriba hay un buscador (nombre, especie, lugar y notas, sin importar
+  acentos) y un botón por lugar con cuántas plantas tiene. Al editar, la ficha se vuelve el formulario, con la nota
+  más alta y su contador de letras, y el nombre, la especie y el lugar aceptan hasta 200 letras.
+- **"Hoy en el jardín" dice la verdad.** Si ninguna planta tiene cuidados programados lo dice (antes salía "Nada
+  pendiente hoy.") y lleva a la sección de plantas; si solo les faltan a algunas, dice a cuántas.
+- **Inventario por categoría.** Los insumos salen agrupados y en orden alfabético, lo que está en cero dice "se
+  acabó", el mínimo solo se enseña cuando existe y quitar un insumo pide confirmar.
+- **Arreglos del jardín.** Con dos plantas de nombre parecido ("Lavanda" y "Lavanda joven"), una nota o una foto del
+  celular ya solo marca a la que nombra. Y la carpeta de Drive se lee completa aunque tenga más de 200 archivos.
+- **Ninguna foto del jardín se borra.** En la foto en grande hay un botón "Quitar foto" (pide confirmar). La foto
+  que se quita, las de una planta que se borra y las que se descartan de "Del celular" se guardan en la carpeta
+  "Ya no están". Las fotos de una planta ahora se llaman con su fecha y el nombre de la planta.
+- **Un cuidado nuevo ya no nace atrasado.** Antes, agregar "podar cada 365 días" a una planta registrada hace meses
+  lo daba por vencido desde ese día y mandaba aviso. Ahora el formulario pregunta cuándo toca la primera vez (hoy, ya
+  se hizo tal día, o hasta tal día) y no deja guardar sin la respuesta; tampoco acepta fechas imposibles. La revisión
+  antes de guardar dice el primer aviso de cada cuidado ("Primer aviso de podar: 15 feb 2027"), y si cambias ese día, el evento
+  y la tarea se mueven en vez de duplicarse.
+
 ## 10 de noviembre de 2026
 
 - **La oficina ya distingue a un agente que te espera de uno que trabaja.** Cada agente tiene un estado de atención:

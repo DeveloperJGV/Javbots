@@ -5,6 +5,11 @@ export const JARDIN_DATA_FILE = 'jardin.json';
 /** ~/.pixel-agents/jardin/: the photos (fotos/) and the computer's drop folder (entrada/). */
 export const JARDIN_DIR = 'jardin';
 export const JARDIN_PHOTOS_DIR = 'fotos';
+/**
+ * The office never deletes a photo: one taken off a plant (or a removed plant's, or one discarded from the inbox)
+ * is moved here. Never served nor shown in the panel.
+ */
+export const JARDIN_GONE_DIR = 'ya-no-estan';
 /** Notes and photos left on this computer (by the skill, or by hand); processed like the Drive ones. */
 export const JARDIN_LOCAL_INBOX_DIR = 'entrada';
 /** Where a processed local file goes, so it is read only once. */
@@ -49,6 +54,8 @@ export const MAX_PHOTO_BYTES = 15 * 1024 * 1024;
 export const MAX_NOTE_BYTES = 64 * 1024;
 /** Files read from Drive per sync (the rest wait for the next one). */
 export const MAX_DRIVE_FILES_PER_SYNC = 20;
+/** Pages of 200 read when listing the Drive folder (10 000 files): a safety stop, not a real limit. */
+export const MAX_DRIVE_LIST_PAGES = 50;
 /** How many recent automatic changes the panel shows. */
 export const MAX_RECENT = 15;
 export const MAX_TEXT = 200;

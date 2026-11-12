@@ -100,6 +100,7 @@ export type ClientMessage =
   | SaveJardinSupply
   | DeleteJardinSupply
   | ResolveJardinInbox
+  | RemoveJardinPhoto
   | StartPomodoro
   | PausePomodoro
   | ResumePomodoro
@@ -687,6 +688,7 @@ export interface JardinCareInput {
   everyDays: number;
   time?: string;
   last?: string;
+  first?: string;
 }
 
 export interface JardinRecent {
@@ -957,10 +959,10 @@ export interface InstallMusicExtension {
 
 export interface MusicControl {
   type: 'musicControl';
-  action: AnonymousSchema_526;
+  action: AnonymousSchema_527;
 }
 
-export type AnonymousSchema_526 = 'previous' | 'togglePlay' | 'next';
+export type AnonymousSchema_527 = 'previous' | 'togglePlay' | 'next';
 
 export interface DisconnectSpotify {
   type: 'disconnectSpotify';
@@ -1051,6 +1053,12 @@ export interface ResolveJardinInbox {
 }
 
 export type JardinInboxAction = 'care' | 'photo' | 'discard';
+
+export interface RemoveJardinPhoto {
+  type: 'removeJardinPhoto';
+  plantId: string;
+  photo: string;
+}
 
 export interface StartPomodoro {
   type: 'startPomodoro';

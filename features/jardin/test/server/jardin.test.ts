@@ -33,7 +33,15 @@ type Raw = Record<string, unknown>;
  * A Google double with state: calendars, events, task lists, tasks and a Drive folder, answering the way the real
  * APIs do (ids, 404 for what's gone). No network.
  */
-function fakeGoogle(opts: { calendars?: string[]; scopes?: string[]; folder?: boolean } = {}) {
+function fakeGoogle(
+  opts: {
+    calendars?: string[];
+    scopes?: string[];
+    folder?: boolean;
+    /** Drive may answer fewer files per page than asked for: this many at most. */
+    drivePage?: number;
+  } = {},
+) {
   const calendars = (opts.calendars ?? ['Plantas', 'Otro']).map((summary, i) => ({
     id: `cal-${i}`,
     summary,
@@ -116,7 +124,19 @@ function fakeGoogle(opts: { calendars?: string[]; scopes?: string[]; folder?: bo
       const q = u.searchParams.get('q') ?? '';
       if (q.includes("mimeType='application/vnd.google-apps.folder'"))
         return { files: opts.folder === false ? [] : [{ id: 'folder-1', name: 'Jardín' }] };
-      return { files: files.map(({ content: _c, ...f }) => f) };
+      // Pages like the real API: pageSize (or less), pageToken, and nextPageToken only when `fields` asks for it
+      const size = Math.min(
+        Number(u.searchParams.get('pageSize') ?? 100),
+        opts.drivePage ?? Infinity,
+      );
+      const from = Number(u.searchParams.get('pageToken') ?? 0);
+      const page = files.slice(from, from + size).map(({ content: _c, ...f }) => f);
+      const more = from + size < files.length;
+      const wantsToken = (u.searchParams.get('fields') ?? '').includes('nextPageToken');
+      return {
+        files: page,
+        ...(more && wantsToken ? { nextPageToken: String(from + size) } : {}),
+      };
     }
     throw new Error(`fake google: no route for ${method} ${url}`);
   }
@@ -317,6 +337,47 @@ describe('notes from the phone (rules, no AI)', () => {
     expect(plantOfPhoto('IMG_2041.jpg', plants)).toBeNull();
     expect(plantOfPhoto('monstera-y-lavanda.jpg', plants)).toBeNull();
   });
+
+  it('a name inside a longer one names only the longer plant', () => {
+    const both = [
+      ...plants,
+      {
+        id: 'lavanda-joven',
+        name: 'Lavanda joven',
+        photos: [],
+        since: '2026-11-01',
+        cares: [
+          { kind: 'regar' as const, everyDays: 3, time: '09:00' },
+          { kind: 'podar' as const, everyDays: 60, time: '09:00' },
+        ],
+      },
+    ];
+    const ids = (t: string) => {
+      const l = readNoteLine(t, both, day, '09:00');
+      return l?.kind === 'care' ? l.plantIds : l?.kind;
+    };
+    expect(ids('podé la lavanda joven')).toEqual(['lavanda-joven']);
+    expect(ids('Podé la LAVANDA JOVEN')).toEqual(['lavanda-joven']);
+    expect(ids('regué la lavanda y la lavanda joven')).toEqual(['lavanda', 'lavanda-joven']);
+    expect(ids('regué la lavanda joven y la lavanda')).toEqual(['lavanda', 'lavanda-joven']);
+    expect(ids('regué la lavanda')).toEqual(['lavanda']);
+    expect(ids('regué la lavandajoven')).toBe('unclear');
+    expect(plantOfPhoto('lavanda joven 2026-11-03.jpg', both)?.id).toBe('lavanda-joven');
+    expect(plantOfPhoto('lavanda_joven-2026-11-03.jpg', both)?.id).toBe('lavanda-joven');
+    expect(plantOfPhoto('lavanda 2026-11-03.jpg', both)?.id).toBe('lavanda');
+    expect(plantOfPhoto('lavanda y lavanda joven.jpg', both)).toBeNull();
+  });
+
+  it('a species still names its plant', () => {
+    const withSpecies = [
+      { ...plants[0], species: 'Monstera deliciosa' },
+      { ...plants[1], species: 'Lavandula angustifolia' },
+    ];
+    expect(
+      readNoteLine('regué la lavandula angustifolia', withSpecies, day, '09:00'),
+    ).toMatchObject({ kind: 'care', plantIds: ['lavanda'] });
+    expect(plantOfPhoto('monstera deliciosa.jpg', withSpecies)?.id).toBe('monstera');
+  });
 });
 
 describe('jardin feature', () => {
@@ -515,6 +576,28 @@ describe('jardin feature', () => {
     expect(last().inbox).toHaveLength(0);
   });
 
+  it('reads every page of the Drive folder, so the newest files (on the last page) are seen', async () => {
+    const g = fakeGoogle({ drivePage: 2 });
+    const { send, feature, last } = tracked(g);
+    await send({ type: 'saveJardinPlant', plant: monstera });
+    for (let i = 1; i <= 4; i++) g.addFile(`recibo ${i}.pdf`, 'x', 'application/pdf');
+    g.addFile(
+      'monstera 2026-11-03.jpg',
+      Buffer.from([0xff, 0xd8, 0xff]),
+      'image/jpeg',
+      new Date(2026, 10, 3, 8).toISOString(),
+    );
+    const lists = () =>
+      g.calls.filter((c) => c.url.startsWith(`${DRIVE}/files?`) && c.url.includes('in+parents'))
+        .length;
+    const before = lists();
+    await feature.sync();
+    expect(last().plants[0].photos).toEqual(['2026-11-03-monstera-2026-11-03.jpg']);
+    expect(lists() - before).toBe(3); // 2 + 2 + 1
+    expect(last().checks.find((c) => c.id === 'drive')?.detail).toContain('5 archivos leídos');
+    expect(g.writes().some((c) => c.url.startsWith(DRIVE))).toBe(false);
+  });
+
   it('says what is missing for Drive: the permission, or the folder', async () => {
     const noScope = tracked(fakeGoogle({ scopes: [GOOGLE_CALENDAR_SCOPE, GOOGLE_TASKS_SCOPE] }));
     await noScope.feature.sync();
@@ -593,5 +676,248 @@ describe('jardin feature', () => {
     const saved = JSON.parse(fs.readFileSync(dataFile, 'utf8'));
     expect(saved.ajustes).toEqual({ prefijo: 'Plantas:', horaPorDefecto: '07:00' });
     feature.dispose?.();
+  });
+});
+
+describe('a new care never starts late', () => {
+  /** An old garden on disk: a Lavanda added in January, with no cares (or the ones given). */
+  function oldGarden(cares: Raw[] = []) {
+    const s = tracked();
+    fs.writeFileSync(
+      s.dataFile,
+      JSON.stringify({
+        version: 1,
+        plants: [{ id: 'lavanda', name: 'Lavanda', photos: [], since: '2026-01-10', cares }],
+      }),
+    );
+    fs.utimesSync(s.dataFile, Date.now() / 1000 + 5, Date.now() / 1000 + 5);
+    const save = (care: Raw) =>
+      s.send({
+        type: 'saveJardinPlant',
+        plant: {
+          id: 'lavanda',
+          name: 'Lavanda',
+          cares: [{ kind: 'podar', everyDays: 365, ...care }],
+        },
+      });
+    const podar = () => s.last().plants[0].cares.find((c) => c.kind === 'podar');
+    const stored = () =>
+      JSON.parse(fs.readFileSync(s.dataFile, 'utf8')).plants[0].cares.find(
+        (c: Raw) => c.kind === 'podar',
+      );
+    return { ...s, save, podar, stored };
+  }
+
+  it('on a plant added months ago, the three answers: today, already done that day, not until that day', async () => {
+    const hoy = oldGarden();
+    await hoy.save({ first: '2026-11-03' });
+    expect(hoy.podar()?.due).toBe('2026-11-03');
+    expect(hoy.stored()).toMatchObject({ first: '2026-11-03' });
+
+    const hecho = oldGarden();
+    await hecho.save({ last: '2026-10-01' });
+    expect(hecho.podar()).toMatchObject({ last: '2026-10-01', due: '2027-10-01' });
+    expect(hecho.stored().first).toBeUndefined();
+
+    const hasta = oldGarden();
+    await hasta.save({ first: '2027-02-15' });
+    expect(hasta.podar()?.due).toBe('2027-02-15');
+    const ev = [...hasta.g.events.values()];
+    expect(ev.map((e) => (e.start as Raw).dateTime)).toEqual(['2027-02-15T09:00:00']);
+    expect([...hasta.g.tasks.values()].map((t) => t.due)).toEqual(['2027-02-15T00:00:00.000Z']);
+  });
+
+  it('a new care with no answer (an old client) starts today, never on the day the plant was added', async () => {
+    const s = oldGarden();
+    await s.save({});
+    expect(s.podar()?.due).toBe('2026-11-03');
+    expect(s.stored()).toMatchObject({ first: '2026-11-03' });
+  });
+
+  it('impossible days are not guessed backwards: a "done" in the future and a "due" in the past become today', async () => {
+    const futuro = oldGarden();
+    await futuro.save({ last: '2026-12-01' });
+    expect(futuro.podar()).toMatchObject({ last: '2026-11-03', due: '2027-11-03' });
+    const pasado = oldGarden();
+    await pasado.save({ first: '2026-02-01' });
+    expect(pasado.podar()?.due).toBe('2026-11-03');
+  });
+
+  it('an old file without the field reads as before, and an edit that does not touch the day keeps it', async () => {
+    const s = oldGarden([{ kind: 'podar', everyDays: 365, time: '09:00' }]);
+    await s.feature.sync();
+    expect(s.podar()?.due).toBe('2026-01-10');
+    await s.save({ everyDays: 180 });
+    expect(s.podar()).toMatchObject({ everyDays: 180, due: '2026-01-10' });
+    expect(s.stored().first).toBeUndefined();
+  });
+
+  it('editing a care without changing its first day keeps it (even once it is late)', async () => {
+    const s = oldGarden();
+    await s.save({ first: '2026-11-10' });
+    clock += 10 * DAY; // Fri 13: late now
+    await s.save({ time: '07:00' });
+    expect(s.podar()).toMatchObject({ due: '2026-11-10', time: '07:00' });
+    // The panel sending the same (past) day back is not a new choice either
+    await s.save({ first: '2026-11-10' });
+    expect(s.podar()?.due).toBe('2026-11-10');
+  });
+
+  it('marking it done drops the first day: from then on it counts from the real day', async () => {
+    const s = oldGarden();
+    await s.save({ first: '2027-02-15' });
+    await s.send({ type: 'markJardinCare', plantId: 'lavanda', kind: 'podar' });
+    expect(s.podar()).toMatchObject({ last: '2026-11-03', due: '2027-11-03' });
+    expect(s.stored().first).toBeUndefined();
+  });
+
+  it('changing the first day moves its event and task, never makes a second one', async () => {
+    const s = oldGarden();
+    await s.save({ first: '2027-02-15' });
+    const [ev] = [...s.g.events.values()];
+    const [task] = [...s.g.tasks.values()];
+    await s.save({ first: '2026-12-01' });
+    expect(s.g.events.size).toBe(1);
+    expect(s.g.tasks.size).toBe(1);
+    expect(s.g.events.get(ev.id as string)?.start).toMatchObject({
+      dateTime: '2026-12-01T09:00:00',
+    });
+    expect(s.g.tasks.get(task.id as string)?.due).toBe('2026-12-01T00:00:00.000Z');
+    // "Already done" on an existing care moves them too
+    await s.save({ last: '2026-11-01', everyDays: 20 });
+    expect(s.g.events.size).toBe(1);
+    expect(s.g.events.get(ev.id as string)?.start).toMatchObject({
+      dateTime: '2026-11-21T09:00:00',
+    });
+    expect(s.podar()?.due).toBe('2026-11-21');
+  });
+});
+
+describe('jardin photos: none is ever deleted', () => {
+  const lavanda = { name: 'Lavanda', cares: [{ kind: 'regar', everyDays: 3 }] };
+
+  /** Two plants, and photos left in the computer drop folder (dated today, 3 Nov). */
+  async function garden(files: string[]) {
+    const s = tracked();
+    await s.send({ type: 'saveJardinPlant', plant: monstera });
+    await s.send({ type: 'saveJardinPlant', plant: lavanda });
+    const entrada = path.join(s.dir, 'jardin', 'entrada');
+    fs.mkdirSync(entrada, { recursive: true });
+    for (const f of files) {
+      fs.writeFileSync(path.join(entrada, f), 'jpg');
+      fs.utimesSync(path.join(entrada, f), clock / 1000, clock / 1000);
+    }
+    await s.feature.sync();
+    const fotos = path.join(s.dir, 'jardin', 'fotos');
+    const gone = path.join(s.dir, 'jardin', 'ya-no-estan');
+    const ls = (d: string) => (fs.existsSync(d) ? fs.readdirSync(d).sort() : []);
+    const plant = (id: string) => s.last().plants.find((p) => p.id === id);
+    return { ...s, fotos, gone, ls, plant };
+  }
+
+  it('a photo linked to a plant is renamed to carry its name and date, numbered on a clash', async () => {
+    const { send, last, fotos, ls, plant } = await garden([
+      'monstera.jpg',
+      'IMG_1.jpg',
+      'IMG_2.jpg',
+    ]);
+    // Its name already says the plant: kept as is
+    expect(plant('monstera')?.photos).toEqual(['2026-11-03-monstera.jpg']);
+    // From the inbox: renamed after the plant, the date its name carried, never on top of another file
+    const [a, b] = last().inbox;
+    await send({ type: 'resolveJardinInbox', id: a.id, action: 'photo', plantId: 'monstera' });
+    expect(plant('monstera')?.photos).toEqual([
+      '2026-11-03-monstera.jpg',
+      '2026-11-03-monstera-2.jpg',
+    ]);
+    // Creating a plant from the inbox does the same
+    await send({
+      type: 'saveJardinPlant',
+      plant: { name: 'Menta de limón', cares: [] },
+      fromInbox: b.id,
+    });
+    expect(plant('menta-de-limon')?.photos).toEqual(['2026-11-03-menta-de-limon.jpg']);
+    expect(ls(fotos)).toEqual([
+      '2026-11-03-menta-de-limon.jpg',
+      '2026-11-03-monstera-2.jpg',
+      '2026-11-03-monstera.jpg',
+    ]);
+  });
+
+  it('taking a photo off a plant unlinks it and moves it to "Ya no están"', async () => {
+    const { send, last, fotos, gone, ls, plant } = await garden(['monstera.jpg']);
+    await send({
+      type: 'removeJardinPhoto',
+      plantId: 'monstera',
+      photo: '2026-11-03-monstera.jpg',
+    });
+    expect(plant('monstera')?.photos).toEqual([]);
+    expect(ls(fotos)).toEqual([]);
+    expect(ls(gone)).toEqual(['2026-11-03-monstera.jpg']);
+    expect(last().recent[0].text).toBe('Guardé una foto de Monstera en "Ya no están"');
+    // A photo the plant doesn't have changes nothing
+    await send({ type: 'removeJardinPhoto', plantId: 'monstera', photo: 'otra.jpg' });
+    expect(ls(gone)).toEqual(['2026-11-03-monstera.jpg']);
+  });
+
+  it('a photo two plants share stays while one keeps it; the last one out names it', async () => {
+    const { send, dataFile, fotos, gone, ls, plant } = await garden(['monstera.jpg']);
+    // The owner gave the same photo to the lavanda by hand in jardin.json
+    const raw = JSON.parse(fs.readFileSync(dataFile, 'utf8'));
+    raw.plants.find((p: Raw) => p.id === 'lavanda').photos = ['2026-11-03-monstera.jpg'];
+    fs.writeFileSync(dataFile, JSON.stringify(raw));
+    fs.utimesSync(dataFile, Date.now() / 1000 + 5, Date.now() / 1000 + 5);
+    await send({
+      type: 'removeJardinPhoto',
+      plantId: 'monstera',
+      photo: '2026-11-03-monstera.jpg',
+    });
+    expect(plant('monstera')?.photos).toEqual([]);
+    expect(ls(fotos)).toEqual(['2026-11-03-monstera.jpg']);
+    expect(ls(gone)).toEqual([]);
+    // Removing the plant moves its photos, named after it this time
+    await send({ type: 'deleteJardinPlant', id: 'lavanda' });
+    expect(ls(fotos)).toEqual([]);
+    expect(ls(gone)).toEqual(['2026-11-03-lavanda.jpg']);
+  });
+
+  it('removing a plant moves all its photos, numbered when the name is taken there', async () => {
+    const { send, last, fotos, gone, ls } = await garden(['monstera.jpg', 'monstera hoja.jpg']);
+    fs.mkdirSync(gone, { recursive: true });
+    fs.writeFileSync(path.join(gone, '2026-11-03-monstera.jpg'), 'old');
+    await send({ type: 'deleteJardinPlant', id: 'monstera' });
+    expect(ls(fotos)).toEqual([]);
+    expect(ls(gone)).toEqual([
+      '2026-11-03-monstera-2.jpg',
+      '2026-11-03-monstera-hoja.jpg',
+      '2026-11-03-monstera.jpg',
+    ]);
+    expect(fs.readFileSync(path.join(gone, '2026-11-03-monstera.jpg'), 'utf8')).toBe('old');
+    expect(last().recent[0].text).toBe('Guardé 2 fotos de Monstera en "Ya no están"');
+  });
+
+  it('a photo discarded from the inbox is moved with its own name, not deleted', async () => {
+    const { send, last, fotos, gone, ls } = await garden(['IMG_1.jpg']);
+    await send({ type: 'resolveJardinInbox', id: last().inbox[0].id, action: 'discard' });
+    expect(last().inbox).toEqual([]);
+    expect(ls(fotos)).toEqual([]);
+    expect(ls(gone)).toEqual(['2026-11-03-img-1.jpg']);
+    expect(last().recent[0].text).toBe('Guardé una foto de la compu en "Ya no están"');
+  });
+
+  it('a move that fails still takes the photo off, and is logged', async () => {
+    const { send, fotos, gone, ls, plant } = await garden(['monstera.jpg']);
+    fs.rmSync(path.join(fotos, '2026-11-03-monstera.jpg'));
+    await send({
+      type: 'removeJardinPhoto',
+      plantId: 'monstera',
+      photo: '2026-11-03-monstera.jpg',
+    });
+    expect(plant('monstera')?.photos).toEqual([]);
+    expect(ls(gone)).toEqual([]);
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('No pude mover la foto 2026-11-03-monstera.jpg'),
+      expect.any(String),
+    );
   });
 });

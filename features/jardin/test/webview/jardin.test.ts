@@ -99,6 +99,7 @@ describe('jardin text', () => {
         garden,
       ),
     ).toEqual([
+      'Primer aviso de regar: 5 nov 2026',
       `Calendario "Plantas": "Jardín: regar Menta" · ${d5}, 07:30, con aviso`,
       `Tareas "Jardín": "Regar Menta" · para ${d5}`,
     ]);
@@ -108,7 +109,7 @@ describe('jardin text', () => {
       checks: [{ id: 'calendar', label: '', state: 'off' as const, detail: '', help: 'Créalo' }],
     };
     expect(
-      plantReview({ name: 'Menta', cares: [{ kind: 'regar', everyDays: 2 }] }, noCal)[0],
+      plantReview({ name: 'Menta', cares: [{ kind: 'regar', everyDays: 2 }] }, noCal)[1],
     ).toContain('sin evento');
     // Editing: a care taken out is said too
     expect(

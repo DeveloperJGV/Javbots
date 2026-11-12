@@ -4,6 +4,7 @@ import {
   CALENDAR_API,
   DRIVE_API,
   JARDIN_TIME_ZONE,
+  MAX_DRIVE_LIST_PAGES,
   OWNER_MARK_KEY,
   REMINDER_EVENT_MINUTES,
   REMINDER_POPUP_MINUTES,
@@ -250,26 +251,36 @@ export function createJardinGoogle(api: GoogleApi, download: GoogleDownload) {
       return found ? str(found.id) : null;
     },
 
-    /** The files in the folder, oldest first. */
+    /** The files in the folder, oldest first, every page (the newest ones live on the last page). */
     async listFolder(folderId: string): Promise<DriveFile[]> {
       const q = `'${folderId.replace(/['\\]/g, '\\$&')}' in parents and trashed=false`;
-      const params = new URLSearchParams({
-        q,
-        fields: 'files(id,name,mimeType,createdTime,size)',
-        orderBy: 'createdTime',
-        pageSize: '200',
-      });
-      return items(await api(`${DRIVE_API}/files?${params.toString()}`), 'files')
-        .filter((f) => str(f.id) && str(f.name))
-        .map((f) => ({
-          id: str(f.id),
-          name: str(f.name),
-          mimeType: str(f.mimeType),
-          ...(str(f.createdTime) ? { createdTime: str(f.createdTime) } : {}),
-          ...(f.size !== undefined && Number.isFinite(Number(f.size))
-            ? { size: Number(f.size) }
-            : {}),
-        }));
+      const out: DriveFile[] = [];
+      let page = '';
+      for (let i = 0; i < MAX_DRIVE_LIST_PAGES; i++) {
+        const params = new URLSearchParams({
+          q,
+          fields: 'nextPageToken,files(id,name,mimeType,createdTime,size)',
+          orderBy: 'createdTime',
+          pageSize: '200',
+          ...(page ? { pageToken: page } : {}),
+        });
+        const raw = await api(`${DRIVE_API}/files?${params.toString()}`);
+        for (const f of items(raw, 'files')) {
+          if (!str(f.id) || !str(f.name)) continue;
+          out.push({
+            id: str(f.id),
+            name: str(f.name),
+            mimeType: str(f.mimeType),
+            ...(str(f.createdTime) ? { createdTime: str(f.createdTime) } : {}),
+            ...(f.size !== undefined && Number.isFinite(Number(f.size))
+              ? { size: Number(f.size) }
+              : {}),
+          });
+        }
+        page = str(obj(raw).nextPageToken);
+        if (!page) break;
+      }
+      return out;
     },
 
     /** A file's content (a Google Doc as plain text). */

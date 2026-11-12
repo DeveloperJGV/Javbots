@@ -47,6 +47,8 @@ export interface StoredCare {
   time: string;
   /** YYYY-MM-DD of the last time it was really done. */
   last?: string;
+  /** YYYY-MM-DD it's due the first time, while it was never done (dropped once it's done). */
+  first?: string;
   sync?: CareSync;
 }
 
@@ -58,7 +60,7 @@ export interface StoredPlant {
   notes?: string;
   furniture?: string;
   photos: string[];
-  /** YYYY-MM-DD it was added: a care never done is due that day. */
+  /** YYYY-MM-DD it was added: a care from an old file, never done and with no first day, is due that day. */
   since: string;
   cares: StoredCare[];
 }
@@ -116,9 +118,32 @@ export function addDays(day: string, n: number): string {
 }
 export const maxDay = (a: string, b: string): string => (a > b ? a : b);
 
-/** When a care is due: from the last time it was really done, never from a fixed rhythm. Never done: since added. */
-export function dueDay(care: Pick<StoredCare, 'last' | 'everyDays'>, since: string): string {
-  return care.last ? addDays(care.last, care.everyDays) : since;
+/**
+ * When a care is due: from the last time it was really done, never from a fixed rhythm. Never done: its first day
+ * (chosen when the care was added). Only an old file, with neither, falls back to the day the plant was added.
+ */
+export function dueDay(
+  care: Pick<StoredCare, 'last' | 'first' | 'everyDays'>,
+  since: string,
+): string {
+  return care.last ? addDays(care.last, care.everyDays) : (care.first ?? since);
+}
+
+/**
+ * When a saved care starts counting, never guessing backwards. What the panel says wins: "ya se hizo el día…"
+ * (`last`, never after today) or "toca hasta el día…" / "toca hoy" (`first`, never before today, unless it's the
+ * day the care already had). Without either, an existing care keeps what it had and a new one starts today.
+ */
+export function careStart(
+  input: Pick<StoredCare, 'last' | 'first'>,
+  old: Pick<StoredCare, 'last' | 'first'> | undefined,
+  today: string,
+): Pick<StoredCare, 'last' | 'first'> {
+  if (input.last) return { last: input.last < today ? input.last : today };
+  if (input.first)
+    return { first: input.first === old?.first || input.first > today ? input.first : today };
+  if (old) return old.last ? { last: old.last } : old.first ? { first: old.first } : {};
+  return { first: today };
 }
 
 /** The day its reminder goes on: the due day, or today while it's late (it rolls to the next day until done). */
@@ -161,6 +186,7 @@ function readCare(raw: unknown): StoredCare | null {
     time: isTime(c.time) ? c.time : DEFAULT_CARE_TIME,
   };
   if (isDay(c.last)) care.last = c.last;
+  else if (isDay(c.first)) care.first = c.first;
   const s = obj(c.sync);
   const sync: CareSync = {};
   for (const k of ['eventId', 'eventSig', 'taskId', 'taskSig'] as const)
@@ -325,6 +351,7 @@ export function readPlantInput(raw: unknown, defaultTime: string): JardinPlantIn
       everyDays: care.everyDays,
       time: care.time,
       ...(care.last ? { last: care.last } : {}),
+      ...(care.first ? { first: care.first } : {}),
     });
   }
   return out;

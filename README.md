@@ -25,10 +25,12 @@ cambiamos el idioma, el arte, los cuartos y le agregamos cosas nuevas. La docume
 
 ## Novedades
 
-- **9 de noviembre de 2026**: la agenda ve todos tus calendarios (cada uno con su color, el del trabajo como
-  "Ocupado") y cada evento va al calendario que escojas; los servicios del Directorio, al de la casa.
-- **5 de noviembre de 2026**: el piso Personal queda de 2×2 en vez de una fila larga, pantalla de perfil en el cuarto de freelance (tu tipo de personalidad, sus rasgos y
-  datos curiosos, desde un archivo privado) y avisos del pomodoro también en Windows.
+- **11 de noviembre de 2026**: el panel del jardín sirve para muchas plantas (fichas que se abren y se cierran,
+  galería de fotos, buscador y filtro por lugar), "Hoy en el jardín" avisa cuando no hay cuidados programados y el
+  inventario sale por categoría. Un cuidado nuevo ya no nace atrasado (tú dices cuándo toca la primera vez) y las
+  fotos que se quitan no se borran: se guardan en "Ya no están".
+- **10 de noviembre de 2026**: la oficina distingue a un agente que te espera, uno atorado y uno que falló, cada
+  uno con su globo y su aviso, y Esc ya detiene al personaje.
 
 Todo lo nuevo, por fecha, en [NOVEDADES.md](NOVEDADES.md).
 

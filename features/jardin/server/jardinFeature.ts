@@ -20,6 +20,7 @@ import {
   JARDIN_FIRST_SYNC_MS,
   JARDIN_FLOOR_ID,
   JARDIN_FLOOR_LABEL,
+  JARDIN_GONE_DIR,
   JARDIN_LOCAL_DONE_DIR,
   JARDIN_LOCAL_INBOX_DIR,
   JARDIN_PHOTOS_DIR,
@@ -33,6 +34,7 @@ import {
 } from './constants.js';
 import {
   CARE_KINDS,
+  careStart,
   dueDay,
   isPhotoName,
   type JardinData,
@@ -44,6 +46,7 @@ import {
   readPlantInput,
   slug,
   type StoredCare,
+  type StoredPlant,
   SUPPLY_CATEGORIES,
   writeJardinData,
 } from './jardinData.js';
@@ -97,6 +100,14 @@ const PHOTO_TYPES: Record<string, string> = {
   gif: 'image/gif',
   heic: 'image/heic',
 };
+/** The day a photo name starts with ("2026-11-03-monstera.jpg"). */
+const DAY_PREFIX = /^(\d{4}-\d{2}-\d{2})-/;
+const splitName = (name: string): { stem: string; ext: string } => {
+  const dot = name.lastIndexOf('.');
+  return dot > 0
+    ? { stem: name.slice(0, dot), ext: name.slice(dot + 1) }
+    : { stem: name, ext: 'jpg' };
+};
 const isNoteFile = (f: { name: string; mimeType: string }) =>
   f.mimeType === 'text/plain' ||
   f.mimeType === 'application/vnd.google-apps.document' ||
@@ -120,6 +131,7 @@ export function createJardinFeature(opts: JardinFeatureOptions): ServerFeature &
   const file = opts.dataFile ?? jardinDataPath();
   const dir = opts.dir ?? jardinDir();
   const photosDir = path.join(dir, JARDIN_PHOTOS_DIR);
+  const goneDir = path.join(dir, JARDIN_GONE_DIR);
   const localInbox = path.join(dir, JARDIN_LOCAL_INBOX_DIR);
   const g: JardinGoogle = createJardinGoogle(
     (url, init) => google.api(url, init),
@@ -324,20 +336,95 @@ export function createJardinFeature(opts: JardinFeatureOptions): ServerFeature &
     });
   }
 
+  /** "<stem>.<ext>", or "<stem>-2.<ext>", "-3"…: never on top of a file there (nor of a name the data still holds). */
+  function freeName(
+    folder: string,
+    stem: string,
+    ext: string,
+    taken?: ReadonlySet<string>,
+  ): string {
+    const free = (n: string) => !taken?.has(n) && !fs.existsSync(path.join(folder, n));
+    let out = `${stem}.${ext}`;
+    for (let i = 2; !free(out); i++) out = `${stem}-${i}.${ext}`;
+    return out;
+  }
+
   function savePhoto(bytes: Buffer, name: string, ext: string, day: string): string {
     fs.mkdirSync(photosDir, { recursive: true });
-    const base = slug(name.replace(/\.[a-z0-9]+$/i, ''));
-    let out = `${day}-${base}.${ext}`;
-    for (let i = 2; fs.existsSync(path.join(photosDir, out)); i++)
-      out = `${day}-${base}-${i}.${ext}`;
+    const out = freeName(photosDir, `${day}-${slug(name.replace(/\.[a-z0-9]+$/i, ''))}`, ext);
     fs.writeFileSync(path.join(photosDir, out), bytes, { mode: 0o600 });
     return out;
   }
 
+  /** Every photo name the garden still points at (plants and inbox). */
+  const photosInUse = () =>
+    new Set([
+      ...data.plants.flatMap((p) => p.photos),
+      ...data.inbox.flatMap((i) => (i.photo ? [i.photo] : [])),
+    ]);
+
+  /**
+   * The name a photo of this plant should have, "<day>-<plant>" (the day its name already carries, or today's); null
+   * when its name already says the plant. Renaming a plant leaves its old photos alone.
+   */
+  function plantStem(photo: string, plantName: string): { stem: string; ext: string } | null {
+    const { stem, ext } = splitName(photo);
+    const plant = slug(plantName);
+    if (`-${stem.toLowerCase().replace(/[._]/g, '-')}-`.includes(`-${plant}-`)) return null;
+    return { stem: `${DAY_PREFIX.exec(photo)?.[1] ?? today()}-${plant}`, ext: ext.toLowerCase() };
+  }
+
+  /** Links a photo to a plant, first renamed to carry the plant's name (when no other plant holds it already). */
+  function linkPhoto(plant: StoredPlant, photo: string): void {
+    let name = photo;
+    const want = plantStem(photo, plant.name);
+    if (want && isPhotoName(photo) && !data.plants.some((p) => p.photos.includes(photo))) {
+      const to = freeName(photosDir, want.stem, want.ext, photosInUse());
+      try {
+        fs.renameSync(path.join(photosDir, photo), path.join(photosDir, to));
+        name = to;
+      } catch (err) {
+        console.warn(`${LOG_PREFIX} No pude renombrar la foto ${photo}:`, (err as Error).message);
+      }
+    }
+    if (!plant.photos.includes(name)) plant.photos.push(name);
+  }
+
+  /**
+   * The office never deletes a photo: one nothing points at any more is moved to "Ya no están" (named after its
+   * plant, when it had one). A move that fails (gone, in use) is logged and the change goes on. True when moved.
+   */
+  function retirePhoto(photo: string, plantName?: string): boolean {
+    if (!isPhotoName(photo) || photosInUse().has(photo)) return false;
+    const want = (plantName && plantStem(photo, plantName)) || splitName(photo);
+    try {
+      fs.mkdirSync(goneDir, { recursive: true });
+      const to = freeName(goneDir, want.stem, want.ext);
+      fs.renameSync(path.join(photosDir, photo), path.join(goneDir, to));
+      return true;
+    } catch (err) {
+      console.warn(
+        `${LOG_PREFIX} No pude mover la foto ${photo} a ${JARDIN_GONE_DIR}:`,
+        (err as Error).message,
+      );
+      return false;
+    }
+  }
+
+  /** A line in "Lo último que hizo la oficina" when photos were moved. */
+  const goneNote = (moved: number, whose: string) => {
+    if (moved > 0)
+      pushRecent(
+        data,
+        iso(),
+        `Guardé ${moved === 1 ? 'una foto' : `${moved} fotos`} ${whose} en "Ya no están"`,
+      );
+  };
+
   function takePhoto(photo: string, name: string, source: 'drive' | 'local'): void {
     const plant = plantOfPhoto(name, data.plants);
     if (plant) {
-      plant.photos.push(photo);
+      linkPhoto(plant, photo);
       pushRecent(
         data,
         iso(),
@@ -522,7 +609,7 @@ export function createJardinFeature(opts: JardinFeatureOptions): ServerFeature &
           kind: c.kind,
           everyDays: c.everyDays,
           time: c.time ?? data.settings.defaultTime,
-          ...(c.last ? { last: c.last } : old?.last ? { last: old.last } : {}),
+          ...careStart(c, old, t),
           ...(old?.sync ? { sync: old.sync } : {}),
         });
       }
@@ -531,8 +618,8 @@ export function createJardinFeature(opts: JardinFeatureOptions): ServerFeature &
       plant.cares = next;
       if (fromInbox) {
         const item = data.inbox.find((i) => i.id === fromInbox);
-        if (item?.photo) plant.photos.push(item.photo);
         data.inbox = data.inbox.filter((i) => i.id !== fromInbox);
+        if (item?.photo) linkPhoto(plant, item.photo);
       }
     }).then(sync);
   }
@@ -543,6 +630,17 @@ export function createJardinFeature(opts: JardinFeatureOptions): ServerFeature &
       if (!plant) return;
       for (const care of plant.cares) await forgetCare(quick(), care);
       data.plants = data.plants.filter((p) => p.id !== id);
+      // Its photos go to "Ya no están" (those no other plant keeps).
+      goneNote(plant.photos.filter((f) => retirePhoto(f, plant.name)).length, `de ${plant.name}`);
+    });
+  }
+
+  function removePhoto(plantId: string, photo: string): Promise<void> {
+    return run('quitar la foto', async () => {
+      const plant = findPlant(plantId);
+      if (!plant?.photos.includes(photo)) return;
+      plant.photos = plant.photos.filter((f) => f !== photo);
+      goneNote(retirePhoto(photo, plant.name) ? 1 : 0, `de ${plant.name}`);
     });
   }
 
@@ -614,16 +712,17 @@ export function createJardinFeature(opts: JardinFeatureOptions): ServerFeature &
         pushRecent(data, iso(), `Hecho: ${care.kind} ${plant.name} (nota acomodada)`);
       } else if (msg.action === 'photo') {
         if (!plant || !item.photo) return;
-        plant.photos.push(item.photo);
-      } else if (msg.action === 'discard') {
-        if (
-          item.photo &&
-          isPhotoName(item.photo) &&
-          !data.plants.some((p) => p.photos.includes(item.photo as string))
-        )
-          fs.rmSync(path.join(photosDir, item.photo), { force: true });
-      } else return;
+        data.inbox = data.inbox.filter((i) => i.id !== item.id);
+        linkPhoto(plant, item.photo);
+        return;
+      } else if (msg.action !== 'discard') return;
       data.inbox = data.inbox.filter((i) => i.id !== item.id);
+      // A discarded photo has no plant: it keeps its name, in "Ya no están" (never deleted).
+      if (item.photo)
+        goneNote(
+          retirePhoto(item.photo) ? 1 : 0,
+          item.source === 'drive' ? 'del celular' : 'de la compu',
+        );
     }).then(sync);
   }
 
@@ -714,6 +813,10 @@ export function createJardinFeature(opts: JardinFeatureOptions): ServerFeature &
           return true;
         case 'resolveJardinInbox':
           void resolveInbox(msg);
+          return true;
+        case 'removeJardinPhoto':
+          if (typeof msg.plantId === 'string' && typeof msg.photo === 'string')
+            void removePhoto(msg.plantId, msg.photo);
           return true;
         default:
           return false;

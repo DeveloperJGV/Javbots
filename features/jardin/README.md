@@ -7,7 +7,12 @@ el panel del jardín:
 - **Hoy en el jardín:** los cuidados de hoy y los atrasados, con el botón **Hecho**, y lo que viene en la semana.
 - **Plantas:** nombre, especie, lugar, fotos, notas y sus cuidados (regar, abonar, limpiar, podar), cada uno
   "cada N días" y con la hora de su aviso. **El siguiente cuidado se calcula desde la última vez que de verdad se
-  hizo**, no con un ritmo fijo.
+  hizo**, no con un ritmo fijo. **Un cuidado nuevo nunca nace atrasado:** al agregarlo (también el de una planta que
+  llega del celular), el formulario no deja seguir hasta escoger cuándo toca la primera vez: _toca hoy_, _ya se hizo
+  el día…_ (el siguiente se cuenta desde ahí) o _toca hasta el día…_ (para "podar en febrero"). Ese primer día se
+  guarda en el cuidado (`first`) y se borra en cuanto se marca hecho. Si un cuidado nuevo llega sin ese dato, empieza
+  hoy. Los cuidados de archivos viejos, sin ninguno de los dos datos, siguen contando desde el día en que se registró
+  la planta.
 - **Inventario:** plantas, herramientas, tierra, abono y macetas, con cantidad, unidad y mínimo.
 - **Del celular:** lo que llegó por Drive y la oficina no entendió sola, para acomodarlo con un clic.
 - **Conexión:** si falta el calendario, el permiso de Drive, la carpeta, etc., y cómo arreglarlo.
@@ -71,6 +76,21 @@ planta o una planta nueva, queda en **Del celular**, en el panel, para acomodarl
 `~/.pixel-agents/jardin/fotos/` y se ligan a su planta. **No hay IA en el servidor**: son reglas simples (nombre de
 planta + verbo).
 
+## Fotos: ninguna se borra
+
+- **Nombre:** toda foto ligada a una planta se llama `AAAA-MM-DD-<planta>.jpg` (el nombre de la planta en
+  minúsculas, sin acentos y con guiones, por ejemplo `2026-11-03-menta-de-limon.jpg`). Si al ligarla (desde **Del
+  celular**, o al crear la planta desde ahí) su nombre no trae ya el de la planta, la oficina renombra el archivo. La
+  fecha es la que ya traía el nombre (si no trae, la de hoy). Si ese nombre ya existe, se numera (`-2`, `-3`…); nunca
+  se encima un archivo. **Cambiar el nombre de una planta no renombra sus fotos viejas.**
+- **"Ya no están":** la oficina nunca borra una foto; la mueve a `~/.pixel-agents/jardin/ya-no-estan/`. Pasa al
+  quitar una foto desde la galería (botón **Quitar foto** en la foto en grande, pide confirmar), al borrar una planta
+  (sus fotos) y al **Descartar** una foto de **Del celular**. Una foto que también tiene otra planta se queda en
+  `fotos/` mientras alguna la conserve. Al moverla se le pone el nombre de su planta con la misma regla; una
+  descartada de la bandeja no tiene planta y conserva su nombre. Esa carpeta no se sirve por la red ni sale en el
+  panel. Cada vez que mueve fotos lo anota en "Lo último que hizo la oficina". Si mover un archivo falla (no existe,
+  está en uso), la foto se quita de la planta de todos modos y el error queda en la consola de la oficina.
+
 ## Desde la compu
 
 `~/.pixel-agents/jardin/entrada/` funciona igual que la carpeta de Drive (mismas notas y fotos): la oficina las lee y
@@ -80,11 +100,12 @@ las mueve a `entrada/leidos/`. La skill (`skill/SKILL.md`) escribe ahí.
 
 Todo es personal y vive en tu computadora, fuera de git:
 
-| Archivo                           | Qué hay                                                               |
-| --------------------------------- | --------------------------------------------------------------------- |
-| `~/.pixel-agents/jardin.json`     | Plantas, inventario, bandeja, ids de lo que la oficina creó en Google |
-| `~/.pixel-agents/jardin/fotos/`   | Las fotos (solo las ve una página abierta con el token de la oficina) |
-| `~/.pixel-agents/jardin/entrada/` | Notas y fotos dejadas en la compu                                     |
+| Archivo                               | Qué hay                                                                 |
+| ------------------------------------- | ----------------------------------------------------------------------- |
+| `~/.pixel-agents/jardin.json`         | Plantas, inventario, bandeja, ids de lo que la oficina creó en Google   |
+| `~/.pixel-agents/jardin/fotos/`       | Las fotos (solo las ve una página abierta con el token de la oficina)   |
+| `~/.pixel-agents/jardin/ya-no-estan/` | Las fotos que se quitaron (nunca se borran; no se sirven ni se enseñan) |
+| `~/.pixel-agents/jardin/entrada/`     | Notas y fotos dejadas en la compu                                       |
 
 Los nombres se cambian en `jardin.json`, en `"ajustes"` (si falta, los de abajo):
 
@@ -105,13 +126,14 @@ Los nombres se cambian en `jardin.json`, en `"ajustes"` (si falta, los de abajo)
 | Carpeta    | Qué hay                                                                                                                                                          |
 | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `server/`  | `jardinFeature.ts` (panel, Drive, entrada, piso), `jardinSync.ts` (eventos y tareas), `jardinGoogle.ts`, `jardinNotes.ts` (reglas de las notas), `jardinData.ts` |
-| `webview/` | `JardinPanel.tsx`, `jardinText.ts`, `jardinFurniture.ts` (plantas sedientas), `jardinStore.ts`                                                                   |
+| `webview/` | `JardinPanel.tsx`, `JardinFotos.tsx` (galería y "Quitar foto"), `jardinText.ts`, `jardinFurniture.ts` (plantas sedientas), `jardinStore.ts`                      |
 | `arte/`    | `plano.cjs` arma el plano de la azotea                                                                                                                           |
 | `planos/`  | `azotea.json`: el plano por defecto del piso                                                                                                                     |
 | `skill/`   | La skill del jardín                                                                                                                                              |
 | `test/`    | Pruebas del servidor (con un doble de Google: Calendar, Tasks y Drive, sin red) y de la página                                                                   |
 
 Toca al resto del proyecto en: el piso de azotea (`roof` en `core/src/offices.ts` y `server/src/officeRegistry.ts`),
-mensajes en `core/asyncapi.yaml` (`jardinStatus` y los que empiezan con `Jardin`), el registro en `server/src/cli.ts`,
+mensajes en `core/asyncapi.yaml` (`jardinStatus` y los que llevan `Jardin`, como `removeJardinPhoto`), el registro
+en `server/src/cli.ts`,
 el permiso de Drive en `features/google`, el clic en los muebles (`officeState.ts`, `OfficeCanvas.tsx`) y el panel en
 `App.tsx`.

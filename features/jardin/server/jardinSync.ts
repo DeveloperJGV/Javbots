@@ -53,9 +53,13 @@ export function pushRecent(data: JardinData, at: string, text: string): void {
   if (data.recent.length > MAX_RECENT) data.recent.length = MAX_RECENT;
 }
 
-/** The care was really done that day: the next one counts from it (a later day than what's stored wins). */
+/**
+ * The care was really done that day: the next one counts from it (a later day than what's stored wins). Its first
+ * day is spent, so it's dropped: from now on only `last` says when it's due.
+ */
 export function setDone(care: StoredCare, day: string): void {
   care.last = care.last ? maxDay(care.last, day) : day;
+  delete care.first;
 }
 
 /**

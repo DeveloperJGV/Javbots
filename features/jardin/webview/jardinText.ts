@@ -88,13 +88,29 @@ export const lateText = (late: number): string =>
 export const isThirsty = (plant: JardinPlant, today: string): boolean =>
   plant.cares.some((c) => c.kind === 'regar' && c.due < today);
 
-/** The day a new or edited care is due, the way the server works it out. */
+/**
+ * The day a care from the form is due, exactly as the server works it out (`careStart` + `dueDay` in
+ * features/jardin/server/jardinData.ts): from `last` (never after today), else its `first` (never before today,
+ * unless it's the day the care already had), else what the existing care had, else today.
+ */
 export function draftDue(
-  care: { everyDays: number; last?: string },
+  care: { everyDays: number; last?: string; first?: string },
+  before: Pick<JardinCare, 'last' | 'due'> | undefined,
   today: string,
-  since = today,
 ): string {
-  return care.last ? addDay(care.last, care.everyDays) : since;
+  if (care.last) return addDay(care.last < today ? care.last : today, care.everyDays);
+  if (care.first) return care.first > today || care.first === before?.due ? care.first : today;
+  if (before) return before.last ? addDay(before.last, care.everyDays) : before.due;
+  return today;
+}
+
+/** "hoy", "mañana" or "15 feb 2027": the day a reminder goes on (a late one: today). */
+export function avisoDay(day: string, today: string): string {
+  if (day <= today) return 'hoy';
+  if (day === addDay(today, 1)) return 'mañana';
+  return dayDate(day)
+    .toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })
+    .replace(/\./g, '');
 }
 
 const verb = (k: JardinCareKind) => CARE_LABEL[k].toLowerCase();
@@ -125,13 +141,12 @@ export function plantReview(
   const lines: string[] = [];
   for (const care of draft.cares) {
     const before = old?.cares.find((c) => c.kind === care.kind);
-    const due = care.last
-      ? addDay(care.last, care.everyDays)
-      : before?.last
-        ? addDay(before.last, care.everyDays)
-        : (before?.due ?? status.today);
+    const due = draftDue(care, before, status.today);
     const day = dayLabel(due > status.today ? due : status.today, status.today).toLowerCase();
     const time = care.time ?? status.defaultTime;
+    lines.push(
+      `${before ? 'Próximo' : 'Primer'} aviso de ${verb(care.kind)}: ${avisoDay(due, status.today)}`,
+    );
     lines.push(
       !calendarMissing
         ? `Calendario "${status.calendarName}": "${status.eventPrefix} ${verb(care.kind)} ${draft.name}" · ${day}, ${time}, con aviso`

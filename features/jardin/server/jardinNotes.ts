@@ -43,12 +43,32 @@ export type NoteLine =
 
 const words = (s: string): string[] => fold(s).split(' ').filter(Boolean);
 
-/** The plants a text names (whole words, by name or species). */
+/**
+ * The plants a text names (whole words, by name or species). A mention inside a longer one of another plant doesn't
+ * count: with "Lavanda" and "Lavanda joven", "la lavanda joven" names only the second, and "la lavanda y la lavanda
+ * joven" names both.
+ */
 export function plantsNamed(text: string, plants: readonly StoredPlant[]): StoredPlant[] {
   const t = ` ${fold(text)} `;
-  return plants.filter((p) =>
-    [p.name, p.species].some((n) => n && fold(n) && t.includes(` ${fold(n)} `)),
-  );
+  const found: Array<{ plant: StoredPlant; start: number; end: number }> = [];
+  for (const plant of plants) {
+    for (const n of [plant.name, plant.species]) {
+      const f = n ? fold(n) : '';
+      if (!f) continue;
+      for (let i = t.indexOf(` ${f} `); i !== -1; i = t.indexOf(` ${f} `, i + 1))
+        found.push({ plant, start: i + 1, end: i + 1 + f.length });
+    }
+  }
+  const inLonger = (m: (typeof found)[number]) =>
+    found.some(
+      (o) =>
+        o.plant !== m.plant &&
+        o.start <= m.start &&
+        m.end <= o.end &&
+        o.end - o.start > m.end - m.start,
+    );
+  const named = new Set(found.filter((m) => !inLonger(m)).map((m) => m.plant));
+  return plants.filter((p) => named.has(p));
 }
 
 /** "nueva planta: lavanda (Lavandula), en la maceta azul; regar cada 3 días" → a plant to review. */

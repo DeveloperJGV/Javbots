@@ -198,6 +198,7 @@ components:
         - $ref: '#/components/schemas/SaveJardinSupply'
         - $ref: '#/components/schemas/DeleteJardinSupply'
         - $ref: '#/components/schemas/ResolveJardinInbox'
+        - $ref: '#/components/schemas/RemoveJardinPhoto'
         # Pomodoro on the roof (feature: features/pomodoro)
         - $ref: '#/components/schemas/StartPomodoro'
         - $ref: '#/components/schemas/PausePomodoro'
@@ -1712,6 +1713,12 @@ components:
           type: string
         last:
           type: string
+          description: YYYY-MM-DD it was really done last (today or before); the next one counts from it.
+        first:
+          type: string
+          description: >-
+            YYYY-MM-DD of the first time it is due (today or later), for a care never done.
+            A new care with neither this nor last starts today; an edit without them keeps what it had.
 
     JardinSupplyCategory:
       type: string
@@ -1843,7 +1850,9 @@ components:
           description: The inbox item this plant came from (it leaves the inbox).
 
     DeleteJardinPlant:
-      description: Remove a plant and the reminders the office made for it. Privileged connections only.
+      description: >-
+        Remove a plant and the reminders the office made for it. Its photos (those no other
+        plant keeps) are moved to "Ya no están", never deleted. Privileged connections only.
       type: object
       additionalProperties: false
       required: [type, id]
@@ -1895,7 +1904,8 @@ components:
     ResolveJardinInbox:
       description: >-
         The owner sorted an inbox item: a note becomes a care done on a plant,
-        a photo goes to a plant, or it is thrown away. Privileged connections only.
+        a photo goes to a plant (renamed after it), or it is thrown away (a photo is moved
+        to "Ya no están", never deleted). Privileged connections only.
       type: object
       additionalProperties: false
       required: [type, id, action]
@@ -1910,6 +1920,21 @@ components:
           type: string
         kind:
           $ref: '#/components/schemas/JardinCareKind'
+
+    RemoveJardinPhoto:
+      description: >-
+        Take a photo off a plant. The file is moved to "Ya no están" (never deleted) when no
+        other plant keeps it. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, plantId, photo]
+      properties:
+        type:
+          const: removeJardinPhoto
+        plantId:
+          type: string
+        photo:
+          type: string
     # ── Pomodoro on the roof (feature: features/pomodoro) ──────────
 
     PomodoroPhase:
