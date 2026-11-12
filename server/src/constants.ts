@@ -127,3 +127,18 @@ export const BACKGROUND_AGENT_PAUSED_PATTERN = /background work of its own still
 /** File (under SERVER_JSON_DIR) keeping the standalone office token across restarts, so a tab opened before a
  *  restart keeps its owner access. `pixel-agents --nueva-llave` (or deleting the file) mints a new one. */
 export const OFFICE_TOKEN_FILE = 'office-token.json';
+
+// ── Agent attention (docs/atencion-agentes.md) ──────────────
+/** Minutes without any event before a working agent counts as `atorado`, unless config.json says otherwise. */
+export const ATTENTION_DEFAULT_STUCK_MINUTES = 15;
+/** Accepted range for agentAttention.stuckMinutes in config.json (one day at most). */
+export const ATTENTION_MIN_STUCK_MINUTES = 1;
+export const ATTENTION_MAX_STUCK_MINUTES = 1440;
+/** How often the tracker looks for stuck agents (and re-reads config.json). */
+export const ATTENTION_CHECK_MS = 30_000;
+/** herdr's idle/done ends a `trabajando` only after this long without events (Esc while thinking sends none). */
+export const ATTENTION_HERDR_IDLE_GRACE_MS = 60_000;
+/** An `esperandote` notification waits this long: answering right away at the terminal never rings. */
+export const ATTENTION_WAITING_NOTIFY_DELAY_MS = 30_000;
+/** Title of the desktop notification. */
+export const ATTENTION_NOTIFY_TITLE = 'Javbots';

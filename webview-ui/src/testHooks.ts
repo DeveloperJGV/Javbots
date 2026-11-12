@@ -12,6 +12,8 @@ declare global {
         matrixEffect: 'spawn' | 'despawn' | null;
         agentName?: string;
         bubbleType: 'permission' | 'thinking' | 'waiting' | null;
+        /** Attention bubble (docs/atencion-agentes.md): esperandote, atorado, fallo or null. */
+        attention: string | null;
         waitingAwaitingInput?: boolean;
         isHeadless?: boolean;
         isGreeter?: boolean;
@@ -130,6 +132,7 @@ export function installTestHooks(officeStateRef: { current: OfficeState | null }
       matrixEffect: ch.matrixEffect,
       agentName: ch.agentName,
       bubbleType: ch.bubbleType,
+      attention: ch.attention?.estado ?? null,
       waitingAwaitingInput: ch.waitingAwaitingInput,
       isHeadless: ch.isHeadless,
       isGreeter: ch.isGreeter,

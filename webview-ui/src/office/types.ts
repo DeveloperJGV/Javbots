@@ -180,6 +180,16 @@ export interface OfficeLayout {
   areaTiles?: Array<string | null>;
 }
 
+/** The attention states that put a bubble over a character (docs/atencion-agentes.md). */
+export interface CharacterAttention {
+  estado: 'esperandote' | 'atorado' | 'fallo';
+  /** Reason code (core/src/attention.ts ATTENTION_REASONS). */
+  motivo: string;
+  /** ms since epoch when it entered the state (for atorado: its last event). */
+  desde: number;
+  detalle?: string;
+}
+
 export interface Character {
   id: number;
   state: CharacterState;
@@ -222,6 +232,9 @@ export interface Character {
    *  false/undefined when the agent simply finished its turn (checkmark only,
    *  label falls through to idle). */
   waitingAwaitingInput?: boolean;
+  /** Attention state from the server (docs/atencion-agentes.md) when it needs the person: its bubble wins over
+   *  bubbleType. null while working or finished. */
+  attention: CharacterAttention | null;
   /** Countdown timer for bubble (waiting: 2→0, thinking: counts up to animate the dots, permission: unused) */
   bubbleTimer: number;
   /** Timer to stay seated while inactive after seat reassignment (counts down to 0) */

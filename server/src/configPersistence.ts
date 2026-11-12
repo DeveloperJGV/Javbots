@@ -2,7 +2,13 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-import { CONFIG_FILE_NAME, LAYOUT_FILE_DIR } from './constants.js';
+import {
+  ATTENTION_DEFAULT_STUCK_MINUTES,
+  ATTENTION_MAX_STUCK_MINUTES,
+  ATTENTION_MIN_STUCK_MINUTES,
+  CONFIG_FILE_NAME,
+  LAYOUT_FILE_DIR,
+} from './constants.js';
 
 export interface AdapterSettings {
   soundEnabled: boolean;
@@ -68,6 +74,40 @@ export interface PixelAgentsConfig {
   /** Per-provider hooks preference, machine-global for the same reason as the
    *  consent above. A provider absent from the map takes the default (true). */
   hooksEnabled: Record<string, boolean>;
+  /** Agent attention settings (docs/atencion-agentes.md). Absent = defaults; kept as read so a write never drops it. */
+  agentAttention?: AgentAttentionSettings;
+}
+
+/** `agentAttention` in config.json: written by hand, read every ATTENTION_CHECK_MS. */
+export interface AgentAttentionSettings {
+  /** Minutes without events before `atorado`. */
+  stuckMinutes?: number;
+  /** false = no desktop notification (the bubble still shows). */
+  notify?: boolean;
+}
+
+function parseAgentAttention(raw: unknown): AgentAttentionSettings | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const obj = raw as Record<string, unknown>;
+  const out: AgentAttentionSettings = {};
+  if (typeof obj.stuckMinutes === 'number' && Number.isFinite(obj.stuckMinutes)) {
+    out.stuckMinutes = obj.stuckMinutes;
+  }
+  if (typeof obj.notify === 'boolean') out.notify = obj.notify;
+  return out;
+}
+
+/** The attention settings with defaults applied and the minutes clamped to a sane range. */
+export function readAgentAttentionSettings(): { stuckMinutes: number; notify: boolean } {
+  const raw = readConfig().agentAttention ?? {};
+  const minutes = raw.stuckMinutes ?? ATTENTION_DEFAULT_STUCK_MINUTES;
+  return {
+    stuckMinutes: Math.min(
+      ATTENTION_MAX_STUCK_MINUTES,
+      Math.max(ATTENTION_MIN_STUCK_MINUTES, minutes),
+    ),
+    notify: raw.notify ?? true,
+  };
 }
 
 const DEFAULT_ADAPTER_SETTINGS: AdapterSettings = {
@@ -199,6 +239,9 @@ export function readConfig(): PixelAgentsConfig {
         : [],
       hooksConsent: parseHooksConsent(parsed.hooksConsent),
       hooksEnabled: parseHooksEnabled(parsed.hooksEnabled),
+      ...(parsed.agentAttention !== undefined
+        ? { agentAttention: parseAgentAttention(parsed.agentAttention) }
+        : {}),
     };
   } catch (err) {
     console.error('[Pixel Agents] Failed to read config file:', err);

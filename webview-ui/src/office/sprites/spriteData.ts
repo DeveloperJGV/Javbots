@@ -5,6 +5,9 @@ import { packCast } from '../../packs/registry.js';
 import { adjustSprite } from '../colorize.js';
 import type { Direction, SpriteData } from '../types.js';
 import { Direction as Dir } from '../types.js';
+import bubbleAtoradoData from './bubble-atorado.json';
+import bubbleEsperandoteData from './bubble-esperandote.json';
+import bubbleFalloData from './bubble-fallo.json';
 import bubblePermissionData from './bubble-permission.json';
 import bubblePetData from './bubble-pet.json';
 import bubbleThinkingData from './bubble-thinking.json';
@@ -31,6 +34,17 @@ export const BUBBLE_WAITING_SPRITE: SpriteData = resolveBubbleSprite(bubbleWaiti
 export const BUBBLE_THINKING_FRAMES: SpriteData[] = bubbleThinkingData.frames.map((pixels) =>
   resolveBubbleSprite({ palette: bubbleThinkingData.palette, pixels }),
 );
+
+/** Attention bubbles (docs/atencion-agentes.md), one per state that needs the person (11x13). They replace the
+ *  activity bubbles while the state lasts. */
+export const BUBBLE_ATTENTION_SPRITES: Record<'esperandote' | 'atorado' | 'fallo', SpriteData> = {
+  /** Waiting on you: amber "!" */
+  esperandote: resolveBubbleSprite(bubbleEsperandoteData),
+  /** Stuck: hourglass */
+  atorado: resolveBubbleSprite(bubbleAtoradoData),
+  /** Failed: red "X" */
+  fallo: resolveBubbleSprite(bubbleFalloData),
+};
 
 /** Heart bubble: pet petting feedback (11x13) */
 export const BUBBLE_HEART_SPRITE: SpriteData = resolveBubbleSprite(bubblePetData);

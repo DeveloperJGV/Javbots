@@ -235,6 +235,7 @@ export function readNewLines(
 
     const hasLines = lines.some((l) => l.trim());
     if (hasLines) {
+      agent.lastTranscriptAt = Date.now();
       // New data arriving — cancel timers (data flowing means agent is still active).
       // When hooks are active, don't clear permission state here — the hook gave us a
       // definitive signal that permission is needed. Only a new user prompt or tool_result

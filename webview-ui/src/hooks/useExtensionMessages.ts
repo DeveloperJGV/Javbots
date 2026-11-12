@@ -28,7 +28,7 @@ import {
   isSubagentToolName,
   setProviderCapabilities,
 } from '../office/toolUtils.js';
-import type { OfficeLayout, ToolActivity } from '../office/types.js';
+import type { CharacterAttention, OfficeLayout, ToolActivity } from '../office/types.js';
 import { setWallSprites } from '../office/wallTiles.js';
 import { officesStore, requestedFloor, requestedOffice } from '../offices.js';
 import { setPackOffice } from '../packs/registry.js';
@@ -587,10 +587,29 @@ export function useExtensionMessages(
         }
         if (status === 'waiting') {
           os.showWaitingBubble(id, msg.awaitingInput === true);
-          playDoneSound();
-          // Party mode (Fase 5.5): a hop for every finished turn, a party when all are done
-          if (os.celebrateTurnEnd(id) === 'party') playPartySound();
+          // A failed turn (agentAttention `fallo` arrives first) is no reason to celebrate.
+          if (os.characters.get(id)?.attention?.estado !== 'fallo') {
+            playDoneSound();
+            // Party mode (Fase 5.5): a hop for every finished turn, a party when all are done
+            if (os.celebrateTurnEnd(id) === 'party') playPartySound();
+          }
         }
+      } else if (msg.type === 'agentAttention') {
+        // docs/atencion-agentes.md: a bubble for the states that need the person.
+        const id = msg.id as number;
+        const estado = msg.estado as string;
+        const motivo = msg.motivo as string;
+        const attention: CharacterAttention | null =
+          estado === 'esperandote' || estado === 'atorado' || estado === 'fallo'
+            ? {
+                estado,
+                motivo,
+                desde: msg.desde as number,
+                ...(typeof msg.detalle === 'string' ? { detalle: msg.detalle } : {}),
+              }
+            : null;
+        // A permission already chimed with agentToolPermission; the rest chime here.
+        if (os.setAgentAttention(id, attention) && motivo !== 'permiso') playPermissionSound();
       } else if (msg.type === 'agentToolPermission') {
         const id = msg.id as number;
         setAgentTools((prev) => {

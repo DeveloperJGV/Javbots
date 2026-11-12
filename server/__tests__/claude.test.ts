@@ -95,13 +95,18 @@ describe('claudeProvider', () => {
       expect(result?.event).toEqual({ kind: 'toolEnd', toolId: 'current', failed: true });
     });
 
-    it('an interrupted tool is not a failure', () => {
+    it('an interrupted tool is not a failure, it is an interrupt (Esc ends the turn)', () => {
       const result = claudeProvider.normalizeHookEvent({
         hook_event_name: 'PostToolUseFailure',
         session_id: 'sess-1',
         is_interrupt: true,
       });
-      expect(result?.event).toEqual({ kind: 'toolEnd', toolId: 'current', failed: false });
+      expect(result?.event).toEqual({
+        kind: 'toolEnd',
+        toolId: 'current',
+        failed: false,
+        interrupted: true,
+      });
     });
 
     it('PostToolUse never reports a failure', () => {
@@ -274,6 +279,38 @@ describe('claudeProvider', () => {
     });
     it('handles undefined input', () => {
       expect(claudeProvider.formatToolStatus('Read', undefined)).toBe('Reading ');
+    });
+  });
+
+  describe('attention signals (docs/atencion-agentes.md)', () => {
+    it('normalizes StopFailure to turnFailed with only the error code', () => {
+      const result = claudeProvider.normalizeHookEvent({
+        hook_event_name: 'StopFailure',
+        session_id: 'sess-1',
+        error: 'rate_limit',
+        error_details: 'You have hit your limit',
+        last_assistant_message: 'secret',
+      });
+      expect(result).toEqual({
+        sessionId: 'sess-1',
+        event: { kind: 'turnFailed', error: 'rate_limit' },
+      });
+    });
+
+    it.each([
+      ['worker_permission_prompt', undefined],
+      ['elicitation_dialog', 'question'],
+      ['elicitation_url_dialog', 'question'],
+      ['agent_needs_input', 'question'],
+    ])('normalizes Notification(%s) to a permission request (ask: %s)', (type, ask) => {
+      const result = claudeProvider.normalizeHookEvent({
+        hook_event_name: 'Notification',
+        session_id: 'sess-1',
+        notification_type: type,
+      });
+      expect(result?.event).toEqual(
+        ask ? { kind: 'permissionRequest', ask } : { kind: 'permissionRequest' },
+      );
     });
   });
 });

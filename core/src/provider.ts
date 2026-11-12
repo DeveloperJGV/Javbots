@@ -31,6 +31,8 @@ export type AgentEvent =
       toolId: string;
       /** The tool ran and failed (an error, not a user rejection or interrupt). */
       failed?: boolean;
+      /** The user stopped the tool (Esc): the turn ends here without a turn-end event. */
+      interrupted?: boolean;
       /** See toolStart.subagentId. */
       subagentId?: string;
     }
@@ -63,7 +65,14 @@ export type AgentEvent =
       reason: 'idle' | 'completed';
     }
   | { kind: 'progress'; toolId: string; data: unknown }
-  | { kind: 'permissionRequest' }
+  | {
+      kind: 'permissionRequest';
+      /** What the agent is blocked on: approving a tool (default) or answering a question/form. */
+      ask?: 'permission' | 'question';
+    }
+  /** The turn ended because of an error instead of finishing (Claude's StopFailure): usage limit, API error…
+   *  `error` is the CLI's code (rate_limit, overloaded, …); never message text. */
+  | { kind: 'turnFailed'; error?: string }
   | {
       kind: 'sessionStart';
       source?: string;

@@ -42,6 +42,26 @@ const INTERN_LABEL_PREFIX = 'Becario de';
 const PROFILE_SEPARATOR = ' · ';
 const NEEDS_APPROVAL_TEXT = 'Necesita tu permiso';
 
+/** The label line for an agent that needs the person (docs/atencion-agentes.md); null otherwise. */
+function attentionText(attention: Character['attention']): string | null {
+  if (!attention) return null;
+  switch (attention.estado) {
+    case 'esperandote':
+      if (attention.motivo === 'pregunta') return 'Te hizo una pregunta';
+      if (attention.motivo === 'herdr-bloqueado') return 'Te espera en la terminal';
+      return NEEDS_APPROVAL_TEXT;
+    case 'atorado': {
+      const since = new Date(attention.desde);
+      const hhmm = `${since.getHours()}:${String(since.getMinutes()).padStart(2, '0')}`;
+      return `Atorado: sin avanzar desde ${hhmm}`;
+    }
+    case 'fallo':
+      return attention.motivo === 'limite-de-uso'
+        ? 'Se detuvo: límite de uso'
+        : `Se detuvo: error del API (${attention.detalle ?? 'unknown'})`;
+  }
+}
+
 interface ToolOverlayProps {
   officeState: OfficeState;
   agents: number[];
@@ -164,10 +184,12 @@ export function ToolOverlay({
         // still says what it is doing in a small chip, so the office never hides who works on what (fork)
         if (!alwaysShowOverlay && !isSelected && !isHovered) {
           if (isSub || !ch.isActive) return null;
-          const needsYou = ch.bubbleType === 'permission';
-          const text = translateStatus(
-            getActivityText(id, agentTools, true, ch.bubbleType, false, null, false),
-          );
+          const needsYou = ch.bubbleType === 'permission' || ch.attention !== null;
+          const text =
+            attentionText(ch.attention) ??
+            translateStatus(
+              getActivityText(id, agentTools, true, ch.bubbleType, false, null, false),
+            );
           return (
             <div
               key={id}
@@ -225,7 +247,10 @@ export function ToolOverlay({
         const hasWaitingBubble = ch.bubbleType === 'waiting';
         const subHasPermission = isSub && ch.bubbleType === 'permission';
         let activityText: string;
-        if (hasWaitingBubble && ch.waitingAwaitingInput) {
+        const needsYouText = isSub ? null : attentionText(ch.attention);
+        if (needsYouText) {
+          activityText = needsYouText;
+        } else if (hasWaitingBubble && ch.waitingAwaitingInput) {
           // Idle, waiting on the user -> dedicated label. A finished turn (Stop)
           // shows only the checkmark and falls through to the normal idle text.
           activityText = WAITING_INPUT_ACTIVITY_TEXT;
@@ -261,7 +286,7 @@ export function ToolOverlay({
         const hasWaiting = ch.bubbleType === 'waiting';
 
         let dotColor: string | null = null;
-        if (hasPermission || hasWaiting) {
+        if (hasPermission || hasWaiting || ch.attention) {
           dotColor = 'var(--color-status-permission)';
         } else if (isActive && hasActiveTools) {
           dotColor = 'var(--color-status-active)';

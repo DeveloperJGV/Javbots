@@ -1,4 +1,5 @@
 import type { AgentStateStore } from './agentStateStore.js';
+import { attentionMessage } from './agentStateStore.js';
 import { hasPromotedBackgroundAgent } from './teamUtils.js';
 
 /**
@@ -10,6 +11,7 @@ import { hasPromotedBackgroundAgent } from './teamUtils.js';
  * 3. Background tools with runInBackground + isTeammateSpawn flags, skipping promoted spawns
  * 4. Waiting status
  * 5. Context usage
+ * 6. Attention state
  */
 export function resendAgentActivity(
   send: (message: Record<string, unknown>) => void,
@@ -84,5 +86,9 @@ export function resendAgentActivity(
         maxContextTokens: agent.maxContextTokens,
       });
     }
+
+    // 6. Attention state (docs/atencion-agentes.md), last: its bubble wins over the ones above.
+    const attention = store.getAttention(id);
+    if (attention) send(attentionMessage(attention));
   }
 }

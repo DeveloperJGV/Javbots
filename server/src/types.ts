@@ -24,6 +24,9 @@ export interface AgentState {
   folderName?: string;
   /** Timestamp of last JSONL data received (ms since epoch) */
   lastDataAt: number;
+  /** When the transcript last grew (ms since epoch); unset until it does. Counts as an event for
+   *  the `atorado` attention state (agentAttention.ts). */
+  lastTranscriptAt?: number;
   /** Total JSONL lines processed for this agent */
   linesProcessed: number;
   /** Set of record.type values we've already warned about (prevents log spam) */

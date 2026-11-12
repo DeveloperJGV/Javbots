@@ -1,14 +1,29 @@
 import { describe, expect, it } from 'vitest';
 
 import type { FeatureClient } from '../../../../server/src/serverFeature.js';
-import { createHerdrFeature, parseHerdr, tabLabels } from '../../server/herdrFeature.js';
+import {
+  agentStatuses,
+  createHerdrFeature,
+  parseHerdr,
+  tabLabels,
+} from '../../server/herdrFeature.js';
 
 const PANES = JSON.stringify({
   result: {
     panes: [
-      { pane_id: 'w2:p1', tab_id: 'w2:t1', agent_session: { value: 'stale-a' } },
-      { pane_id: 'w2:p2', tab_id: 'w2:t2', agent_session: { value: 'sess-b' } },
-      { pane_id: 'w2:p3', tab_id: 'w2:t9' }, // a tab without a name
+      {
+        pane_id: 'w2:p1',
+        tab_id: 'w2:t1',
+        agent_session: { value: 'stale-a' },
+        agent_status: 'blocked',
+      },
+      {
+        pane_id: 'w2:p2',
+        tab_id: 'w2:t2',
+        agent_session: { value: 'sess-b' },
+        agent_status: 'working',
+      },
+      { pane_id: 'w2:p3', tab_id: 'w2:t9', agent_status: 'idle' }, // a tab without a name
     ],
   },
 });
@@ -53,6 +68,42 @@ describe('herdr', () => {
       parseHerdr(PANES, TABS),
     );
     expect(labels).toEqual({ 1: 'MI-JUEGO', 2: 'MI-JUEGO-2' });
+  });
+
+  it("reads each agent's agent_status, by the same pane as its name (docs/atencion-agentes.md)", () => {
+    const statuses = agentStatuses(
+      [
+        [1, { sessionId: 'sess-a' }],
+        [2, { sessionId: 'sess-b' }],
+        [3, { sessionId: 'sess-c' }],
+      ],
+      new Map([['sess-a', 'w2:p1']]),
+      parseHerdr(PANES, TABS),
+    );
+    expect([...statuses]).toEqual([
+      [1, 'blocked'],
+      [2, 'working'],
+    ]);
+  });
+
+  it('hands each poll its statuses and remembers the labels it sent', async () => {
+    const seen: Array<[number, string]> = [];
+    const feature = createHerdrFeature({
+      agents: () => [[2, { sessionId: 'sess-b' }]],
+      run: fakeRun(),
+      pollMs: 60_000,
+      onAgentStatus: (id, status) => seen.push([id, status]),
+    });
+    const stop = feature.connect!({ privileged: true, send: () => {} });
+    try {
+      await feature.poll(); // the read started at creation, with nobody listening yet
+      await feature.poll();
+      expect(seen).toContainEqual([2, 'working']);
+      expect(feature.labelOf(2)).toBe('MI-JUEGO-2');
+    } finally {
+      stop();
+      feature.dispose!();
+    }
   });
 
   it('tells a tokened page, and only when something changed', async () => {

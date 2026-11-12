@@ -106,6 +106,7 @@ export function createCharacter(
     isActive: true,
     seatId,
     bubbleType: null,
+    attention: null,
     bubbleTimer: 0,
     seatTimer: 0,
     isSubagent: false,

@@ -69,6 +69,7 @@ import { getPetSprites } from '../sprites/petSpriteData.js';
 import { getCachedSprite, getOutlineSprite } from '../sprites/spriteCache.js';
 import {
   bossSheet,
+  BUBBLE_ATTENTION_SPRITES,
   BUBBLE_HEART_SPRITE,
   BUBBLE_PERMISSION_SPRITE,
   BUBBLE_THINKING_FRAMES,
@@ -808,14 +809,18 @@ function renderBubbles(
   zoom: number,
 ): void {
   for (const ch of characters) {
-    if (!ch.bubbleType) continue;
+    // Attention (docs/atencion-agentes.md): waiting on you, stuck or failed wins over any activity bubble.
+    const attentionSprite = ch.attention ? BUBBLE_ATTENTION_SPRITES[ch.attention.estado] : null;
+    if (!ch.bubbleType && !attentionSprite) continue;
     // The green checkmark bubble only represents "done" (turn finished). The
     // idle "Waiting for input" state communicates via its overlay label, not a
     // bubble, so skip the bubble for it.
-    if (ch.bubbleType === 'waiting' && ch.waitingAwaitingInput) continue;
+    if (!attentionSprite && ch.bubbleType === 'waiting' && ch.waitingAwaitingInput) continue;
 
     let sprite: SpriteData;
-    if (ch.bubbleType === 'permission') {
+    if (attentionSprite) {
+      sprite = attentionSprite;
+    } else if (ch.bubbleType === 'permission') {
       sprite = BUBBLE_PERMISSION_SPRITE;
     } else if (ch.bubbleType === 'thinking') {
       const frame = Math.floor(ch.bubbleTimer / THINKING_DOT_FRAME_SEC);
@@ -826,7 +831,11 @@ function renderBubbles(
 
     // Compute opacity: permission = full, waiting = fade in last 0.5s
     let alpha = 1.0;
-    if (ch.bubbleType === 'waiting' && ch.bubbleTimer < BUBBLE_FADE_DURATION_SEC) {
+    if (
+      !attentionSprite &&
+      ch.bubbleType === 'waiting' &&
+      ch.bubbleTimer < BUBBLE_FADE_DURATION_SEC
+    ) {
       alpha = ch.bubbleTimer / BUBBLE_FADE_DURATION_SEC;
     }
 

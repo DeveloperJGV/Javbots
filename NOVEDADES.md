@@ -3,6 +3,21 @@
 Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
 (Pixel Agents) está en [CHANGELOG.md](CHANGELOG.md).
 
+## 10 de noviembre de 2026
+
+- **La oficina ya distingue a un agente que te espera de uno que trabaja.** Cada agente tiene un estado de atención:
+  trabajando, te espera, atorado, falló o terminó. Los tres que te necesitan tienen su propio globo encima del
+  personaje: un **"!" ámbar** cuando te espera (un permiso, una pregunta o un aviso en la terminal), un **reloj de
+  arena** cuando se atoró (lleva 15 minutos "trabajando" sin que llegue nada) y una **"X" roja** cuando falló (el
+  límite de uso o un error del API). Su letrero dice el motivo ("Te hizo una pregunta", "Atorado: sin avanzar desde
+  10:42", "Se detuvo: límite de uso"), y te llega un aviso de la Mac al entrar a cualquiera de los tres (el de "te
+  espera" solo si sigue esperando a los 30 segundos). Un turno que falla ya no se festeja.
+- **Esc ya detiene al personaje.** Si interrumpes a un agente a media herramienta, deja de "trabajar" en la oficina.
+- Los minutos para "atorado" y los avisos se cambian en `~/.pixel-agents/config.json` (`agentAttention`); los
+  paquetes y las funciones pueden leer estos estados. Todo está en [docs/atencion-agentes.md](docs/atencion-agentes.md).
+- Al reiniciar la oficina se instala un hook más de Claude Code, `StopFailure` (avisa cuando un turno termina por un
+  error). Solo manda el código del error, nunca el texto.
+
 ## 9 de noviembre de 2026
 
 - **La agenda ve todos tus calendarios.** "Hoy y esta semana" ya no lee solo el calendario compartido: muestra los

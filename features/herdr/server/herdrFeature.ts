@@ -63,6 +63,8 @@ export interface HerdrSnapshot {
   tabOfPane: Map<string, string>;
   /** Claude session id herdr last saw in each pane → pane_id. Can be stale (herdr keeps the first id of a pane). */
   paneOfSession: Map<string, string>;
+  /** pane_id → herdr's agent_status there (working, blocked, done, idle), for panes running an agent. */
+  statusOfPane: Map<string, string>;
 }
 
 export function parseHerdr(paneListOut: string, tabListOut: string): HerdrSnapshot {
@@ -74,15 +76,42 @@ export function parseHerdr(paneListOut: string, tabListOut: string): HerdrSnapsh
   }
   const tabOfPane = new Map<string, string>();
   const paneOfSession = new Map<string, string>();
+  const statusOfPane = new Map<string, string>();
   for (const pane of listOf(paneListOut, 'panes')) {
     const paneId = str(pane.pane_id);
+    const status = str(pane.agent_status);
+    if (paneId && status) statusOfPane.set(paneId, status);
     const label = labelOfTab.get(str(pane.tab_id) ?? '');
     if (!paneId || !label) continue;
     tabOfPane.set(paneId, label);
     const session = isObject(pane.agent_session) ? str(pane.agent_session.value) : undefined;
     if (session) paneOfSession.set(session, paneId);
   }
-  return { tabOfPane, paneOfSession };
+  return { tabOfPane, paneOfSession, statusOfPane };
+}
+
+/** The pane an agent's session runs in: the hook's (authoritative) or the one herdr recorded. */
+function paneOf(
+  sessionId: string,
+  hookPanes: ReadonlyMap<string, string>,
+  herdr: HerdrSnapshot,
+): string | undefined {
+  return hookPanes.get(sessionId) ?? herdr.paneOfSession.get(sessionId);
+}
+
+/** Each agent's herdr agent_status (docs/atencion-agentes.md uses it as a second signal). */
+export function agentStatuses(
+  agents: Iterable<[number, { sessionId: string }]>,
+  hookPanes: ReadonlyMap<string, string>,
+  herdr: HerdrSnapshot,
+): Map<number, string> {
+  const out = new Map<number, string>();
+  for (const [id, agent] of agents) {
+    const pane = paneOf(agent.sessionId, hookPanes, herdr);
+    const status = pane ? herdr.statusOfPane.get(pane) : undefined;
+    if (status) out.set(id, status);
+  }
+  return out;
 }
 
 /**
@@ -96,7 +125,7 @@ export function tabLabels(
 ): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [id, agent] of agents) {
-    const pane = hookPanes.get(agent.sessionId) ?? herdr.paneOfSession.get(agent.sessionId);
+    const pane = paneOf(agent.sessionId, hookPanes, herdr);
     const label = pane ? herdr.tabOfPane.get(pane) : undefined;
     if (label) out[id] = label;
   }
@@ -112,6 +141,8 @@ export function createHerdrFeature(opts: {
   agents: () => Iterable<[number, { sessionId: string }]>;
   run?: HerdrRunner;
   pollMs?: number;
+  /** Every poll, herdr's agent_status for each agent it can place (agent attention's second signal). */
+  onAgentStatus?: (agentId: number, status: string) => void;
 }) {
   const run = opts.run ?? createHerdrRunner();
   const hookPanes = new Map<string, string>();
@@ -138,6 +169,11 @@ export function createHerdrFeature(opts: {
         if (!warned) console.log(`${LOG_PREFIX} Sin herdr por ahora:`, (err as Error).message);
         warned = true;
         return null;
+      }
+      if (opts.onAgentStatus) {
+        for (const [id, status] of agentStatuses(opts.agents(), hookPanes, snapshot)) {
+          opts.onAgentStatus(id, status);
+        }
       }
       const msg: HerdrTabLabels = {
         type: 'herdrTabLabels',
@@ -170,6 +206,10 @@ export function createHerdrFeature(opts: {
         ...(okAt ? { lastUsedAt: new Date(okAt).toISOString() } : {}),
       },
     ],
+    /** The herdr tab name of an agent, as last sent to the page. */
+    labelOf(agentId: number): string | undefined {
+      return current.labels[String(agentId)];
+    },
     /** Every hook event: remember which herdr pane its session runs in. */
     noteHookEvent(event: Record<string, unknown>): void {
       const session = str(event.session_id);

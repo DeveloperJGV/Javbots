@@ -138,6 +138,7 @@ import { characterSheetIndex, getLoadedCharacterCount } from '../sprites/spriteD
 import { nearestWalkable, StaffCrew } from '../staff/staffCrew.js';
 import type {
   Character,
+  CharacterAttention,
   FurnitureInstance,
   OfficeLayout,
   Pet,
@@ -1947,6 +1948,18 @@ export class OfficeState {
         this.particles.burstSparks(ch.x, ch.y + sitting - SPARK_HEAD_HEIGHT_PX);
       }
     }
+  }
+
+  /**
+   * The server's attention state (docs/atencion-agentes.md). Only esperandote, atorado and fallo keep a bubble over
+   * the character; anything else clears it. Returns true when the character just ENTERED one of those states.
+   */
+  setAgentAttention(id: number, attention: CharacterAttention | null): boolean {
+    const ch = this.characters.get(id);
+    if (!ch) return false;
+    const entered = attention !== null && ch.attention?.estado !== attention.estado;
+    ch.attention = attention;
+    return entered;
   }
 
   /** Dismiss bubble on click — permission: instant, waiting: quick fade */

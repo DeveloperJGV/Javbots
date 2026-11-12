@@ -19,6 +19,7 @@ export type ServerMessage =
   | AgentToolsClear
   | AgentToolPermission
   | AgentToolPermissionClear
+  | AgentAttention
   | SubagentToolStart
   | SubagentToolDone
   | SubagentClear
@@ -192,6 +193,17 @@ export interface AgentToolPermissionClear {
   type: 'agentToolPermissionClear';
   id: number;
 }
+
+export interface AgentAttention {
+  type: 'agentAttention';
+  id: number;
+  estado: AgentAttentionState;
+  motivo: string;
+  desde: number;
+  detalle?: string;
+}
+
+export type AgentAttentionState = 'trabajando' | 'esperandote' | 'atorado' | 'fallo' | 'termino';
 
 export interface SubagentToolStart {
   type: 'subagentToolStart';
@@ -430,10 +442,10 @@ export interface MusicStatus {
   message?: string;
   spotifyConfigured?: boolean;
   spotifyConnected?: boolean;
-  source?: AnonymousSchema_243;
+  source?: AnonymousSchema_248;
 }
 
-export type AnonymousSchema_243 = 'extension' | 'spotify';
+export type AnonymousSchema_248 = 'extension' | 'spotify';
 
 export interface MusicLyrics {
   type: 'musicLyrics';
@@ -442,11 +454,11 @@ export interface MusicLyrics {
   loading?: boolean;
   synced?: boolean;
   instrumental?: boolean;
-  source?: AnonymousSchema_250;
+  source?: AnonymousSchema_255;
   lines?: MusicLyricLine[];
 }
 
-export type AnonymousSchema_250 = 'spotify' | 'lrclib';
+export type AnonymousSchema_255 = 'spotify' | 'lrclib';
 
 export interface MusicLyricLine {
   text: string;
@@ -945,10 +957,10 @@ export interface InstallMusicExtension {
 
 export interface MusicControl {
   type: 'musicControl';
-  action: AnonymousSchema_521;
+  action: AnonymousSchema_526;
 }
 
-export type AnonymousSchema_521 = 'previous' | 'togglePlay' | 'next';
+export type AnonymousSchema_526 = 'previous' | 'togglePlay' | 'next';
 
 export interface DisconnectSpotify {
   type: 'disconnectSpotify';

@@ -2,6 +2,8 @@ import { EventEmitter } from 'node:events';
 import { appendFileSync } from 'node:fs';
 
 import type { StateAdapter } from '../../core/src/adapter.js';
+import type { AgentAttention, AttentionChange } from '../../core/src/attention.js';
+import type { AgentEvent } from '../../core/src/provider.js';
 import type { AgentState, PersistedAgent } from './types.js';
 
 /**
@@ -29,12 +31,28 @@ function debugLogBroadcast(message: Record<string, unknown>): void {
   }
 }
 
+/** The `agentAttention` protocol message for one agent's attention state. */
+export function attentionMessage(a: AgentAttention): Record<string, unknown> {
+  return {
+    type: 'agentAttention',
+    id: a.agentId,
+    estado: a.estado,
+    motivo: a.motivo,
+    desde: a.desde,
+    ...(a.detalle ? { detalle: a.detalle } : {}),
+  };
+}
+
 /** Typed event map for AgentStateStore. */
 export interface StoreEvents {
   agentAdded: (id: number, agent: AgentState) => void;
   agentRemoved: (id: number) => void;
   agentUpdated: (id: number, agent: AgentState, field: string) => void;
   broadcast: (message: Record<string, unknown>) => void;
+  /** A provider event reached an agent, after the runtime handled it (agentAttention.ts reads these). */
+  agentEvent: (id: number, event: AgentEvent) => void;
+  /** An agent's attention state changed (docs/atencion-agentes.md). */
+  attentionChanged: (change: AttentionChange) => void;
 }
 
 /**
@@ -44,6 +62,8 @@ export interface StoreEvents {
  */
 export class AgentStateStore {
   private readonly agents = new Map<number, AgentState>();
+  /** Attention state per agent (docs/atencion-agentes.md); written only by AttentionTracker. */
+  private readonly attention = new Map<number, AgentAttention>();
   private readonly emitter = new EventEmitter();
   readonly nextAgentId = { current: 1 };
   readonly nextTerminalIndex = { current: 1 };
@@ -124,11 +144,56 @@ export class AgentStateStore {
     if (existed) {
       this.emitter.emit('agentRemoved', id);
     }
+    const attention = this.attention.get(id);
+    if (attention) {
+      this.attention.delete(id);
+      this.emitter.emit('attentionChanged', { agentId: id, actual: null, anterior: attention });
+    }
     return existed;
   }
 
   clear(): void {
     this.agents.clear();
+    this.attention.clear();
+  }
+
+  // ── Attention (docs/atencion-agentes.md) ────────────────────
+
+  getAttention(id: number): AgentAttention | undefined {
+    const a = this.attention.get(id);
+    return a ? { ...a } : undefined;
+  }
+
+  attentionList(): AgentAttention[] {
+    return [...this.attention.values()].map((a) => ({ ...a }));
+  }
+
+  /**
+   * Replace an agent's attention state. Emits `attentionChanged` and broadcasts `agentAttention` when the state,
+   * reason, start or detail changed; the name, profile and last-event time alone change silently.
+   */
+  setAttention(next: AgentAttention): void {
+    if (!this.agents.has(next.agentId)) return;
+    const prev = this.attention.get(next.agentId);
+    this.attention.set(next.agentId, { ...next });
+    const changed =
+      !prev ||
+      prev.estado !== next.estado ||
+      prev.motivo !== next.motivo ||
+      prev.desde !== next.desde ||
+      prev.detalle !== next.detalle;
+    if (!changed) return;
+    this.emitter.emit('attentionChanged', {
+      agentId: next.agentId,
+      actual: { ...next },
+      anterior: prev ? { ...prev } : null,
+    });
+    this.broadcast(attentionMessage(next));
+  }
+
+  /** Hand a provider event to whoever watches agents (the attention tracker). */
+  noteAgentEvent(id: number, event: AgentEvent): void {
+    this.emitter.emit('agentEvent', id, event);
   }
 
   // ── Broadcast (replaces direct webview.postMessage in server/) ─

@@ -30,6 +30,7 @@ import { createPerfilFeature } from '../../features/perfil/server/perfilFeature.
 import { createPomodoroFeature } from '../../features/pomodoro/server/pomodoroFeature.js';
 import { runUsageCommand } from '../../features/usage/server/usageCommand.js';
 import { createUsageFeature } from '../../features/usage/server/usageFeature.js';
+import { attachAttentionNotifier, AttentionTracker, createAttentionApi } from './agentAttention.js';
 import { AgentRuntime } from './agentRuntime.js';
 import { AgentStateStore } from './agentStateStore.js';
 import {
@@ -47,6 +48,7 @@ import {
 } from './configPersistence.js';
 import { MAX_PORT, MIN_PORT } from './constants.js';
 import { FileStateAdapter } from './fileStateAdapter.js';
+import { folderNameFromTranscript } from './folderName.js';
 import { addFloors, setOffices } from './officeRegistry.js';
 import { loadOrCreateOfficeToken } from './officeToken.js';
 import { loadPacks, readLayoutFile } from './packLoader.js';
@@ -187,7 +189,34 @@ async function main(): Promise<void> {
 
     // Wire hook events: HTTP POST -> runtime -> hookEventHandler -> agents
     // Optional feature: each character named after its herdr terminal tab (features/herdr).
-    const herdr = createHerdrFeature({ agents: () => store.entries() });
+    // herdr's agent_status is also the second signal of each agent's attention state (below).
+    let attentionTracker: AttentionTracker | null = null;
+    const herdr = createHerdrFeature({
+      agents: () => store.entries(),
+      onAgentStatus: (id, status) => attentionTracker?.noteHerdrStatus(id, status),
+    });
+
+    // Agent attention (docs/atencion-agentes.md): working, waiting on you, stuck or failed, per agent; a bubble on the
+    // page and a desktop notification for the last three. Packs and features read it through ctx.attention.
+    const transcriptFolder = new Map<number, string | undefined>();
+    attentionTracker = new AttentionTracker({
+      store,
+      describe: (id) => {
+        const agent = store.get(id);
+        if (!agent) return {};
+        if (!transcriptFolder.has(id) && agent.jsonlFile) {
+          transcriptFolder.set(id, folderNameFromTranscript(agent.jsonlFile));
+        }
+        return {
+          nombre:
+            herdr.labelOf(id) ?? agent.agentName ?? agent.folderName ?? transcriptFolder.get(id),
+          perfil: runtime.sessionLabel(agent),
+        };
+      },
+    });
+    store.on('agentRemoved', (id) => transcriptFolder.delete(id));
+    const attention = createAttentionApi(store, attentionTracker);
+    const stopAttentionNotifier = attachAttentionNotifier(attention);
 
     server.onHookEvent((providerId, event) => {
       herdr.noteHookEvent(event);
@@ -335,6 +364,7 @@ async function main(): Promise<void> {
             officeToken: () => currentConfig?.token ?? null,
             packDir: path.join(distRoot, 'packs', pack.name),
             features: publicFeatures,
+            attention,
           }),
         );
       } catch (err) {
@@ -392,9 +422,9 @@ async function main(): Promise<void> {
       if (!consent && (await provider.areHooksInstalled())) {
         // Our hooks are already installed and already firing — a pre-consent
         // version put them there. Grant and continue with NO prompt: the
-        // install below is the 14 -> 12 migration, and it only ever REDUCES
-        // scope (it drops UserPromptSubmit and TaskCreated, the two events that
-        // forwarded prompt text and were consumed by nothing). Asking would buy
+        // install below drops TaskCreated (consumed by nothing) and adds only
+        // StopFailure, which carries an error code (the hook script strips the
+        // assistant's message, as it strips prompt text). Asking would buy
         // this user no protection they do not already have, so they are not
         // asked. A fresh install still is, in full — in the browser UI, when a
         // tokened client connects (clientMessageHandler's webviewReady).
@@ -447,6 +477,8 @@ async function main(): Promise<void> {
     function shutdown(): void {
       console.log('\nShutting down...');
       runtime.dispose();
+      stopAttentionNotifier();
+      attentionTracker?.dispose();
       for (const feature of features) feature.dispose?.();
       server.stop();
       process.exit(0);

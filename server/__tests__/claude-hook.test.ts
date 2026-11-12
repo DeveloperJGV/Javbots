@@ -271,6 +271,29 @@ describe('claude-hook.js integration', () => {
     expect(server.received[0]).not.toContain('top secret plans');
   });
 
+  // 10c. StopFailure (agent attention: fallo) carries the assistant's last message:
+  // only the error code may leave the hook process.
+  itBuilt('strips last_assistant_message from StopFailure before posting', async () => {
+    const server = await startRecordingServer();
+    writeServerJson(server.port, 'failure-token');
+
+    const { code } = await runHookScript(
+      JSON.stringify({
+        session_id: 'failure-strip',
+        hook_event_name: 'StopFailure',
+        error: 'rate_limit',
+        last_assistant_message: 'private answer text',
+      }),
+    );
+
+    server.close();
+    expect(code).toBe(0);
+    const posted = JSON.parse(server.received[0]) as Record<string, unknown>;
+    expect(posted.error).toBe('rate_limit');
+    expect(posted).not.toHaveProperty('last_assistant_message');
+    expect(server.received[0]).not.toContain('private answer text');
+  });
+
   // 11. Fan-out delivers in parallel, not sequentially: two unresponsive
   // servers must not make the script wait ~2x the per-server timeout.
   itBuilt('fans out to multiple unresponsive servers in parallel, not sequentially', async () => {

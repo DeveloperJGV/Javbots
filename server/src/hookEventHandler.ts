@@ -321,6 +321,11 @@ export class HookEventHandler {
         `[Pixel Agents] Hook: Agent ${agentId} - ${eventName} (session=${event.session_id.slice(0, 8)}...)`,
       );
 
+    // Attention (docs/atencion-agentes.md) sees the event BEFORE the dispatch below, so a
+    // failed turn is already `fallo` when markAgentWaiting announces the turn end (the page
+    // then skips the done chime and the cheer for it).
+    this.agents.noteAgentEvent(agentId, normEvent);
+
     // Dispatch on normalized AgentEvent.kind, not raw hook event names.
     // The TeammateIdle / TaskCompleted hooks normalize to `subagentTurnEnd` -- both
     // retain their raw payload for the team-routing handler's identity extraction.
@@ -337,7 +342,11 @@ export class HookEventHandler {
         // Sub-agent tools never set currentHookToolId (see handlePreToolUse); ending
         // one must not close the parent's own tool.
         if (normEvent.subagentId) return;
-        return this.handlePostToolUse(agent, agentId, normEvent.failed === true);
+        this.handlePostToolUse(agent, agentId, normEvent.failed === true);
+        // Esc mid-tool ends the turn, but Claude Code sends no Stop for it: without this the
+        // character keeps working forever. It is waiting for the person's next message.
+        if (normEvent.interrupted) this.markAgentWaiting(agent, agentId, true);
+        return;
       case 'subagentStart':
         return this.provider.team ? this.handleSubagentStart(event, agent, agentId) : undefined;
       case 'subagentEnd':
@@ -351,6 +360,9 @@ export class HookEventHandler {
         // awaitingInput discriminates them: idle_prompt sets it (-> "Waiting for
         // input"), Stop leaves it absent (-> "Done").
         return this.handleStop(agent, agentId, normEvent.awaitingInput === true);
+      case 'turnFailed':
+        // StopFailure fires INSTEAD of Stop: the turn is over all the same.
+        return this.handleStop(agent, agentId);
       case 'subagentTurnEnd':
         // Handles TeammateIdle AND TaskCompleted -- both normalize here. The normalized
         // `reason` field discriminates; the team-provider's extractTeammateNameFromEvent(raw)

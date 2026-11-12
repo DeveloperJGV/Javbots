@@ -50,7 +50,8 @@ export const CONSENT_FACT_REVERSIBLE =
 
 /** Headline for the first-run gate — the only population that is asked. A user
  *  whose hooks a pre-consent version already installed is migrated silently
- *  (the migration only ever drops events), so there is no second headline.
+ *  (the migration drops unused events and adds only StopFailure, an error
+ *  code), so there is no second headline.
  *  Title of the Intro's consent step ("Welcome to Pixel Agents!" is the
  *  Intro's own opening-step title, owned by the webview). Carries NO
  *  disclosure facts by design: the facts all live in CONSENT_DISCLOSURE. */

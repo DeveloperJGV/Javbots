@@ -77,6 +77,7 @@ function makeChar(id: number, col: number, row: number): Character {
     isActive: false,
     seatId: null,
     bubbleType: null,
+    attention: null,
     bubbleTimer: 0,
     seatTimer: 0,
     isSubagent: false,

@@ -22,6 +22,8 @@ import {
   CLAUDE_SMALL_CONTEXT_MODEL_PATTERN,
   CLAUDE_SMALL_CONTEXT_WINDOW,
   CLAUDE_TERMINAL_NAME_PREFIX,
+  PERMISSION_NOTIFICATIONS,
+  QUESTION_NOTIFICATIONS,
 } from './constants.js';
 
 // ── formatToolStatus: moved from src/transcriptParser.ts ──
@@ -186,12 +188,24 @@ function normalizeHookEvent(
           kind: 'toolEnd',
           toolId: 'current',
           failed: raw.is_interrupt !== true,
+          ...(raw.is_interrupt === true ? { interrupted: true } : {}),
           ...(subagentId ? { subagentId } : {}),
         },
       };
 
     case 'Stop':
       return { sessionId, event: { kind: 'turnEnd' } };
+
+    case 'StopFailure':
+      // Fires INSTEAD of Stop when an API error ended the turn (usage limit, overload, auth…).
+      // Only the error code is read; the hook script strips last_assistant_message.
+      return {
+        sessionId,
+        event: {
+          kind: 'turnFailed',
+          ...(typeof raw.error === 'string' && raw.error ? { error: raw.error } : {}),
+        },
+      };
 
     case 'UserPromptSubmit':
       // Drives the "thinking" state. The prompt text is deliberately not read:
@@ -225,8 +239,12 @@ function normalizeHookEvent(
     case 'Notification': {
       const notificationType =
         typeof raw.notification_type === 'string' ? raw.notification_type : '';
-      if (notificationType === 'permission_prompt') {
+      if (PERMISSION_NOTIFICATIONS.has(notificationType)) {
         return { sessionId, event: { kind: 'permissionRequest' } };
+      }
+      if (QUESTION_NOTIFICATIONS.has(notificationType)) {
+        // An MCP form or a question the agent is blocked on: the person has to answer.
+        return { sessionId, event: { kind: 'permissionRequest', ask: 'question' } };
       }
       if (notificationType === 'idle_prompt') {
         // idle_prompt = Claude went idle waiting on the user, not just a finished

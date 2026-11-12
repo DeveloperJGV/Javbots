@@ -91,6 +91,8 @@ components:
         - $ref: '#/components/schemas/AgentToolsClear'
         - $ref: '#/components/schemas/AgentToolPermission'
         - $ref: '#/components/schemas/AgentToolPermissionClear'
+        # Agent attention (docs/atencion-agentes.md)
+        - $ref: '#/components/schemas/AgentAttention'
         # Sub-agent activity
         - $ref: '#/components/schemas/SubagentToolStart'
         - $ref: '#/components/schemas/SubagentToolDone'
@@ -417,6 +419,39 @@ components:
           const: agentToolPermissionClear
         id:
           type: integer
+
+    AgentAttention:
+      description: >-
+        An agent's attention state (docs/atencion-agentes.md): working, waiting on
+        the person, stuck, failed or finished. Sent on every change and replayed
+        to a connecting client. The page draws a bubble for esperandote, atorado
+        and fallo.
+      type: object
+      additionalProperties: false
+      required: [type, id, estado, motivo, desde]
+      properties:
+        type:
+          const: agentAttention
+        id:
+          type: integer
+        estado:
+          $ref: '#/components/schemas/AgentAttentionState'
+        motivo:
+          type: string
+          description: Fixed reason code (core/src/attention.ts ATTENTION_REASONS), not text to show.
+        desde:
+          type: number
+          description: >-
+            ms since epoch when the agent entered this state. For atorado, the time
+            of its last event.
+        detalle:
+          type: string
+          description: Only for fallo, the CLI's error code (rate_limit, overloaded, ...).
+
+    AgentAttentionState:
+      description: Attention state of an agent (core/src/attention.ts ATTENTION_STATES).
+      type: string
+      enum: [trabajando, esperandote, atorado, fallo, termino]
 
     SubagentToolStart:
       description: Sub-agent (e.g. Task) started a tool.

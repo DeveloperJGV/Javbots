@@ -20,7 +20,9 @@ export const LEGACY_HOOK_SCRIPT_NAME = 'pixel-agents-hook.js';
  *  Stop/PermissionRequest/Notification handle turn completion and permission UI.
  *  SubagentStart/SubagentStop/TeammateIdle/TaskCompleted power Agent Teams.
  *  UserPromptSubmit drives the "thinking" state between a prompt and the first
- *  tool. The hook script strips the prompt text before forwarding (see
+ *  tool. StopFailure fires instead of Stop when an API error (usage limit,
+ *  overload, auth) ended the turn: it drives the `fallo` attention state
+ *  (docs/atencion-agentes.md); only its error code is read. The hook script strips the prompt text before forwarding (see
  *  PROMPT_TEXT_FIELDS), so only the fact that a prompt was sent reaches the server.
  *
  *  Deliberately NOT installed: TaskCreated. It normalizes to null (nothing in
@@ -32,6 +34,7 @@ export const CLAUDE_HOOK_EVENTS = [
   'SessionEnd',
   'UserPromptSubmit',
   'Stop',
+  'StopFailure',
   'PermissionRequest',
   'Notification',
   'PreToolUse',
@@ -43,9 +46,23 @@ export const CLAUDE_HOOK_EVENTS = [
   'TaskCompleted',
 ] as const;
 
-/** Payload fields that carry what the user typed. The hook script deletes them
- *  before POSTing, so prompt text never leaves the hook process. */
-export const PROMPT_TEXT_FIELDS = ['prompt'] as const;
+/** Payload fields that carry conversation text: what the user typed, and the
+ *  assistant's last message that Stop/StopFailure carry. The hook script deletes
+ *  them before POSTing, so that text never leaves the hook process. */
+export const PROMPT_TEXT_FIELDS = ['prompt', 'last_assistant_message'] as const;
+
+/** Notification types that mean "approve a tool" (the lead's own, or a teammate's routed to it). */
+export const PERMISSION_NOTIFICATIONS: ReadonlySet<string> = new Set([
+  'permission_prompt',
+  'worker_permission_prompt',
+]);
+
+/** Notification types that mean "the agent is blocked on an answer" (MCP forms, questions). */
+export const QUESTION_NOTIFICATIONS: ReadonlySet<string> = new Set([
+  'elicitation_dialog',
+  'elicitation_url_dialog',
+  'agent_needs_input',
+]);
 
 /** Suffix of the one-time pre-modification backup of settings.json. Brand-named
  *  rather than a generic `.backup`, which collides with other tools' backup
