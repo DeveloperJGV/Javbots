@@ -1,13 +1,19 @@
 import type {
   AgendaCalendar,
   AgendaItem,
+  AgendaPlan,
   AgendaStatus,
   ConnectionInfo,
 } from '../../../core/src/messages.js';
+import { notifyDesktop } from '../../../server/src/notifyDesktop.js';
 import type { FeatureClient, ServerFeature } from '../../../server/src/serverFeature.js';
 import { GOOGLE_TASKS_SCOPE } from '../../google/server/constants.js';
 import { GoogleApiError, GoogleReconnectNeeded } from '../../google/server/googleAccount.js';
 import type { GoogleSession } from '../../google/server/googleFeature.js';
+import { makePlan, type PlanBusyInput, type PlanTaskInput } from '../plan/plan.js';
+import { fold } from '../plan/planMinutes.js';
+import { DEFAULT_PLAN_PREFS, readPlanPrefs } from '../plan/planPrefs.js';
+import { morningText, reminderText } from '../plan/planText.js';
 import { type AgendaConfig, readAgendaConfig } from './agendaConfig.js';
 import {
   addDays,
@@ -16,7 +22,16 @@ import {
   localDay,
   type NewAgendaItem,
   readNewItem,
+  type TaskExtra,
 } from './agendaGoogle.js';
+import {
+  agendaPlanPath,
+  machineTimeZone,
+  type PlanState,
+  readPlanState,
+  writePlanState,
+  zonedClock,
+} from './agendaPlanStore.js';
 import {
   AGENDA_DAYS,
   AGENDA_FLOOR_ID,
@@ -24,7 +39,12 @@ import {
   AGENDA_FLOOR_LEVEL,
   AGENDA_REFRESH_MS,
   AGENDA_TICK_MS,
+  DEFAULT_EVENT_MINUTES,
   LOG_PREFIX,
+  MAX_PLAN_IDS,
+  PLAN_MINUTES_MAX,
+  PLAN_MINUTES_MIN,
+  PLAN_NOTICE_TITLE,
 } from './constants.js';
 
 export interface AgendaFeatureOptions {
@@ -37,6 +57,12 @@ export interface AgendaFeatureOptions {
   now?: () => number;
   /** The agenda room's layout, shown as its own floor of the main office (null: an empty room). */
   floorLayout?: () => Record<string, unknown> | null;
+  /** agenda-plan.json (tests); ~/.pixel-agents/agenda-plan.json by default. */
+  planFile?: string;
+  /** IANA zone the plan's days and hours are thought in; the machine's by default. */
+  timeZone?: () => string;
+  /** A desktop notification (the morning summary, the reminder before a block). */
+  notify?: (title: string, message: string) => void;
 }
 
 const RECONNECT = 'La conexión con Google caducó: vuelve a conectar.';
@@ -57,8 +83,18 @@ const SHARED_PREFIXES = /^\s*(concierto|salida)\s*:/i;
  */
 export function createAgendaFeature(opts: AgendaFeatureOptions): ServerFeature & {
   refresh(): Promise<void>;
+  /** The minute's work: re-read while a page is open, resend a changed plan, desktop notices (the timer calls it). */
+  tick(): Promise<void>;
 } {
   const now = opts.now ?? Date.now;
+  const timeZone = opts.timeZone ?? machineTimeZone;
+  const notify = opts.notify ?? notifyDesktop;
+  const planFile = opts.planFile ?? agendaPlanPath();
+  const plan: PlanState = readPlanState(planFile);
+  let extras = new Map<string, TaskExtra>();
+  let sentPlan = '';
+  const reminded = new Set<string>();
+  let ticking = false;
   const config = (): AgendaConfig => {
     const c = (opts.config ?? (() => readAgendaConfig()))();
     return opts.calendarName ? { ...c, shared: opts.calendarName() } : c;
@@ -83,6 +119,65 @@ export function createAgendaFeature(opts: AgendaFeatureOptions): ServerFeature &
     return new Date(d.getFullYear(), d.getMonth(), d.getDate());
   };
 
+  /** Today (YYYY-MM-DD) and the time (HH:MM) in the plan's time zone. */
+  const clock = () => zonedClock(now(), timeZone());
+
+  /** The plan of today and the next days, worked out again from what was read (never stored). */
+  function currentPlan(): AgendaPlan | undefined {
+    if (!google.connected) return undefined;
+    const tasks: PlanTaskInput[] = [];
+    const busy: PlanBusyInput[] = [];
+    // The garden's own reminders ("<garden list>: regar …" events) are the care tasks themselves, not busy time.
+    const gardenPrefix = fold(plan.prefs.gardenList).trim();
+    const isGardenReminder = (title: string): boolean => {
+      const colon = title.indexOf(':');
+      return !!gardenPrefix && colon > 0 && fold(title.slice(0, colon)).trim() === gardenPrefix;
+    };
+    for (const i of items) {
+      if (i.kind === 'task') {
+        const t: PlanTaskInput = { id: i.id, title: i.title };
+        if (i.start) t.due = i.start;
+        if (i.listName) t.listName = i.listName;
+        const extra = extras.get(i.id);
+        if (extra?.notes) t.notes = extra.notes;
+        if (extra?.updated) t.updated = extra.updated;
+        tasks.push(t);
+      } else if (!i.allDay && i.start && !isGardenReminder(i.title)) {
+        const start = Date.parse(i.start);
+        if (Number.isNaN(start)) continue;
+        const end = i.end ? Date.parse(i.end) : NaN;
+        const b: PlanBusyInput = {
+          start,
+          end: Number.isNaN(end) ? start + DEFAULT_EVENT_MINUTES * 60_000 : end,
+        };
+        if (!i.busy) b.title = i.title;
+        busy.push(b);
+      }
+    }
+    try {
+      return makePlan(tasks, busy, plan.prefs, now(), {
+        timeZone: timeZone(),
+        minutes: plan.minutes,
+        skipped: plan.skipped,
+        days: AGENDA_DAYS,
+      });
+    } catch (err) {
+      console.warn(`${LOG_PREFIX} Plan:`, (err as Error).message);
+      return undefined;
+    }
+  }
+
+  /** Saves the plan's state, dropping "not today" marks of days already gone. */
+  function savePlan(): void {
+    const day = clock().day;
+    for (const [id, d] of Object.entries(plan.skipped)) if (d < day) delete plan.skipped[id];
+    try {
+      writePlanState(planFile, plan);
+    } catch (err) {
+      console.warn(`${LOG_PREFIX} No pude guardar ${planFile}:`, (err as Error).message);
+    }
+  }
+
   function status(): AgendaStatus {
     const msg: AgendaStatus = {
       type: 'agendaStatus',
@@ -97,11 +192,15 @@ export function createAgendaFeature(opts: AgendaFeatureOptions): ServerFeature &
     if (homeId) msg.homeCalendar = homeId;
     const shown = [error, tasksError].filter(Boolean).join(' ');
     if (shown) msg.error = shown;
+    const p = currentPlan();
+    if (p) msg.plan = p;
     return msg;
   }
 
   const broadcast = () => {
-    const msg = status() as unknown as Record<string, unknown>;
+    const st = status();
+    sentPlan = JSON.stringify(st.plan ?? null);
+    const msg = st as unknown as Record<string, unknown>;
     for (const c of clients) c.send(msg);
   };
 
@@ -139,6 +238,7 @@ export function createAgendaFeature(opts: AgendaFeatureOptions): ServerFeature &
     const cfg = config();
     let events: AgendaItem[] = [];
     let tasks: AgendaItem[] = [];
+    let taskExtras = new Map<string, TaskExtra>();
     try {
       calendars = await api.listCalendars(cfg.names);
       sharedId = byName(cfg.shared);
@@ -175,7 +275,7 @@ export function createAgendaFeature(opts: AgendaFeatureOptions): ServerFeature &
       tasksError = TASKS_SCOPE_MISSING;
     } else {
       try {
-        tasks = await api.listTasks(localDay(until));
+        ({ items: tasks, extras: taskExtras } = await api.listTasks(localDay(until)));
         tasksOkAt = now();
         tasksError = undefined;
       } catch (err) {
@@ -185,6 +285,7 @@ export function createAgendaFeature(opts: AgendaFeatureOptions): ServerFeature &
     }
     if (error === RECONNECT && tasksError === RECONNECT) tasksError = undefined;
     items = [...events, ...tasks];
+    extras = taskExtras;
   }
 
   function refresh(force = true): Promise<void> {
@@ -232,9 +333,128 @@ export function createAgendaFeature(opts: AgendaFeatureOptions): ServerFeature &
     );
   }
 
+  const taskById = (id: string) => items.find((i) => i.kind === 'task' && i.id === id);
+
   function complete(id: string): Promise<void> {
-    if (!items.some((i) => i.kind === 'task' && i.id === id)) return Promise.resolve();
-    return write('marcar la tarea como hecha', () => api.completeTask(id), 'tasks');
+    const task = taskById(id);
+    if (!task) return Promise.resolve();
+    return write('marcar la tarea como hecha', () => api.completeTask(id, task.list), 'tasks');
+  }
+
+  /** "Done", "not today" or "this long" for tasks of the plan (only ids of tasks read from Google count). */
+  function planAction(msg: Record<string, unknown>): void {
+    if (!Array.isArray(msg.ids)) return;
+    const ids = [
+      ...new Set(
+        (msg.ids as unknown[]).filter(
+          (id): id is string => typeof id === 'string' && !!taskById(id),
+        ),
+      ),
+    ].slice(0, MAX_PLAN_IDS);
+    if (!ids.length) return;
+    switch (msg.action) {
+      case 'done': {
+        const tasks = ids.map((id) => taskById(id) as AgendaItem);
+        void write(
+          tasks.length === 1 ? 'marcar la tarea como hecha' : 'marcar las tareas como hechas',
+          async () => {
+            for (const t of tasks) {
+              await api.completeTask(t.id, t.list);
+              delete plan.minutes[t.id];
+              delete plan.skipped[t.id];
+            }
+          },
+          'tasks',
+        ).finally(savePlan);
+        return;
+      }
+      case 'skip': {
+        const day = clock().day;
+        for (const id of ids) plan.skipped[id] = day;
+        break;
+      }
+      case 'minutes': {
+        const n = msg.minutes;
+        if (n === undefined || n === 0) {
+          for (const id of ids) delete plan.minutes[id];
+        } else if (
+          typeof n === 'number' &&
+          Number.isInteger(n) &&
+          n >= PLAN_MINUTES_MIN &&
+          n <= PLAN_MINUTES_MAX
+        ) {
+          for (const id of ids) plan.minutes[id] = n;
+        } else return;
+        break;
+      }
+      default:
+        return;
+    }
+    savePlan();
+    broadcast();
+  }
+
+  function setPlanPrefs(msg: Record<string, unknown>): void {
+    plan.prefs =
+      msg.reset === true
+        ? (JSON.parse(JSON.stringify(DEFAULT_PLAN_PREFS)) as typeof DEFAULT_PLAN_PREFS)
+        : readPlanPrefs(msg.prefs);
+    savePlan();
+    broadcast();
+  }
+
+  /** Today's part of the plan (in the plan's time zone). */
+  const planToday = (day: string) => currentPlan()?.days.find((d) => d.day === day);
+
+  /** Once a day after prefs.morningAt: "Hoy toca: ...", from a fresh read. Remembered across restarts. */
+  async function morningNotice(): Promise<void> {
+    const { day, time } = clock();
+    if (!plan.prefs.morningNotice || !google.connected || plan.morningDay === day) return;
+    if (time < plan.prefs.morningAt) return;
+    if (reading) await reading;
+    if (now() - readAt >= AGENDA_REFRESH_MS) await refresh();
+    // Without the tasks there is no plan: tried again on the next tick. A calendar that can't be read (e.g. the
+    // shared one isn't found) must not silence the summary for good.
+    if (tasksError || error === RECONNECT || !google.connected) return;
+    plan.morningDay = day;
+    savePlan();
+    const today = planToday(day);
+    if (today?.blocks.length)
+      notify(PLAN_NOTICE_TITLE, morningText(today, plan.prefs.blockMinutes));
+  }
+
+  /** A notice prefs.remindMinutes before each block of today (off when 0), once per block. */
+  function blockReminders(): void {
+    const ahead = plan.prefs.remindMinutes;
+    if (!(ahead > 0)) return;
+    const { day } = clock();
+    const t = now();
+    for (const b of planToday(day)?.blocks ?? []) {
+      const at = Date.parse(b.startsAt);
+      const key = `${day}|${b.id}`;
+      if (Number.isNaN(at) || reminded.has(key)) continue;
+      if (at - ahead * 60_000 <= t && t < at) {
+        reminded.add(key);
+        notify(PLAN_NOTICE_TITLE, reminderText(b.title, b.minutes, Math.ceil((at - t) / 60_000)));
+      }
+    }
+  }
+
+  async function tick(): Promise<void> {
+    if (ticking) return;
+    ticking = true;
+    try {
+      if (clients.size) {
+        await refresh(false);
+        if (JSON.stringify(status().plan ?? null) !== sentPlan) broadcast();
+      }
+      await morningNotice();
+      blockReminders();
+    } catch (err) {
+      console.warn(`${LOG_PREFIX} Plan:`, (err as Error).message);
+    } finally {
+      ticking = false;
+    }
   }
 
   const offGoogle = google.onChange(() => {
@@ -243,13 +463,14 @@ export function createAgendaFeature(opts: AgendaFeatureOptions): ServerFeature &
     void refresh();
   });
   let timer: ReturnType<typeof setInterval> | undefined = setInterval(() => {
-    if (clients.size) void refresh(false);
+    void tick();
   }, AGENDA_TICK_MS);
   timer.unref?.();
 
   return {
     name: 'agenda',
     refresh: () => refresh(),
+    tick,
 
     floors() {
       return [
@@ -286,6 +507,12 @@ export function createAgendaFeature(opts: AgendaFeatureOptions): ServerFeature &
         case 'completeAgendaTask':
           if (typeof msg.id === 'string') void complete(msg.id);
           return true;
+        case 'agendaPlanAction':
+          planAction(msg);
+          return true;
+        case 'setAgendaPlanPrefs':
+          setPlanPrefs(msg);
+          return true;
         default:
           return false;
       }
@@ -304,7 +531,8 @@ export function createAgendaFeature(opts: AgendaFeatureOptions): ServerFeature &
           id: 'google-tasks',
           name: 'Google Tasks',
           feature: 'Agenda',
-          purpose: 'Ver tus tareas, agregar nuevas y marcarlas como hechas',
+          purpose:
+            'Ver tus tareas de todas tus listas, agregar nuevas, marcarlas como hechas y armar el plan del día',
           auth: 'La sesión de Google (features/google), permiso tasks',
           state: !google.connected ? 'off' : !scoped || tasksError ? 'warn' : 'ok',
           detail,

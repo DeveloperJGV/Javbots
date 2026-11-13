@@ -9,6 +9,8 @@ import { ConcertsPanel } from '../../features/conciertos/webview/ConcertsPanel.j
 import { useConcerts } from '../../features/conciertos/webview/useConcerts.js';
 import { ConnectionsPanel } from '../../features/conexiones/webview/ConnectionsPanel.js';
 import { useConnections } from '../../features/conexiones/webview/useConnections.js';
+import { DecksPanel } from '../../features/decks/webview/DecksPanel.js';
+import { useDecks } from '../../features/decks/webview/useDecks.js';
 import { DirectorioPanel } from '../../features/directorio/webview/DirectorioPanel.js';
 import { directorioStore } from '../../features/directorio/webview/directorioStore.js';
 import { GithubPanel } from '../../features/github/webview/GithubPanel.js';
@@ -20,7 +22,12 @@ import { JukeboxPicker } from '../../features/musica/webview/JukeboxPicker.js';
 import { LyricBubble } from '../../features/musica/webview/LyricBubble.js';
 import { MusicColumn } from '../../features/musica/webview/MusicColumn.js';
 import { MusicSettings } from '../../features/musica/webview/MusicSettings.js';
+// Playlist of the day (features/musica)
+import { PlaylistPanel } from '../../features/musica/webview/playlists/PlaylistPanel.js';
+import { usePlaylists } from '../../features/musica/webview/playlists/usePlaylists.js';
 import { useMusic } from '../../features/musica/webview/useMusic.js';
+import { OfertasPanel } from '../../features/ofertas/webview/OfertasPanel.js';
+import { useOfertas } from '../../features/ofertas/webview/useOfertas.js';
 import { PerfilPanel } from '../../features/perfil/webview/PerfilPanel.js';
 import { usePerfil } from '../../features/perfil/webview/usePerfil.js';
 import { PomodoroPanel } from '../../features/pomodoro/webview/PomodoroPanel.js';
@@ -58,6 +65,8 @@ import { OfficeState } from './office/engine/officeState.js';
 import { exportLayoutToFile } from './office/layout/exportLayout.js';
 import { isRotatable } from './office/layout/furnitureCatalog.js';
 import { migrateLayoutColors } from './office/layout/layoutSerializer.js';
+import { OwnerLabel } from './office/owner/OwnerLabel.js';
+import { wireOwnerLeave } from './office/owner/wireOwner.js';
 import { getPetCount } from './office/sprites/petSpriteData.js';
 import { EditTool, type OfficeLayout } from './office/types.js';
 import { PackOverlays } from './packs/PackOverlays.js';
@@ -81,6 +90,9 @@ function getOfficeState(): OfficeState {
   return officeStateRef.current;
 }
 
+// The office's owner (office/owner) walks out before the page changes floor
+wireOwnerLeave(getOfficeState);
+
 function App() {
   // Optional feature (features/musica): what Spotify is playing, via a Spicetify extension
   const music = useMusic(transport);
@@ -89,6 +101,8 @@ function App() {
   // Optional feature (features/conexiones): listen from the start, the board is sent once when the page opens
   useConnections(transport);
   useAgenda(transport);
+  // Playlist of the day (features/musica)
+  usePlaylists(transport);
   // Optional feature (features/github): listen from the start too. On a reload (a floor change reloads the page)
   // the server sends the last answer on webviewReady, before layoutLoaded; GithubPanel only mounts after the layout,
   // so on its own it missed it and the cabinets stayed empty until the next refresh (10 min).
@@ -98,6 +112,10 @@ function App() {
   useJardin(transport);
   // Optional feature (features/pomodoro): the roof's timer, sent when the page opens (the wall clock needs it)
   usePomodoro(transport);
+  // Optional feature (features/ofertas): the deals finder, sent when the page opens (the kiosk lights with alerts)
+  useOfertas(transport);
+  // Optional feature (features/decks): the Yu-Gi-Oh! deck boxes, from the shelf (or the page's #decks hash)
+  useDecks(transport);
   usePerfil(transport);
   useSearchRoom(transport, directorioStore);
   // Optional feature (features/herdr): each character named after its herdr terminal tab
@@ -573,6 +591,12 @@ function App() {
               onCloseAgent={handleCloseAgent}
               alwaysShowOverlay={alwaysShowOverlay}
             />
+            <OwnerLabel
+              officeState={officeState}
+              containerRef={containerRef}
+              zoom={editor.zoom}
+              panRef={editor.panRef}
+            />
             {/* Private packs (webview-ui/src/packs/registry.ts) */}
             <PackOverlays
               transport={transport}
@@ -698,10 +722,16 @@ function App() {
         <ConcertsPanel transport={transport} />
         {/* Optional feature (features/agenda): today and this week, from the agenda room's furniture */}
         <AgendaPanel transport={transport} />
+        {/* Playlist of the day (features/musica): from the record press, its neon or the reject bin */}
+        <PlaylistPanel transport={transport} />
         {/* Optional feature (features/jardin): the roof garden, from its control screen, shed, tool rack or plaque */}
         <JardinPanel transport={transport} />
         {/* Optional feature (features/pomodoro): the timer, from the tomato clock or the hourglass on the roof */}
         <PomodoroPanel transport={transport} />
+        {/* Optional feature (features/ofertas): the deals finder, from the kiosk (or the page's #ofertas hash) */}
+        <OfertasPanel transport={transport} />
+        {/* Optional feature (features/decks): the deck boxes, from the shelf (or the page's #decks hash) */}
+        <DecksPanel transport={transport} />
         <PerfilPanel />
         {/* Optional feature (features/directorio): searches by an agent with criteria, from the room's furniture */}
         <DirectorioPanel transport={transport} />

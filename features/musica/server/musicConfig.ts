@@ -20,6 +20,8 @@ export interface MusicConfig {
   spotifyClientId?: string;
   /** Session with that app (written at login, removed on disconnect or when Spotify revokes it). */
   spotifyRefreshToken?: string;
+  /** Permissions Spotify granted to that session (space separated); removed with it. */
+  spotifyScopes?: string;
 }
 
 function validPort(value: unknown): value is number {
@@ -48,6 +50,9 @@ export function readMusicConfig(): MusicConfig {
       : {}),
     ...(typeof raw.spotifyRefreshToken === 'string' && raw.spotifyRefreshToken
       ? { spotifyRefreshToken: raw.spotifyRefreshToken }
+      : {}),
+    ...(typeof raw.spotifyScopes === 'string' && raw.spotifyRefreshToken
+      ? { spotifyScopes: raw.spotifyScopes.trim() }
       : {}),
   };
   if (config.token !== raw.token) writeMusicConfig(config);

@@ -34,3 +34,13 @@ export const AGENDA_FLOOR_LEVEL = 1;
 export const AGENDA_FLOOR_LABEL = 'Personal';
 /** Where the build copies its layout (esbuild.js: features/<name>/planos → dist/<name>/planos). */
 export const AGENDA_FLOOR_LAYOUT_FILE = 'piso.json';
+
+/** ~/.pixel-agents/agenda-plan.json: the day plan's own state (prefs, minutes set by hand, "not today"). */
+export const AGENDA_PLAN_FILE = 'agenda-plan.json';
+/** Most task ids one plan action may carry. */
+export const MAX_PLAN_IDS = 50;
+/** Minutes a task may be given by hand. */
+export const PLAN_MINUTES_MIN = 5;
+export const PLAN_MINUTES_MAX = 480;
+/** Title of the plan's desktop notices. */
+export const PLAN_NOTICE_TITLE = 'Plan de hoy';

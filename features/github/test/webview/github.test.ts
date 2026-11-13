@@ -110,7 +110,7 @@ describe('github room', () => {
     };
     const out = applyGithubFurniture(
       [cab(32, 16), cab(0, 16), cab(0, 64)],
-      { status, detailOpen: false, hover: null },
+      { status, detailOpen: false },
       NOW,
     );
     expect(out[1].sprite[20][2]).toBe(CABINET_GOLD[2].toUpperCase()); // top left: the newest

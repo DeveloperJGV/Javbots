@@ -123,6 +123,7 @@ const KEY_WATCH_ALL_SESSIONS = 'pixel-agents.watchAllSessions';
 const KEY_HOOKS_INFO_SHOWN = 'pixel-agents.hooksInfoShown';
 const KEY_SHOW_AREAS = 'pixel-agents.showAreas';
 const KEY_SHADOWS_ENABLED = 'pixel-agents.shadowsEnabled';
+const KEY_OWNER_ENABLED = 'pixel-agents.ownerEnabled';
 const KEY_PARTICLES_ENABLED = 'pixel-agents.particlesEnabled';
 const KEY_DAY_NIGHT_MODE = 'pixel-agents.dayNightMode';
 
@@ -247,6 +248,10 @@ export function handleClientMessage(
 
     case 'setShadowsEnabled':
       adapter?.setSetting(KEY_SHADOWS_ENABLED, msg.enabled);
+      break;
+
+    case 'setOwnerEnabled':
+      adapter?.setSetting(KEY_OWNER_ENABLED, msg.enabled);
       break;
 
     case 'setParticlesEnabled':
@@ -472,6 +477,7 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
         type: 'characterSpritesLoaded',
         characters: cache.characters.characters,
         ...(cache.characters.names ? { names: cache.characters.names } : {}),
+        ...(cache.characters.owner ? { owner: cache.characters.owner } : {}),
       });
     }
     if (cache.pets) {
@@ -526,6 +532,7 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
     externalAssetDirectories: cfg.externalAssetDirectories,
     showAreas,
     shadowsEnabled: adapter?.getSetting(KEY_SHADOWS_ENABLED, true) ?? true,
+    ownerEnabled: adapter?.getSetting(KEY_OWNER_ENABLED, true) ?? true,
     particlesEnabled: adapter?.getSetting(KEY_PARTICLES_ENABLED, true) ?? true,
     dayNightMode: adapter?.getSetting<DayNightMode>(KEY_DAY_NIGHT_MODE, 'auto') ?? 'auto',
   });

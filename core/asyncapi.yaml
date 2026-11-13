@@ -127,6 +127,7 @@ components:
         - $ref: '#/components/schemas/MusicNowPlaying'
         - $ref: '#/components/schemas/MusicStatus'
         - $ref: '#/components/schemas/MusicLyrics'
+        - $ref: '#/components/schemas/PlaylistStatus'
         # Claude usage (feature: features/usage)
         - $ref: '#/components/schemas/UsageStatus'
         # herdr tab names (feature: features/herdr)
@@ -147,6 +148,16 @@ components:
         - $ref: '#/components/schemas/SearchRoomStatus'
         # Outside connections board (feature: features/conexiones)
         - $ref: '#/components/schemas/ConnectionsStatus'
+        # Price watch (feature: features/ofertas)
+        - $ref: '#/components/schemas/OfertasStatus'
+        - $ref: '#/components/schemas/OfertasResults'
+        - $ref: '#/components/schemas/OfertasAsistenteEstado'
+        - $ref: '#/components/schemas/OfertasAsistenteResultado'
+        # Yu-Gi-Oh! decks (feature: features/decks)
+        - $ref: '#/components/schemas/DecksStatus'
+        - $ref: '#/components/schemas/DecksSearchResults'
+        - $ref: '#/components/schemas/DecksCardInfo'
+        - $ref: '#/components/schemas/DecksImportResult'
       discriminator: type
 
     ClientMessage:
@@ -162,6 +173,7 @@ components:
         - $ref: '#/components/schemas/SetAlwaysShowLabels'
         - $ref: '#/components/schemas/SetGhostHeadlessAgents'
         - $ref: '#/components/schemas/SetShadowsEnabled'
+        - $ref: '#/components/schemas/SetOwnerEnabled'
         - $ref: '#/components/schemas/SetParticlesEnabled'
         - $ref: '#/components/schemas/SetDayNightMode'
         - $ref: '#/components/schemas/SetHooksEnabled'
@@ -181,6 +193,7 @@ components:
         - $ref: '#/components/schemas/InstallMusicExtension'
         - $ref: '#/components/schemas/MusicControl'
         - $ref: '#/components/schemas/DisconnectSpotify'
+        - $ref: '#/components/schemas/PlaylistCommand'
         # Upcoming concerts (feature: features/conciertos)
         - $ref: '#/components/schemas/RefreshConcerts'
         - $ref: '#/components/schemas/SearchConcerts'
@@ -190,6 +203,8 @@ components:
         - $ref: '#/components/schemas/RefreshAgenda'
         - $ref: '#/components/schemas/AddAgendaItem'
         - $ref: '#/components/schemas/CompleteAgendaTask'
+        - $ref: '#/components/schemas/AgendaPlanAction'
+        - $ref: '#/components/schemas/SetAgendaPlanPrefs'
         # Roof garden (feature: features/jardin)
         - $ref: '#/components/schemas/RefreshJardin'
         - $ref: '#/components/schemas/SaveJardinPlant'
@@ -211,6 +226,24 @@ components:
         - $ref: '#/components/schemas/DeleteSearchRequest'
         - $ref: '#/components/schemas/SaveSearchCriteria'
         - $ref: '#/components/schemas/ScheduleSearchResult'
+        # Price watch (feature: features/ofertas)
+        - $ref: '#/components/schemas/SearchOfertas'
+        - $ref: '#/components/schemas/SaveOfertasWatch'
+        - $ref: '#/components/schemas/DeleteOfertasWatch'
+        - $ref: '#/components/schemas/CheckOfertas'
+        - $ref: '#/components/schemas/SetOfertasSettings'
+        - $ref: '#/components/schemas/MarkOfertasAlertsSeen'
+        - $ref: '#/components/schemas/OfertasAsistenteInvestigar'
+        - $ref: '#/components/schemas/OfertasAsistenteSimilares'
+        - $ref: '#/components/schemas/OfertasAsistenteCancelar'
+        - $ref: '#/components/schemas/SetOfertasAsistente'
+        # Yu-Gi-Oh! decks (feature: features/decks)
+        - $ref: '#/components/schemas/DecksOpen'
+        - $ref: '#/components/schemas/DecksSearch'
+        - $ref: '#/components/schemas/DecksCards'
+        - $ref: '#/components/schemas/DecksSave'
+        - $ref: '#/components/schemas/DecksDelete'
+        - $ref: '#/components/schemas/DecksImport'
       discriminator: type
 
     # ── Server message variants ────────────────────────────────────
@@ -616,6 +649,53 @@ components:
           description: Named sheets (an external dir's or a private pack's assets/characters/<name>.png) → index in `characters`.
           additionalProperties:
             type: integer
+        owner:
+          $ref: '#/components/schemas/OwnerSheet'
+
+    OwnerSheet:
+      description: The office's owner (assets/avatar/manifest.json of the bundled assets or an external dir; the last one found wins). A character that is not an agent, drawn on the floor the page shows.
+      type: object
+      additionalProperties: false
+      required: [sheet]
+      properties:
+        sheet:
+          type: integer
+          description: Index of its sheet in `characters` (after the numbered and the named ones).
+        name:
+          type: string
+          description: Optional display name from the manifest (the hover label when no profile gives one).
+        emotes:
+          type: array
+          description: Optional emotes (manifest `emotes`, already validated); absent when there are none.
+          items:
+            $ref: '#/components/schemas/OwnerEmote'
+
+    OwnerEmote:
+      description: One emote of the office's owner. Frames are cells of its emotes sheet, facing front, drawn with their bottom center on the bottom center of the normal frame.
+      type: object
+      additionalProperties: false
+      required: [id, frames, fps, loops]
+      properties:
+        id:
+          type: string
+          description: greet, dance, cheer and drink have their moment; any other id plays only when `idle` is set.
+        frames:
+          type: array
+          description: Frames × rows × pixels (hex strings, '' = transparent).
+          items:
+            type: array
+            items:
+              type: array
+              items:
+                type: string
+        fps:
+          type: number
+        loops:
+          type: integer
+          description: Times it plays through.
+        idle:
+          type: boolean
+          description: Played now and then while the owner stands around.
 
     PetSpritesLoaded:
       description: Pet sprite frame sets and display names, sent once after webviewReady (between characterSpritesLoaded and floorTilesLoaded).
@@ -801,6 +881,9 @@ components:
           type: boolean
         dayNightMode:
           $ref: '#/components/schemas/DayNightMode'
+        ownerEnabled:
+          description: Whether the office's owner (an external dir's assets/avatar/) walks around the floor the page shows. On when absent.
+          type: boolean
 
     DayNightMode:
       description: >-
@@ -1151,6 +1234,17 @@ components:
         enabled:
           type: boolean
 
+    SetOwnerEnabled:
+      description: Show or hide the office's owner (characterSpritesLoaded.owner).
+      type: object
+      additionalProperties: false
+      required: [type, enabled]
+      properties:
+        type:
+          const: setOwnerEnabled
+        enabled:
+          type: boolean
+
     SetParticlesEnabled:
       description: Toggle ambient particles (coffee steam, sparks, dust).
       type: object
@@ -1451,6 +1545,8 @@ components:
         homeCalendar:
           type: string
           description: Id of the owner's own calendar for the rest (agenda.json `casa`), when found.
+        plan:
+          $ref: '#/components/schemas/AgendaPlan'
 
     AgendaCalendar:
       type: object
@@ -1504,6 +1600,12 @@ components:
         busy:
           type: boolean
           description: A free/busy block with no details (from a busyOnly calendar).
+        list:
+          type: string
+          description: Id of the Google Tasks list a task is in (absent for events).
+        listName:
+          type: string
+          description: Name of that list.
 
     AgendaItemKind:
       description: An event of the shared calendar, or a task of the owner's Google Tasks.
@@ -1559,6 +1661,284 @@ components:
           const: completeAgendaTask
         id:
           type: string
+
+    AgendaPlan:
+      description: >-
+        The day plan (features/agenda): the pending tasks placed in the free
+        gaps of today and the next days by fixed rules, recomputed on every
+        read. It lives in the office only: nothing of it is written to Google.
+      type: object
+      additionalProperties: false
+      required: [days, leftover, prefs]
+      properties:
+        days:
+          type: array
+          description: Today first, then the following days.
+          items:
+            $ref: '#/components/schemas/AgendaPlanDay'
+        leftover:
+          type: array
+          description: What did not fit in those days.
+          items:
+            $ref: '#/components/schemas/AgendaPlanLeftover'
+        prefs:
+          $ref: '#/components/schemas/AgendaPlanPrefs'
+
+    AgendaPlanDay:
+      type: object
+      additionalProperties: false
+      required: [day, blocks, minutes]
+      properties:
+        day:
+          type: string
+          description: YYYY-MM-DD (local).
+        blocks:
+          type: array
+          description: In order of start.
+          items:
+            $ref: '#/components/schemas/AgendaPlanBlock'
+        minutes:
+          type: number
+          description: Total planned minutes of the day.
+
+    AgendaPlanBlock:
+      type: object
+      additionalProperties: false
+      required: [id, start, end, startsAt, minutes, title, why, tasks]
+      properties:
+        id:
+          type: string
+          description: Stable within one plan (task ids and part).
+        start:
+          type: string
+          description: HH:MM (local, 24 h).
+        end:
+          type: string
+          description: HH:MM (local, 24 h).
+        startsAt:
+          type: string
+          description: ISO date-time of the start.
+        minutes:
+          type: number
+        title:
+          type: string
+          description: The task's title without its duration mark, or the round's name.
+        why:
+          type: string
+          description: Short reason for this block (overdue, due tomorrow, fits before an event…).
+        tasks:
+          type: array
+          description: The tasks the block covers (several for a plant round).
+          items:
+            $ref: '#/components/schemas/AgendaPlanTask'
+        round:
+          type: boolean
+          description: Several garden care tasks of the day, grouped.
+        quick:
+          type: boolean
+          description: Several small tasks grouped in one block.
+        part:
+          type: number
+          description: For a task split over several blocks, which one this is (from 1).
+        parts:
+          type: number
+          description: How many blocks that task was split into.
+
+    AgendaPlanTask:
+      type: object
+      additionalProperties: false
+      required: [id, title, minutes, source]
+      properties:
+        id:
+          type: string
+          description: The task's id in agendaStatus.items.
+        title:
+          type: string
+        minutes:
+          type: number
+          description: How long the task takes.
+        source:
+          $ref: '#/components/schemas/AgendaPlanMinutesSource'
+        listName:
+          type: string
+
+    AgendaPlanMinutesSource:
+      description: >-
+        Where a task's minutes come from: set by hand in the office, a mark in
+        the title or note such as "(15 min)", a word rule, or the default.
+      type: string
+      enum: [manual, mark, rule, default]
+
+    AgendaPlanLeftover:
+      type: object
+      additionalProperties: false
+      required: [title, minutes, why, tasks]
+      properties:
+        title:
+          type: string
+        minutes:
+          type: number
+          description: Minutes still without a place.
+        why:
+          type: string
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgendaPlanTask'
+
+    AgendaPlanRange:
+      description: A span of the day, HH:MM to HH:MM (local, 24 h).
+      type: object
+      additionalProperties: false
+      required: [from, to]
+      properties:
+        from:
+          type: string
+        to:
+          type: string
+
+    AgendaPlanRule:
+      description: A task whose title has this word takes these minutes.
+      type: object
+      additionalProperties: false
+      required: [word, minutes]
+      properties:
+        word:
+          type: string
+        minutes:
+          type: number
+
+    AgendaPlanPrefs:
+      description: The owner's preferences for the day plan (kept in ~/.pixel-agents/agenda-plan.json).
+      type: object
+      additionalProperties: false
+      required:
+        - blockMinutes
+        - dailyBlocks
+        - smallMinutes
+        - marginMinutes
+        - soonDays
+        - workDays
+        - morning
+        - work
+        - evening
+        - weekend
+        - rest
+        - rules
+        - gardenList
+        - gardenMinutes
+        - gardenRules
+        - gardenSetupMinutes
+        - morningNotice
+        - morningAt
+        - remindMinutes
+      properties:
+        blockMinutes:
+          type: number
+          description: >-
+            Size of a block: every block of the plan lasts a multiple of it and
+            starts on a multiple of it. Also what a task takes when nothing else says.
+        dailyBlocks:
+          type: number
+          description: Daily cap, in blocks (minutes = dailyBlocks × blockMinutes).
+        smallMinutes:
+          type: number
+          description: >-
+            Up to this long a task is small: small tasks share one block, which
+            fits in working hours.
+        marginMinutes:
+          type: number
+          description: Free minutes kept before and after every event.
+        soonDays:
+          type: number
+          description: A dated task can be planned this many days before its day.
+        workDays:
+          type: array
+          description: Working days (0 = Sunday … 6 = Saturday).
+          items:
+            type: number
+        morning:
+          $ref: '#/components/schemas/AgendaPlanRange'
+        work:
+          $ref: '#/components/schemas/AgendaPlanRange'
+        evening:
+          $ref: '#/components/schemas/AgendaPlanRange'
+        weekend:
+          $ref: '#/components/schemas/AgendaPlanRange'
+        rest:
+          type: array
+          description: Rest spans of every day; nothing is planned in them.
+          items:
+            $ref: '#/components/schemas/AgendaPlanRange'
+        rules:
+          type: array
+          description: Minutes by word, first match wins.
+          items:
+            $ref: '#/components/schemas/AgendaPlanRule'
+        gardenList:
+          type: string
+          description: Name of the Google Tasks list with the garden's care tasks.
+        gardenMinutes:
+          type: number
+          description: Minutes of a garden care task that no garden rule names.
+        gardenRules:
+          type: array
+          description: Minutes by kind of garden care (the task's first word), first match wins.
+          items:
+            $ref: '#/components/schemas/AgendaPlanRule'
+        gardenSetupMinutes:
+          type: number
+          description: Minutes added once to every plant round (getting things out and putting them back).
+        morningNotice:
+          type: boolean
+          description: Send the morning summary as a desktop notification.
+        morningAt:
+          type: string
+          description: HH:MM (local) of the morning summary.
+        remindMinutes:
+          type: number
+          description: Notify this many minutes before each block (0 = off).
+
+    AgendaPlanAction:
+      description: >-
+        Something the owner did on a block of the plan: done (marks its tasks
+        done in Google Tasks), skip (not today: kept in the office only) or
+        minutes (how long a task takes; 0 = back to automatic). Privileged
+        connections only.
+      type: object
+      additionalProperties: false
+      required: [type, action, ids]
+      properties:
+        type:
+          const: agendaPlanAction
+        action:
+          $ref: '#/components/schemas/AgendaPlanActionKind'
+        ids:
+          type: array
+          description: Task ids (in agendaStatus.items).
+          items:
+            type: string
+        minutes:
+          type: number
+
+    AgendaPlanActionKind:
+      type: string
+      enum: [done, skip, minutes]
+
+    SetAgendaPlanPrefs:
+      description: >-
+        Save the plan's preferences, or go back to the factory ones. Privileged
+        connections only.
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: setAgendaPlanPrefs
+        prefs:
+          $ref: '#/components/schemas/AgendaPlanPrefs'
+        reset:
+          type: boolean
 
     # ── Roof garden (feature: features/jardin) ─────────────────────
 
@@ -2400,6 +2780,952 @@ components:
       type: string
       enum: [ok, warn, off, idea]
 
+    # ── Price watch (feature: features/ofertas) ────────────────────
+
+    OfertasStatus:
+      description: >-
+        The price watch: saved searches with their best price and history, recent alerts, the state of every source
+        and the settings. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, watches, alerts, sources, settings, checking]
+      properties:
+        type:
+          const: ofertasStatus
+        watches:
+          type: array
+          items:
+            $ref: '#/components/schemas/OfertasWatch'
+        alerts:
+          type: array
+          description: Newest first.
+          items:
+            $ref: '#/components/schemas/OfertasAlert'
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/OfertasSource'
+        settings:
+          $ref: '#/components/schemas/OfertasSettings'
+        checking:
+          type: boolean
+          description: A round of the watch is running right now.
+
+    OfertasResults:
+      description: >-
+        The answer to searchOfertas, sent once when it starts (searching = true, empty lists) and again when every
+        source answered or failed. Only to the client that asked.
+      type: object
+      additionalProperties: false
+      required: [type, requestId, query, searching, groups, deals, sources, links]
+      properties:
+        type:
+          const: ofertasResults
+        requestId:
+          type: string
+        query:
+          type: string
+        searching:
+          type: boolean
+        groups:
+          type: array
+          description: The same product across stores, cheapest group first.
+          items:
+            $ref: '#/components/schemas/OfertasGroup'
+        deals:
+          type: array
+          description: What the community already posted about it.
+          items:
+            $ref: '#/components/schemas/OfertasDeal'
+        sources:
+          type: array
+          description: How each source did in this search (count = offers it gave).
+          items:
+            $ref: '#/components/schemas/OfertasSource'
+        links:
+          type: array
+          description: Stores that are not read automatically, as a link to their own search.
+          items:
+            $ref: '#/components/schemas/OfertasLink'
+
+    OfertasOffer:
+      type: object
+      additionalProperties: false
+      required: [sourceId, store, title, price, official, url]
+      properties:
+        sourceId:
+          type: string
+        store:
+          type: string
+        title:
+          type: string
+        price:
+          type: number
+          description: Mexican pesos.
+        listPrice:
+          type: number
+          description: The "before" price as the store states it (not trusted).
+        seller:
+          type: string
+        official:
+          type: boolean
+          description: Sold by the store itself or by a brand's official store.
+        sellerUnknown:
+          type: boolean
+          description: The source does not say who sells it (neither the store nor a reseller is known).
+        freeShipping:
+          type: boolean
+        url:
+          type: string
+        image:
+          type: string
+        installments:
+          $ref: '#/components/schemas/OfertasInstallments'
+
+    OfertasInstallments:
+      description: >-
+        Months without interest ("MSI"), only when the store says so for this product. months is absent when the
+        store says "MSI" without a number; bank only when the source names one.
+      type: object
+      additionalProperties: false
+      properties:
+        months:
+          type: number
+        bank:
+          type: string
+
+    OfertasVerdict:
+      description: Is it a good price? A label and one line with the reason.
+      type: object
+      additionalProperties: false
+      required: [kind, reason]
+      properties:
+        kind:
+          $ref: '#/components/schemas/OfertasVerdictKind'
+        reason:
+          type: string
+
+    OfertasVerdictKind:
+      description: good = buen precio; normal = precio normal; expensive = caro; unknown = todavía no sé.
+      type: string
+      enum: [good, normal, expensive, unknown]
+
+    OfertasPick:
+      description: The one option to buy of a product (the cheapest sold by the store itself) and why.
+      type: object
+      additionalProperties: false
+      required: [offer, reason]
+      properties:
+        offer:
+          $ref: '#/components/schemas/OfertasOffer'
+        reason:
+          type: string
+
+    OfertasReference:
+      description: A price the person saw by hand ("Lo he visto en $…") and the day.
+      type: object
+      additionalProperties: false
+      required: [price, at]
+      properties:
+        price:
+          type: number
+        at:
+          type: string
+          description: ISO date.
+
+    OfertasGroup:
+      type: object
+      additionalProperties: false
+      required: [key, title, offers]
+      properties:
+        key:
+          type: string
+        title:
+          type: string
+        offers:
+          type: array
+          description: Cheapest first; never empty.
+          items:
+            $ref: '#/components/schemas/OfertasOffer'
+        pick:
+          $ref: '#/components/schemas/OfertasPick'
+        verdict:
+          $ref: '#/components/schemas/OfertasVerdict'
+
+    OfertasDeal:
+      type: object
+      additionalProperties: false
+      required: [id, title, temperature, url, expired]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        price:
+          type: number
+        merchant:
+          type: string
+        temperature:
+          type: number
+          description: The community's votes (degrees).
+        url:
+          type: string
+        publishedAt:
+          type: string
+          description: ISO time.
+        expired:
+          type: boolean
+        installments:
+          $ref: '#/components/schemas/OfertasInstallments'
+
+    OfertasSource:
+      type: object
+      additionalProperties: false
+      required: [id, name, state, fragile, enabled]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        state:
+          $ref: '#/components/schemas/OfertasSourceState'
+        fragile:
+          type: boolean
+          description: It reads a page that is not an API; it may stop working or block at any time.
+        enabled:
+          type: boolean
+        detail:
+          type: string
+        count:
+          type: number
+        lastOkAt:
+          type: string
+          description: ISO time of the last good answer.
+
+    OfertasSourceState:
+      description: >-
+        ok = answered; error = failed (network, changed page); blocked = the store refused (never insisted on);
+        nokey = needs a key that is not set; off = turned off; idle = not asked yet.
+      type: string
+      enum: [ok, error, blocked, nokey, off, idle]
+
+    OfertasLink:
+      type: object
+      additionalProperties: false
+      required: [name, url]
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+
+    OfertasPoint:
+      type: object
+      additionalProperties: false
+      required: [at, price]
+      properties:
+        at:
+          type: string
+          description: ISO time.
+        price:
+          type: number
+
+    OfertasWatch:
+      description: One saved search the office keeps checking.
+      type: object
+      additionalProperties: false
+      required: [id, query, mustHave, exclude, history, reached]
+      properties:
+        id:
+          type: string
+        query:
+          type: string
+        target:
+          type: number
+          description: Alert at or under this price (pesos).
+        mustHave:
+          type: array
+          items:
+            type: string
+        exclude:
+          type: array
+          items:
+            type: string
+        best:
+          $ref: '#/components/schemas/OfertasOffer'
+        others:
+          type: array
+          description: The next cheapest offers of the last check, one per store.
+          items:
+            $ref: '#/components/schemas/OfertasOffer'
+        lowest:
+          type: number
+          description: The lowest price the office has seen for it.
+        lowestAt:
+          type: string
+        history:
+          type: array
+          description: Best price of each check, oldest first (capped).
+          items:
+            $ref: '#/components/schemas/OfertasPoint'
+        checkedAt:
+          type: string
+        nextCheckAt:
+          type: string
+        note:
+          type: string
+          description: A line in plain words, e.g. "Bajó 18 % desde ayer".
+        reached:
+          type: boolean
+          description: The best price is at or under the target.
+        error:
+          type: string
+        reference:
+          $ref: '#/components/schemas/OfertasReference'
+        pick:
+          $ref: '#/components/schemas/OfertasPick'
+        verdict:
+          $ref: '#/components/schemas/OfertasVerdict'
+        asistente:
+          $ref: '#/components/schemas/OfertasWatchAsistente'
+
+    OfertasAlert:
+      type: object
+      additionalProperties: false
+      required: [id, watchId, at, kind, text, seen]
+      properties:
+        id:
+          type: string
+        watchId:
+          type: string
+        at:
+          type: string
+        kind:
+          $ref: '#/components/schemas/OfertasAlertKind'
+        text:
+          type: string
+        price:
+          type: number
+        store:
+          type: string
+        url:
+          type: string
+        seen:
+          type: boolean
+
+    OfertasAlertKind:
+      description: >-
+        target = reached the target price; drop = fell more than the set percent; lowest = lowest ever seen;
+        community = a new community deal.
+      type: string
+      enum: [target, drop, lowest, community]
+
+    OfertasSettings:
+      type: object
+      additionalProperties: false
+      required: [everyMinutes, buenFin, dropPercent, disabledSources]
+      properties:
+        everyMinutes:
+          type: number
+          description: Minutes between checks of each watch (a random variation is added).
+        buenFin:
+          type: boolean
+          description: Sale mode; checks more often.
+        dropPercent:
+          type: number
+          description: Alert when the best price falls this much against the previous check.
+        disabledSources:
+          type: array
+          items:
+            type: string
+
+    SearchOfertas:
+      description: Search a product in every source now. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, requestId, query]
+      properties:
+        type:
+          const: searchOfertas
+        requestId:
+          type: string
+        query:
+          type: string
+
+    SaveOfertasWatch:
+      description: Start watching a search, or change one (with its id). Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, query]
+      properties:
+        type:
+          const: saveOfertasWatch
+        id:
+          type: string
+        query:
+          type: string
+        target:
+          type: number
+        mustHave:
+          type: array
+          items:
+            type: string
+        exclude:
+          type: array
+          items:
+            type: string
+        reference:
+          $ref: '#/components/schemas/OfertasReference'
+
+    DeleteOfertasWatch:
+      description: Stop watching a search and forget its history. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, id]
+      properties:
+        type:
+          const: deleteOfertasWatch
+        id:
+          type: string
+
+    CheckOfertas:
+      description: Check one watch now (or all of them without an id). Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: checkOfertas
+        id:
+          type: string
+
+    SetOfertasSettings:
+      description: Change the settings of the price watch (only the fields sent). Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: setOfertasSettings
+        everyMinutes:
+          type: number
+        buenFin:
+          type: boolean
+        dropPercent:
+          type: number
+        disabledSources:
+          type: array
+          items:
+            type: string
+
+    MarkOfertasAlertsSeen:
+      description: The alerts were read; the furniture goes dark. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: markOfertasAlertsSeen
+
+    # Optional assistant of Ofertas (features/ofertas/server/asistente): a small model run through the local Claude
+    # Code CLI that researches a product on the web. Each query starts a process that spends subscription usage, so
+    # every message here is for privileged connections only.
+
+    OfertasAsistenteEstado:
+      description: >-
+        Whether the assistant can be used and what it is doing. Sent on webviewReady, when a query starts or ends and
+        when its settings change. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, installed, enabled, available, model, busy]
+      properties:
+        type:
+          const: ofertasAsistenteEstado
+        installed:
+          type: boolean
+          description: The Claude Code CLI was found on this machine.
+        enabled:
+          type: boolean
+          description: Not turned off in the settings.
+        available:
+          type: boolean
+          description: installed and enabled; the panel shows the buttons only then.
+        model:
+          type: string
+        busy:
+          type: boolean
+        job:
+          $ref: '#/components/schemas/OfertasAsistenteJob'
+        product:
+          type: string
+        startedAt:
+          type: string
+          description: ISO time the query in course started.
+        watchId:
+          type: string
+        requestId:
+          type: string
+        groupKey:
+          type: string
+
+    OfertasAsistenteResultado:
+      description: >-
+        The end of one query: its data (precio or similares) or why there is none. Only to the client that asked; a
+        query about a watched search is also kept on the watch (OfertasWatch.asistente). Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, job, product, ok]
+      properties:
+        type:
+          const: ofertasAsistenteResultado
+        job:
+          $ref: '#/components/schemas/OfertasAsistenteJob'
+        product:
+          type: string
+        ok:
+          type: boolean
+        reason:
+          $ref: '#/components/schemas/OfertasAsistenteFallo'
+        detail:
+          type: string
+        watchId:
+          type: string
+        requestId:
+          type: string
+        groupKey:
+          type: string
+        precio:
+          $ref: '#/components/schemas/OfertasAsistenteInvestigacion'
+        similares:
+          $ref: '#/components/schemas/OfertasAsistenteBusquedaSimilares'
+
+    OfertasAsistenteJob:
+      description: precio = investigate the normal price; similares = look for similar products.
+      type: string
+      enum: [precio, similares]
+
+    OfertasAsistenteFallo:
+      description: Why a query gave nothing usable.
+      type: string
+      enum: [no-cli, 'off', busy, no-subscription, timeout, cancelled, bad-output, failed]
+
+    OfertasAsistenteConfianza:
+      type: string
+      enum: [alta, media, baja]
+
+    OfertasAsistenteTipoSimilar:
+      description: compa = the closest match ("su compa"); alternativa = another option of the same range.
+      type: string
+      enum: [compa, alternativa]
+
+    OfertasAsistenteFuente:
+      type: object
+      additionalProperties: false
+      required: [titulo, url]
+      properties:
+        titulo:
+          type: string
+        url:
+          type: string
+          description: Always http(s).
+        fecha:
+          type: string
+        precio:
+          type: number
+
+    OfertasAsistenteInvestigacion:
+      description: The normal price of a product as the assistant found it, with its sources.
+      type: object
+      additionalProperties: false
+      required: [nota, confianza, fuentes, revisado]
+      properties:
+        precioTipico:
+          type: number
+        minimoVisto:
+          type: number
+        maximoVisto:
+          type: number
+        nota:
+          type: string
+        confianza:
+          $ref: '#/components/schemas/OfertasAsistenteConfianza'
+        fuentes:
+          type: array
+          items:
+            $ref: '#/components/schemas/OfertasAsistenteFuente'
+        revisado:
+          type: string
+          description: ISO time the office got the answer.
+
+    OfertasAsistenteSimilar:
+      type: object
+      additionalProperties: false
+      required: [tipo, nombre, porque, consulta, fuentes]
+      properties:
+        tipo:
+          $ref: '#/components/schemas/OfertasAsistenteTipoSimilar'
+        nombre:
+          type: string
+        porque:
+          type: string
+        precioAprox:
+          type: number
+        consulta:
+          type: string
+          description: Ready for searchOfertas.
+        fuentes:
+          type: array
+          items:
+            $ref: '#/components/schemas/OfertasAsistenteFuente'
+
+    OfertasAsistenteBusquedaSimilares:
+      type: object
+      additionalProperties: false
+      required: [similares, revisado]
+      properties:
+        similares:
+          type: array
+          items:
+            $ref: '#/components/schemas/OfertasAsistenteSimilar'
+        revisado:
+          type: string
+
+    OfertasWatchAsistente:
+      description: The assistant's last answers about a watched search (kept up to 30 days).
+      type: object
+      additionalProperties: false
+      properties:
+        precio:
+          $ref: '#/components/schemas/OfertasAsistenteInvestigacion'
+        similares:
+          $ref: '#/components/schemas/OfertasAsistenteBusquedaSimilares'
+
+    OfertasAsistenteInvestigar:
+      description: >-
+        Ask the assistant for the normal price of a product. watchId (a watched search) or requestId + groupKey (a
+        product of a live search) say where the answer goes. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, producto]
+      properties:
+        type:
+          const: ofertasAsistenteInvestigar
+        producto:
+          type: string
+        precioActual:
+          type: number
+        tienda:
+          type: string
+        watchId:
+          type: string
+        requestId:
+          type: string
+        groupKey:
+          type: string
+
+    OfertasAsistenteSimilares:
+      description: Ask the assistant for 3 to 6 similar products. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, producto]
+      properties:
+        type:
+          const: ofertasAsistenteSimilares
+        producto:
+          type: string
+        presupuesto:
+          type: number
+        watchId:
+          type: string
+        requestId:
+          type: string
+        groupKey:
+          type: string
+
+    OfertasAsistenteCancelar:
+      description: Stop the query in course. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: ofertasAsistenteCancelar
+
+    SetOfertasAsistente:
+      description: Turn the assistant on or off, or choose its model (haiku or sonnet). Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: setOfertasAsistente
+        enabled:
+          type: boolean
+        model:
+          type: string
+
+    # ── Yu-Gi-Oh! decks (feature: features/decks) ──────────────────
+
+    DecksStatus:
+      description: >-
+        Every deck of the deck folder, the folder itself, the state of the local card database and the files that
+        could not be read. Sent on webviewReady, on decksOpen, after a change and when the folder changes from
+        outside. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, decks, folder, db, problems]
+      properties:
+        type:
+          const: decksStatus
+        decks:
+          type: array
+          items:
+            $ref: '#/components/schemas/DecksDeck'
+        folder:
+          type: string
+        db:
+          $ref: '#/components/schemas/DecksDb'
+        problems:
+          type: array
+          items:
+            type: string
+
+    DecksSearchResults:
+      description: The answer to decksSearch (at most 20 cards).
+      type: object
+      additionalProperties: false
+      required: [type, requestId, query, cards]
+      properties:
+        type:
+          const: decksSearchResults
+        requestId:
+          type: string
+        query:
+          type: string
+        cards:
+          type: array
+          items:
+            $ref: '#/components/schemas/DecksCard'
+
+    DecksCardInfo:
+      description: The answer to decksCards; missing = codes not in the database.
+      type: object
+      additionalProperties: false
+      required: [type, cards, missing]
+      properties:
+        type:
+          const: decksCardInfo
+        cards:
+          type: array
+          items:
+            $ref: '#/components/schemas/DecksCard'
+        missing:
+          type: array
+          items:
+            type: integer
+
+    DecksImportResult:
+      description: >-
+        The answer to decksImport: a draft deck (not saved, id "") and what could not be read or was guessed.
+      type: object
+      additionalProperties: false
+      required: [type, requestId, ok, problems]
+      properties:
+        type:
+          const: decksImportResult
+        requestId:
+          type: string
+        ok:
+          type: boolean
+        deck:
+          $ref: '#/components/schemas/DecksDeck'
+        problems:
+          type: array
+          items:
+            type: string
+
+    DecksDeck:
+      description: >-
+        One deck (its file without version). Card codes are the 8-digit numbers printed on the cards; a repeated
+        code is several copies. id is empty for a deck that was never saved; cover 0 = none chosen.
+      type: object
+      additionalProperties: false
+      required: [id, name, owner, createdAt, updatedAt, cover, box, notes, main, extra, side]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        owner:
+          type: string
+        createdAt:
+          type: string
+          description: YYYY-MM-DD.
+        updatedAt:
+          type: string
+          description: ISO time of the last save (empty when never saved).
+        cover:
+          type: integer
+        box:
+          $ref: '#/components/schemas/DecksBox'
+        notes:
+          type: string
+        main:
+          type: array
+          items:
+            type: integer
+        extra:
+          type: array
+          items:
+            type: integer
+        side:
+          type: array
+          items:
+            type: integer
+
+    DecksBox:
+      type: object
+      additionalProperties: false
+      required: [color]
+      properties:
+        color:
+          type: string
+          description: A six-digit hex color.
+
+    DecksCard:
+      description: One card, trimmed from YGOPRODeck (English names and texts).
+      type: object
+      additionalProperties: false
+      required: [id, name, kind, extraDeck, type, frameType, desc]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        kind:
+          $ref: '#/components/schemas/DecksCardKind'
+        extraDeck:
+          type: boolean
+        type:
+          type: string
+        frameType:
+          type: string
+        desc:
+          type: string
+        race:
+          type: string
+        attribute:
+          type: string
+        level:
+          type: integer
+        atk:
+          type: integer
+        def:
+          type: integer
+        archetype:
+          type: string
+        banTcg:
+          $ref: '#/components/schemas/DecksBan'
+        banOcg:
+          $ref: '#/components/schemas/DecksBan'
+
+    DecksCardKind:
+      type: string
+      enum: [monster, spell, trap]
+
+    DecksBan:
+      type: string
+      enum: [Banned, Limited, Semi-Limited]
+
+    DecksDb:
+      type: object
+      additionalProperties: false
+      required: [state]
+      properties:
+        state:
+          $ref: '#/components/schemas/DecksDbState'
+        count:
+          type: integer
+        updatedAt:
+          type: string
+        detail:
+          type: string
+
+    DecksDbState:
+      type: string
+      enum: [missing, loading, ready, error]
+
+    DecksOpen:
+      description: The deck panel opened (the folder is read again; a missing card database starts downloading).
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: decksOpen
+
+    DecksSearch:
+      description: Cards by name, or by code when the query is only digits. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, requestId, query]
+      properties:
+        type:
+          const: decksSearch
+        requestId:
+          type: string
+        query:
+          type: string
+
+    DecksCards:
+      description: The data of these card codes. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, ids]
+      properties:
+        type:
+          const: decksCards
+        ids:
+          type: array
+          items:
+            type: integer
+
+    DecksSave:
+      description: Write a deck (id "" = a new one). Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, deck]
+      properties:
+        type:
+          const: decksSave
+        deck:
+          $ref: '#/components/schemas/DecksDeck'
+
+    DecksDelete:
+      description: Move a deck to the folder's trash (.borrados/). Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, id]
+      properties:
+        type:
+          const: decksDelete
+        id:
+          type: string
+
+    DecksImport:
+      description: >-
+        Read a deck from text (ydke://, .ydk or a text list); answered with decksImportResult. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, requestId, text]
+      properties:
+        type:
+          const: decksImport
+        requestId:
+          type: string
+        text:
+          type: string
+
     GithubPullRequest:
       type: object
       additionalProperties: false
@@ -2588,6 +3914,374 @@ components:
       properties:
         type:
           const: disconnectSpotify
+
+    # ── Playlist of the day (feature: features/musica, playlists) ──
+
+    PlaylistStatus:
+      description: >-
+        The playlist of the day: what the owner can build one from (own
+        playlists, most listened artists, saved recipes), the preview being
+        reviewed, the playlists the office created in the account and the
+        songs sent to the "not this one" bin. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - configured
+        - connected
+        - needsReconnect
+        - playlists
+        - artists
+        - recipes
+        - lists
+        - rejected
+        - autoPlay
+      properties:
+        type:
+          const: playlistStatus
+        configured:
+          type: boolean
+          description: music.json has a Spotify client id.
+        connected:
+          type: boolean
+          description: There is a Spotify session.
+        needsReconnect:
+          type: boolean
+          description: The session lacks the playlist permissions; the owner has to connect Spotify again.
+        busy:
+          $ref: '#/components/schemas/PlaylistBusy'
+        error:
+          type: string
+          description: What went wrong with the last command, in words for the owner.
+        note:
+          type: string
+          description: Something the owner should know about the last result (e.g. the pool was short).
+        playlists:
+          type: array
+          description: The owner's own playlists, to pick as a source.
+          items:
+            $ref: '#/components/schemas/PlaylistSource'
+        artists:
+          type: array
+          description: The owner's most listened artists, to pick as a source.
+          items:
+            $ref: '#/components/schemas/PlaylistArtist'
+        recipes:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlaylistRecipe'
+        preview:
+          $ref: '#/components/schemas/PlaylistPreview'
+        lists:
+          type: array
+          description: >-
+            Playlists the office created that still exist: today's, earlier
+            ones awaiting a decision and kept ones. Newest first.
+          items:
+            $ref: '#/components/schemas/PlaylistDay'
+        rejected:
+          type: array
+          description: Songs in the "not this one" bin (never picked again), newest first.
+          items:
+            $ref: '#/components/schemas/PlaylistSong'
+        autoPlay:
+          type: boolean
+          description: Start playing a playlist right after creating it.
+        editing:
+          $ref: '#/components/schemas/PlaylistEditing'
+        found:
+          type: array
+          description: Songs found by the last song search (to add while modifying a list).
+          items:
+            $ref: '#/components/schemas/PlaylistSong'
+        proposal:
+          $ref: '#/components/schemas/PlaylistProposal'
+
+    PlaylistBusy:
+      type: string
+      description: What the office is doing right now.
+      enum: [sources, preview, creating, deleting, loading, searching, saving, improving]
+
+    PlaylistEditing:
+      description: A playlist the office created, open to modify (its songs as Spotify has them now).
+      type: object
+      additionalProperties: false
+      required: [id, name, songs]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        songs:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlaylistSong'
+
+    PlaylistProposal:
+      description: >-
+        What "improve" would change in a playlist the office created: songs it
+        takes out and songs it puts in. Nothing changes until the owner applies it.
+      type: object
+      additionalProperties: false
+      required: [id, label, remove, add, totalMs]
+      properties:
+        id:
+          type: string
+          description: The playlist id.
+        label:
+          type: string
+          description: What was asked, in words for the owner.
+        remove:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlaylistSong'
+        add:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlaylistSong'
+        totalMs:
+          type: number
+          description: The playlist's length once applied.
+        note:
+          type: string
+          description: Why it changes less than asked (or nothing).
+
+    PlaylistImproveMode:
+      type: string
+      description: >-
+        How to improve a playlist: `more` adds 30 minutes, `bin` swaps the
+        songs that are in the bin, `reroll` rebuilds it with the same idea,
+        `discover` swaps some songs for new ones, `text` applies a typed wish.
+      enum: [more, bin, reroll, discover, text]
+
+    PlaylistSource:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        count:
+          type: number
+          description: Songs in it, when Spotify says.
+
+    PlaylistArtist:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+
+    PlaylistRecipe:
+      description: A named combination of sources, length and mixing rules.
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - top
+        - liked
+        - surprise
+        - playlists
+        - artists
+        - decades
+        - minutes
+        - discover
+        - avoidRecent
+      properties:
+        id:
+          type: string
+          description: Empty for a recipe that is not saved yet.
+        name:
+          type: string
+        top:
+          type: boolean
+          description: The owner's most listened songs.
+        liked:
+          type: boolean
+          description: The owner's liked songs.
+        surprise:
+          type: boolean
+          description: A few of the owner's playlists picked at random each time.
+        playlists:
+          type: array
+          description: Ids of the owner's playlists.
+          items:
+            type: string
+        artists:
+          type: array
+          description: Artists to take albums from (their newest and others).
+          items:
+            $ref: '#/components/schemas/PlaylistArtist'
+        decades:
+          type: array
+          description: Only songs whose album came out in these decades (1980 = the 80s); empty = any.
+          items:
+            type: number
+        minutes:
+          type: number
+          description: Target length (30, 60 or 120).
+        discover:
+          type: boolean
+          description: Mix in songs the owner does not have, from albums of the artists in the pool.
+        avoidRecent:
+          type: boolean
+          description: Skip songs used in the playlists of the last days.
+
+    PlaylistSong:
+      type: object
+      additionalProperties: false
+      required: [uri, title, artist, durationMs]
+      properties:
+        uri:
+          type: string
+        title:
+          type: string
+        artist:
+          type: string
+        album:
+          type: string
+        year:
+          type: number
+        durationMs:
+          type: number
+        discover:
+          type: boolean
+          description: Not from the owner's own music (it came from the discover mix).
+
+    PlaylistPreview:
+      description: A playlist built and not yet created in the account.
+      type: object
+      additionalProperties: false
+      required: [recipeName, targetMs, totalMs, songs]
+      properties:
+        recipeName:
+          type: string
+        request:
+          type: string
+          description: The description the owner typed, when it was built from one.
+        origin:
+          type: string
+          description: Where the songs came from, in words for the owner.
+        targetMs:
+          type: number
+        totalMs:
+          type: number
+        songs:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlaylistSong'
+
+    PlaylistDay:
+      description: A playlist the office created in the account.
+      type: object
+      additionalProperties: false
+      required: [id, name, day, kept, count, totalMs]
+      properties:
+        id:
+          type: string
+          description: The playlist id in Spotify.
+        name:
+          type: string
+        day:
+          type: string
+          description: The day it was created (YYYY-MM-DD, local).
+        kept:
+          type: boolean
+          description: The owner kept it (it stays on the shelf; never removed without asking).
+        count:
+          type: number
+        totalMs:
+          type: number
+        url:
+          type: string
+          description: Link to open it in Spotify.
+        madeWith:
+          type: string
+          description: What it was made with (a recipe's name or the typed description).
+        missing:
+          type: boolean
+          description: It is no longer in the owner's Spotify library (removed there).
+
+    PlaylistCommand:
+      description: >-
+        A button of the playlist panel. `open` reads the sources again;
+        `preview` builds from `recipe`; `reroll` builds again; `reject` sends
+        `uri` to the bin (and replaces it in the preview); `unreject` takes it
+        out; `create` creates the preview in the account (`play` starts it);
+        `cancel` drops the preview; `keep` / `delete` decide about the created
+        playlist `id` (only ones the office created); `saveRecipe` /
+        `deleteRecipe` edit the recipes; `setAutoPlay` stores `play`.
+        `describe` builds from the typed `text` (`minutes`, `avoidRecent`);
+        `play` plays the list `id`; `openList` / `closeList`
+        open a created list to modify; `searchSongs` looks for `text`;
+        `saveList` renames it to `name` and leaves exactly `uris`;
+        `improve` proposes a change (`mode`, `text`); `applyImprove` /
+        `dropImprove` decide on it; `checkLists` checks which lists are still
+        in the library; `forget` drops a missing list from the office.
+        Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, action]
+      properties:
+        type:
+          const: playlistCommand
+        action:
+          $ref: '#/components/schemas/PlaylistAction'
+        recipe:
+          $ref: '#/components/schemas/PlaylistRecipe'
+        uri:
+          type: string
+        id:
+          type: string
+        play:
+          type: boolean
+        text:
+          type: string
+        minutes:
+          type: number
+        name:
+          type: string
+        uris:
+          type: array
+          items:
+            type: string
+        mode:
+          $ref: '#/components/schemas/PlaylistImproveMode'
+        avoidRecent:
+          type: boolean
+
+    PlaylistAction:
+      type: string
+      enum:
+        - open
+        - preview
+        - reroll
+        - reject
+        - unreject
+        - create
+        - cancel
+        - keep
+        - delete
+        - saveRecipe
+        - deleteRecipe
+        - setAutoPlay
+        - describe
+        - play
+        - openList
+        - closeList
+        - searchSongs
+        - saveList
+        - improve
+        - applyImprove
+        - dropImprove
+        - checkLists
+        - forget
 
     SetMusicEnabled:
       description: Show or hide the music column and the turntable animation.

@@ -1,0 +1,150 @@
+[
+ {
+  "productId": "1300371479",
+  "productName": "Audífonos Bluetooth EDIFIER",
+  "brand": "EDIFIER",
+  "link": "https://www.elektra.mx/audifonos-bluetooth-edifier-1300371479/p",
+  "items": [
+   {
+    "images": [
+     {
+      "imageUrl": "https://elektra.vteximg.com.br/arquivos/ids/36582597/ce91652d22014658jpeg.jpg?v=639300441030100000"
+     }
+    ],
+    "sellers": [
+     {
+      "sellerId": "711471",
+      "sellerName": "WSI",
+      "sellerDefault": true,
+      "commertialOffer": {
+       "Price": 1979,
+       "ListPrice": 2479,
+       "AvailableQuantity": 100
+      }
+     },
+     {
+      "sellerId": "1",
+      "sellerName": "Elektra",
+      "sellerDefault": false,
+      "commertialOffer": {
+       "Price": 0,
+       "ListPrice": 0,
+       "AvailableQuantity": 0
+      }
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "productId": "1300371461",
+  "productName": "Audífonos Bluetooth EDIFIER",
+  "brand": "EDIFIER",
+  "link": "https://www.elektra.mx/audifonos-bluetooth-edifier-1300371461/p",
+  "items": [
+   {
+    "images": [
+     {
+      "imageUrl": "https://elektra.vteximg.com.br/arquivos/ids/36372278/9928f64d07fd636ajpeg.jpg?v=639298754981030000"
+     }
+    ],
+    "sellers": [
+     {
+      "sellerId": "711471",
+      "sellerName": "WSI",
+      "sellerDefault": true,
+      "commertialOffer": {
+       "Price": 1199,
+       "ListPrice": 1499,
+       "AvailableQuantity": 100
+      }
+     },
+     {
+      "sellerId": "1",
+      "sellerName": "Elektra",
+      "sellerDefault": false,
+      "commertialOffer": {
+       "Price": 0,
+       "ListPrice": 0,
+       "AvailableQuantity": 0
+      }
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "productId": "1300370951",
+  "productName": "Audífonos Bluetooth EDIFIER",
+  "brand": "EDIFIER",
+  "link": "https://www.elektra.mx/audifonos-bluetooth-edifier-1300370951/p",
+  "items": [
+   {
+    "images": [
+     {
+      "imageUrl": "https://elektra.vteximg.com.br/arquivos/ids/36372986/d5c134c2b2345391jpeg.jpg?v=639298758511530000"
+     }
+    ],
+    "sellers": [
+     {
+      "sellerId": "711471",
+      "sellerName": "WSI",
+      "sellerDefault": true,
+      "commertialOffer": {
+       "Price": 779,
+       "ListPrice": 979,
+       "AvailableQuantity": 99999
+      }
+     },
+     {
+      "sellerId": "1",
+      "sellerName": "Elektra",
+      "sellerDefault": false,
+      "commertialOffer": {
+       "Price": 0,
+       "ListPrice": 0,
+       "AvailableQuantity": 0
+      }
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "productId": "1300370602",
+  "productName": "Audífonos Bluetooth beats",
+  "brand": "BEATS",
+  "link": "https://www.elektra.mx/audifonos-bluetooth-beats-1300370602/p",
+  "items": [
+   {
+    "images": [
+     {
+      "imageUrl": "https://elektra.vteximg.com.br/arquivos/ids/36373004/b6bebb09fee7639djpeg.jpg?v=639298758626500000"
+     }
+    ],
+    "sellers": [
+     {
+      "sellerId": "711471",
+      "sellerName": "WSI",
+      "sellerDefault": true,
+      "commertialOffer": {
+       "Price": 1829,
+       "ListPrice": 2289,
+       "AvailableQuantity": 99999
+      }
+     },
+     {
+      "sellerId": "1",
+      "sellerName": "Elektra",
+      "sellerDefault": false,
+      "commertialOffer": {
+       "Price": 0,
+       "ListPrice": 0,
+       "AvailableQuantity": 0
+      }
+     }
+    ]
+   }
+  ]
+ }
+]

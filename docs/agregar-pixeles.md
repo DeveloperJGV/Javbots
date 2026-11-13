@@ -17,6 +17,7 @@ mi-carpeta/
   assets/
     furniture/MI_MUEBLE/{manifest.json, MI_MUEBLE.png}
     pets/mi-perro/{manifest.json, pet.png}
+    avatar/{manifest.json, avatar.png}
 ```
 
 ## Muebles
@@ -104,6 +105,60 @@ Las mascotas solo se cargan desde una carpeta (el proyecto no trae ninguna). Cad
 | 3                    | Caminando a la derecha (3 cuadros de 32 px; la izquierda se voltea sola)       |
 
 Las mascotas se ordenan por el nombre de su carpeta. Para ponerlas en la oficina, colócalas con el editor.
+
+## El dueño de la oficina (`avatar/`)
+
+Es opcional: un personaje que pasea por la oficina y **no es un agente** (no ocupa escritorio ni cuenta como
+agente). Va en `<carpeta de pixeles>/assets/avatar/` con un `manifest.json` y su hoja:
+
+```json
+{ "sheet": "avatar.png", "name": "La jefa" }
+```
+
+- **`sheet`** (opcional, por defecto `avatar.png`): el nombre del PNG dentro de la misma carpeta, sin subcarpetas.
+- **`name`** (opcional): el nombre que se muestra (se recortan los espacios y se corta si es muy largo).
+- La hoja mide **192 × 132**, igual que la de un personaje: 8 cuadros de 24 × 44 por fila, en 3 filas (**frente**,
+  **espaldas** y **lado derecho**; la izquierda es el lado volteado). En cada fila: caminar ×4, teclear ×2, leer ×2.
+- Si varias carpetas traen uno, **gana la última** de la lista (una carpeta tuya pisa al del proyecto). Si la hoja
+  no es válida, no aparece y la oficina sigue igual.
+- Aparece en el piso que la página está mostrando. Se apaga en **Ajustes**.
+
+### Gestos del dueño (`emotes`, opcional)
+
+Animaciones cortas en una hoja aparte. Se agregan al mismo `manifest.json`:
+
+```json
+{
+  "sheet": "avatar.png",
+  "emotes": {
+    "sheet": "emotes.png",
+    "cellW": 32,
+    "cellH": 48,
+    "list": [
+      { "id": "greet", "row": 0, "frames": 8, "fps": 8, "loops": 1 },
+      { "id": "dance", "row": 1, "frames": 8, "fps": 8, "loops": 3, "idle": true },
+      { "id": "cheer", "row": 2, "frames": 8, "fps": 10, "loops": 1 },
+      { "id": "drink", "row": 3, "frames": 8, "fps": 6, "loops": 1, "idle": true }
+    ]
+  }
+}
+```
+
+- **La hoja** (`sheet`, por defecto `emotes.png`) es una rejilla: **una fila por gesto**, con sus cuadros de
+  `cellW` × `cellH` desde la izquierda. Las filas pueden tener distinto número de cuadros; la hoja mide `cellW` × el
+  mayor número de cuadros por `cellH` × el número de filas.
+- **La celda** (por defecto 32 × 48) se dibuja con **su centro de abajo sobre el centro de abajo** del cuadro normal
+  de 24 × 44: con 32 × 48 es el cuadro normal con 4 px de margen a cada lado y 4 arriba. Los gestos miran al frente.
+- Por gesto: `id`, `row` (su fila, desde 0), `frames` (1 a 16), `fps` (1 a 30, por defecto 8), `loops` (veces que se
+  repite, 1 a 10, por defecto 1) e `idle` (si `true`, lo hace de vez en cuando mientras está parado).
+- **Cuándo los hace:** `greet` al terminar de entrar a un piso y cuando le das clic a él; `cheer` cuando un agente
+  termina su turno y él está libre (con un descanso de unos 20 s entre uno y otro); `dance` mientras dura la fiesta;
+  y los que traen `"idle": true` (con cualquier `id`), de vez en cuando cuando lleva un rato parado sin un panel
+  abierto, sin repetir el mismo dos veces seguidas. Mientras dura un gesto no camina; si tiene que irse (cambio de
+  piso, se abre un panel, se apaga en Ajustes) lo corta.
+- Todo es opcional: sin `emotes`, o sin alguno de los gestos, no pasa nada. Si el bloque está mal (tamaños fuera de
+  rango, una fila fuera de la hoja, ids repetidos, la hoja no existe…), el dueño carga **sin gestos** y el servidor
+  lo avisa en su registro.
 
 ## Ponerlo en la oficina
 

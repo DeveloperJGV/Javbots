@@ -1,14 +1,11 @@
-/** Furniture of the agenda room; a click on any of them opens the panel. */
+/** Furniture of the agenda room. */
 export const AGENDA_WEEK_MAP_TYPE = 'AGENDA_WEEK_MAP';
 export const AGENDA_CONSOLE_TYPE = 'AGENDA_CONSOLE';
 export const AGENDA_RADAR_TYPE = 'AGENDA_RADAR';
 export const AGENDA_TASKS_TYPE = 'AGENDA_TASKS';
-export const AGENDA_FURNITURE_TYPES: readonly string[] = [
-  AGENDA_WEEK_MAP_TYPE,
-  AGENDA_CONSOLE_TYPE,
-  AGENDA_RADAR_TYPE,
-  AGENDA_TASKS_TYPE,
-];
+/** The one piece a click opens the panel from (the week map, radar and task board are decoration that follows the
+ *  agenda, without a click of their own). */
+export const AGENDA_FURNITURE_TYPES: readonly string[] = [AGENDA_CONSOLE_TYPE];
 
 /**
  * The title's first word with a colon says the event's type (the owner's rule). Buttons in the panel, in order;
@@ -65,3 +62,29 @@ export const AGENDA_COLORS = {
 
 /** The console's light blinks red while there are clashes. */
 export const AGENDA_BLINK_SEC = 0.5;
+
+// ── Plan of the day (panel) ──
+/** Choices of "how long it takes" (0 = let the rules decide): a normal task in whole blocks ("ratos")... */
+export const PLAN_BLOCK_MULTIPLES: readonly number[] = [1, 2, 3, 4];
+/** ...a small thing (in "Pendientes rápidos" or alone)... */
+export const PLAN_QUICK_OPTIONS: readonly number[] = [5, 10, 15];
+/** ...and one plant care inside the garden round. */
+export const PLAN_GARDEN_OPTIONS: readonly number[] = [1, 2, 3, 5, 10, 15];
+export const PLAN_AUTO_MINUTES = 0;
+/** Week days for the work-days buttons, Sunday first (JS `getDay()` order). */
+export const PLAN_WEEK_LETTERS: readonly string[] = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
+export const PLAN_WEEK_NAMES: readonly string[] = [
+  'domingo',
+  'lunes',
+  'martes',
+  'miércoles',
+  'jueves',
+  'viernes',
+  'sábado',
+];
+/** A new rest range / word rule in the preferences form. */
+export const PLAN_NEW_REST = { from: '14:00', to: '15:00' } as const;
+export const PLAN_NEW_RULE_MINUTES = 10;
+/** Id of the <datalist> with the half hours suggested in the "Agregar" form. */
+export const HALF_HOURS_LIST_ID = 'agenda-half-hours';
+export const HOURS_PER_DAY = 24;

@@ -142,3 +142,33 @@ export const ATTENTION_HERDR_IDLE_GRACE_MS = 60_000;
 export const ATTENTION_WAITING_NOTIFY_DELAY_MS = 30_000;
 /** Title of the desktop notification. */
 export const ATTENTION_NOTIFY_TITLE = 'Javbots';
+
+// ── Office owner (docs/agregar-pixeles.md) ──────────────────
+/** Folder under `<assets dir>/assets/` holding the optional office owner sheet + manifest.json. */
+export const AVATAR_DIR = 'avatar';
+/** Sheet file used when the owner manifest does not name one. */
+export const AVATAR_DEFAULT_SHEET = 'avatar.png';
+/** Longest owner name kept from the manifest (longer names are cut). */
+export const AVATAR_NAME_MAX_LENGTH = 40;
+/** Size cap for the owner sheet PNG (and for its emotes sheet). */
+export const MAX_AVATAR_PNG_SIZE = 512 * 1024;
+/** Owner emotes (manifest `emotes`): sheet used when none is named, and the cell size by default (the 24×44
+ *  frame with a margin: 4 px each side and 4 on top). */
+export const AVATAR_EMOTE_DEFAULT_SHEET = 'emotes.png';
+export const AVATAR_EMOTE_CELL_W = 32;
+export const AVATAR_EMOTE_CELL_H = 48;
+/** Accepted cell sizes (px). */
+export const AVATAR_EMOTE_CELL_MIN = 8;
+export const AVATAR_EMOTE_CELL_MAX_W = 64;
+export const AVATAR_EMOTE_CELL_MAX_H = 96;
+/** At most this many emotes (rows) and frames per emote. */
+export const AVATAR_EMOTE_MAX_COUNT = 16;
+export const AVATAR_EMOTE_MAX_FRAMES = 16;
+/** Frames per second: default and accepted range. */
+export const AVATAR_EMOTE_FPS_DEFAULT = 8;
+export const AVATAR_EMOTE_FPS_MIN = 1;
+export const AVATAR_EMOTE_FPS_MAX = 30;
+/** Times an emote plays through, at most. */
+export const AVATAR_EMOTE_LOOPS_MAX = 10;
+/** Emote ids: short, plain. */
+export const AVATAR_EMOTE_ID = /^[a-z0-9_-]{1,24}$/i;

@@ -39,6 +39,6 @@ class PomodoroStore {
 
 export const pomodoroStore = new PomodoroStore();
 
-/** A piece that opens the panel (the tomato timers and the hourglasses). */
+/** A piece that opens the panel: the tomato timer, on the wall or on a table. */
 export const isPomodoroFurniture = (type: string | undefined): boolean =>
   POMODORO_PANEL_TYPES.includes((type ?? '').split(':')[0]);

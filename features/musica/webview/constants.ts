@@ -83,3 +83,9 @@ export const MUSIC_NOTE_PIXELS: readonly (readonly [number, number])[] = [
   [0, 5],
   [1, 5],
 ];
+
+// Playlist of the day (features/musica/webview/playlists): the press window while it works.
+export const PLAYLIST_PRESS_COLORS = {
+  on: '#f472b6',
+  onShine: '#fbcfe8',
+} as const;

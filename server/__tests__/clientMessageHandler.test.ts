@@ -153,12 +153,14 @@ describe('clientMessageHandler: areas + carpet wire ordering', () => {
       handleClientMessage({ type: 'webviewReady' }, (m) => sent.push(m), ctx);
       const settings = sent.find((m) => m.type === 'settingsLoaded') as Record<string, unknown>;
       expect(settings.shadowsEnabled).toBe(true);
+      expect(settings.ownerEnabled).toBe(true);
       expect(settings.particlesEnabled).toBe(true);
       expect(settings.dayNightMode).toBe('auto');
     });
 
     it('persists each toggle and reports it back on the next connect', () => {
       handleClientMessage({ type: 'setShadowsEnabled', enabled: false }, (m) => sent.push(m), ctx);
+      handleClientMessage({ type: 'setOwnerEnabled', enabled: false }, (m) => sent.push(m), ctx);
       handleClientMessage(
         { type: 'setParticlesEnabled', enabled: false },
         (m) => sent.push(m),
@@ -170,6 +172,7 @@ describe('clientMessageHandler: areas + carpet wire ordering', () => {
       handleClientMessage({ type: 'webviewReady' }, (m) => sent.push(m), ctx);
       const settings = sent.find((m) => m.type === 'settingsLoaded') as Record<string, unknown>;
       expect(settings.shadowsEnabled).toBe(false);
+      expect(settings.ownerEnabled).toBe(false);
       expect(settings.particlesEnabled).toBe(false);
       expect(settings.dayNightMode).toBe('night');
     });
@@ -427,6 +430,33 @@ describe('clientMessageHandler: areas + carpet wire ordering', () => {
       expect(iWalls).toBeGreaterThanOrEqual(0);
       expect(iCarpets).toBeGreaterThanOrEqual(0);
       expect(iWalls).toBeLessThan(iCarpets);
+    });
+
+    it('sends the office owner with the character sheets only when there is one', () => {
+      const sheet = { down: [], up: [], right: [] };
+      const base: AssetCache = {
+        characters: { characters: [sheet] },
+        pets: null,
+        floorTiles: null,
+        wallTiles: null,
+        carpetTiles: null,
+        furniture: null,
+        defaultLayout: null,
+      };
+      ctx = freshCtx(base);
+      handleClientMessage({ type: 'webviewReady' }, (m) => sent.push(m), ctx);
+      expect(sent.find((m) => m.type === 'characterSpritesLoaded')).not.toHaveProperty('owner');
+
+      sent = [];
+      ctx = freshCtx({
+        ...base,
+        characters: { characters: [sheet, sheet], owner: { sheet: 1, name: 'Dueño' } },
+      });
+      handleClientMessage({ type: 'webviewReady' }, (m) => sent.push(m), ctx);
+      expect(sent.find((m) => m.type === 'characterSpritesLoaded')?.owner).toEqual({
+        sheet: 1,
+        name: 'Dueño',
+      });
     });
 
     it('skips carpetTilesLoaded when the cache has no carpet sprites', () => {

@@ -1,0 +1,22 @@
+{
+  "id": "DECKS_SHELF_ON",
+  "name": "Repisa de decks (caja afuera)",
+  "category": "storage",
+  "canPlaceOnWalls": false,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 1,
+  "type": "group",
+  "groupType": "state",
+  "members": [
+    {
+      "type": "asset",
+      "id": "DECKS_SHELF_ON",
+      "file": "DECKS_SHELF_ON.png",
+      "width": 32,
+      "height": 32,
+      "footprintW": 2,
+      "footprintH": 2,
+      "state": "on"
+    }
+  ]
+}

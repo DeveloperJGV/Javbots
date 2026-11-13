@@ -8,7 +8,7 @@
  * into its module graph just to reset three fields.
  */
 
-import { INTERN_FADE_SEC, MATRIX_SPRITE_COLS } from '../../constants.js';
+import { INTERN_FADE_SEC, MATRIX_SPRITE_COLS, OWNER_FADE_SEC } from '../../constants.js';
 import type { Character } from '../types.js';
 import { MATRIX_EFFECT_DURATION } from '../types.js';
 
@@ -39,9 +39,15 @@ export function startMatrixEffect(ch: Character, kind: 'spawn' | 'despawn'): voi
  *    character keeps rendering as gone, and removing it is the caller's job. */
 export type MatrixEffectTick = 'none' | 'running' | 'spawned' | 'despawned';
 
+/** Whether `ch` comes and goes with a plain fade instead of the matrix rain: interns and the office's owner. */
+export function fadesInAndOut(ch: Character): boolean {
+  return ch.isSubagent || !!ch.isOwner;
+}
+
 /** Length of the running effect. Interns (sub-agents) fade in and out (fork,
- *  Fase 4B: they walk in and out, no smoke); everyone else the matrix rain. */
+ *  Fase 4B: they walk in and out, no smoke) and so does the office's owner; everyone else the matrix rain. */
 export function effectDurationSec(ch: Character): number {
+  if (ch.isOwner) return OWNER_FADE_SEC;
   return ch.isSubagent ? INTERN_FADE_SEC : MATRIX_EFFECT_DURATION;
 }
 

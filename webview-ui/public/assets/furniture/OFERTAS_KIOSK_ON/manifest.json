@@ -1,0 +1,22 @@
+{
+  "id": "OFERTAS_KIOSK_ON",
+  "name": "Quiosco de ofertas (con avisos)",
+  "category": "decor",
+  "canPlaceOnWalls": false,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 1,
+  "type": "group",
+  "groupType": "state",
+  "members": [
+    {
+      "type": "asset",
+      "id": "OFERTAS_KIOSK_ON",
+      "file": "OFERTAS_KIOSK_ON.png",
+      "width": 16,
+      "height": 32,
+      "footprintW": 1,
+      "footprintH": 2,
+      "state": "on"
+    }
+  ]
+}

@@ -31,12 +31,12 @@ function RepoRow({ repo, focused, now }: { repo: GithubRepo; focused: boolean; n
 }
 
 /**
- * The GitHub room (features/github): the name of the cabinet under the mouse, and the detail (repositories with their
- * cabinet level, open PRs) that opens on a click in the room.
+ * The GitHub room (features/github): the detail (repositories with their cabinet level, open PRs) that opens on a
+ * click in the room. The sign over a cabinet or the graph is the office's hover sign (office/hint).
  */
 export function GithubPanel({ transport }: { transport: MessageTransport }) {
   const github = useGithub(transport);
-  const { status, hover } = github;
+  const { status } = github;
   if (!status) return null;
   const now = new Date();
   const totalCommits = status.repos.reduce((sum, r) => sum + r.commits, 0);
@@ -45,14 +45,6 @@ export function GithubPanel({ transport }: { transport: MessageTransport }) {
   const repos = focused ? [focused, ...status.repos.filter((r) => r !== focused)] : status.repos;
   return (
     <>
-      {hover && (
-        <div
-          className="fixed z-50 pointer-events-none pixel-panel px-6 py-2 text-sm text-text whitespace-nowrap"
-          style={{ left: hover.x + 14, top: hover.y - 30 }}
-        >
-          {hover.label}
-        </div>
-      )}
       {github.detailOpen && (
         <Modal
           isOpen

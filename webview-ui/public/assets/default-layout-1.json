@@ -17395,6 +17395,12 @@
       "type": "ROCKBAND_PRACTICE_AMP",
       "col": 16,
       "row": 22
+    },
+    {
+      "uid": "decks-repisa",
+      "type": "DECKS_SHELF",
+      "col": 27,
+      "row": 17
     }
   ],
   "pets": [],

@@ -1,0 +1,33 @@
+{
+  "_note": "Hand-written from the public API docs, not captured: the search API answers 403 without a token.",
+  "site_id": "MLM",
+  "query": "audifonos bluetooth",
+  "paging": { "total": 2, "offset": 0, "limit": 20 },
+  "results": [
+    {
+      "id": "MLM1000000001",
+      "title": "Audífonos Inalámbricos Bluetooth Genéricos Negro",
+      "price": 349.5,
+      "original_price": 499,
+      "currency_id": "MXN",
+      "permalink": "https://articulo.mercadolibre.com.mx/MLM-1000000001-audifonos-inalambricos-bluetooth-genericos-negro-_JM",
+      "thumbnail": "http://http2.mlstatic.com/D_000000-MLM00000000000_000000-I.jpg",
+      "official_store_id": 1234,
+      "official_store_name": "Marca Ejemplo",
+      "seller": { "id": 1111, "nickname": "MARCAEJEMPLO" },
+      "shipping": { "free_shipping": true }
+    },
+    {
+      "id": "MLM1000000002",
+      "title": "Audífonos Bluetooth Deportivos Genéricos Blanco",
+      "price": 199,
+      "original_price": null,
+      "currency_id": "MXN",
+      "permalink": "https://articulo.mercadolibre.com.mx/MLM-1000000002-audifonos-bluetooth-deportivos-genericos-blanco-_JM",
+      "thumbnail": "http://http2.mlstatic.com/D_000000-MLM00000000001_000000-I.jpg",
+      "official_store_id": null,
+      "seller": { "id": 2222, "nickname": "VENDEDOR.EJEMPLO" },
+      "shipping": { "free_shipping": false }
+    }
+  ]
+}

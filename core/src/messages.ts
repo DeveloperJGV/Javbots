@@ -45,6 +45,7 @@ export type ServerMessage =
   | MusicNowPlaying
   | MusicStatus
   | MusicLyrics
+  | PlaylistStatus
   | UsageStatus
   | HerdrTabLabels
   | GithubStatus
@@ -54,7 +55,15 @@ export type ServerMessage =
   | PomodoroStatus
   | PerfilStatus
   | SearchRoomStatus
-  | ConnectionsStatus;
+  | ConnectionsStatus
+  | OfertasStatus
+  | OfertasResults
+  | OfertasAsistenteEstado
+  | OfertasAsistenteResultado
+  | DecksStatus
+  | DecksSearchResults
+  | DecksCardInfo
+  | DecksImportResult;
 
 export type ClientMessage =
   | WebviewReady
@@ -68,6 +77,7 @@ export type ClientMessage =
   | SetAlwaysShowLabels
   | SetGhostHeadlessAgents
   | SetShadowsEnabled
+  | SetOwnerEnabled
   | SetParticlesEnabled
   | SetDayNightMode
   | SetHooksEnabled
@@ -86,6 +96,7 @@ export type ClientMessage =
   | InstallMusicExtension
   | MusicControl
   | DisconnectSpotify
+  | PlaylistCommand
   | RefreshConcerts
   | SearchConcerts
   | AddConcert
@@ -93,6 +104,8 @@ export type ClientMessage =
   | RefreshAgenda
   | AddAgendaItem
   | CompleteAgendaTask
+  | AgendaPlanAction
+  | SetAgendaPlanPrefs
   | RefreshJardin
   | SaveJardinPlant
   | DeleteJardinPlant
@@ -110,7 +123,23 @@ export type ClientMessage =
   | MarkSearchResult
   | DeleteSearchRequest
   | SaveSearchCriteria
-  | ScheduleSearchResult;
+  | ScheduleSearchResult
+  | SearchOfertas
+  | SaveOfertasWatch
+  | DeleteOfertasWatch
+  | CheckOfertas
+  | SetOfertasSettings
+  | MarkOfertasAlertsSeen
+  | OfertasAsistenteInvestigar
+  | OfertasAsistenteSimilares
+  | OfertasAsistenteCancelar
+  | SetOfertasAsistente
+  | DecksOpen
+  | DecksSearch
+  | DecksCards
+  | DecksSave
+  | DecksDelete
+  | DecksImport;
 
 export interface ProviderCapabilities {
   type: 'providerCapabilities';
@@ -322,12 +351,27 @@ export interface CharacterSpritesLoaded {
   type: 'characterSpritesLoaded';
   characters: CharacterSpriteSet[];
   names?: Record<string, number>;
+  owner?: OwnerSheet;
 }
 
 export interface CharacterSpriteSet {
   down: string[][][];
   up: string[][][];
   right: string[][][];
+}
+
+export interface OwnerSheet {
+  sheet: number;
+  name?: string;
+  emotes?: OwnerEmote[];
+}
+
+export interface OwnerEmote {
+  id: string;
+  frames: string[][][];
+  fps: number;
+  loops: number;
+  idle?: boolean;
 }
 
 export interface PetSpritesLoaded {
@@ -375,6 +419,7 @@ export interface SettingsLoaded {
   shadowsEnabled: boolean;
   particlesEnabled: boolean;
   dayNightMode: DayNightMode;
+  ownerEnabled?: boolean;
 }
 
 export type DayNightMode = 'auto' | 'day' | 'night';
@@ -443,10 +488,10 @@ export interface MusicStatus {
   message?: string;
   spotifyConfigured?: boolean;
   spotifyConnected?: boolean;
-  source?: AnonymousSchema_248;
+  source?: AnonymousSchema_260;
 }
 
-export type AnonymousSchema_248 = 'extension' | 'spotify';
+export type AnonymousSchema_260 = 'extension' | 'spotify';
 
 export interface MusicLyrics {
   type: 'musicLyrics';
@@ -455,15 +500,116 @@ export interface MusicLyrics {
   loading?: boolean;
   synced?: boolean;
   instrumental?: boolean;
-  source?: AnonymousSchema_255;
+  source?: AnonymousSchema_267;
   lines?: MusicLyricLine[];
 }
 
-export type AnonymousSchema_255 = 'spotify' | 'lrclib';
+export type AnonymousSchema_267 = 'spotify' | 'lrclib';
 
 export interface MusicLyricLine {
   text: string;
   timeMs?: number;
+}
+
+export interface PlaylistStatus {
+  type: 'playlistStatus';
+  configured: boolean;
+  connected: boolean;
+  needsReconnect: boolean;
+  busy?: PlaylistBusy;
+  error?: string;
+  note?: string;
+  playlists: PlaylistSource[];
+  artists: PlaylistArtist[];
+  recipes: PlaylistRecipe[];
+  preview?: PlaylistPreview;
+  lists: PlaylistDay[];
+  rejected: PlaylistSong[];
+  autoPlay: boolean;
+  editing?: PlaylistEditing;
+  found?: PlaylistSong[];
+  proposal?: PlaylistProposal;
+}
+
+export type PlaylistBusy =
+  | 'sources'
+  | 'preview'
+  | 'creating'
+  | 'deleting'
+  | 'loading'
+  | 'searching'
+  | 'saving'
+  | 'improving';
+
+export interface PlaylistSource {
+  id: string;
+  name: string;
+  count?: number;
+}
+
+export interface PlaylistArtist {
+  id: string;
+  name: string;
+}
+
+export interface PlaylistRecipe {
+  id: string;
+  name: string;
+  top: boolean;
+  liked: boolean;
+  surprise: boolean;
+  playlists: string[];
+  artists: PlaylistArtist[];
+  decades: number[];
+  minutes: number;
+  discover: boolean;
+  avoidRecent: boolean;
+}
+
+export interface PlaylistPreview {
+  recipeName: string;
+  request?: string;
+  origin?: string;
+  targetMs: number;
+  totalMs: number;
+  songs: PlaylistSong[];
+}
+
+export interface PlaylistSong {
+  uri: string;
+  title: string;
+  artist: string;
+  album?: string;
+  year?: number;
+  durationMs: number;
+  discover?: boolean;
+}
+
+export interface PlaylistDay {
+  id: string;
+  name: string;
+  day: string;
+  kept: boolean;
+  count: number;
+  totalMs: number;
+  url?: string;
+  madeWith?: string;
+  missing?: boolean;
+}
+
+export interface PlaylistEditing {
+  id: string;
+  name: string;
+  songs: PlaylistSong[];
+}
+
+export interface PlaylistProposal {
+  id: string;
+  label: string;
+  remove: PlaylistSong[];
+  add: PlaylistSong[];
+  totalMs: number;
+  note?: string;
 }
 
 export interface UsageStatus {
@@ -578,6 +724,7 @@ export interface AgendaStatus {
   calendars?: AgendaCalendar[];
   sharedCalendar?: string;
   homeCalendar?: string;
+  plan?: AgendaPlan;
 }
 
 export interface AgendaItem {
@@ -591,6 +738,8 @@ export interface AgendaItem {
   link?: string;
   calendar?: string;
   busy?: boolean;
+  list?: string;
+  listName?: string;
 }
 
 export type AgendaItemKind = 'event' | 'task';
@@ -601,6 +750,82 @@ export interface AgendaCalendar {
   color?: string;
   writable: boolean;
   busyOnly: boolean;
+}
+
+export interface AgendaPlan {
+  days: AgendaPlanDay[];
+  leftover: AgendaPlanLeftover[];
+  prefs: AgendaPlanPrefs;
+}
+
+export interface AgendaPlanDay {
+  day: string;
+  blocks: AgendaPlanBlock[];
+  minutes: number;
+}
+
+export interface AgendaPlanBlock {
+  id: string;
+  start: string;
+  end: string;
+  startsAt: string;
+  minutes: number;
+  title: string;
+  why: string;
+  tasks: AgendaPlanTask[];
+  round?: boolean;
+  quick?: boolean;
+  part?: number;
+  parts?: number;
+}
+
+export interface AgendaPlanTask {
+  id: string;
+  title: string;
+  minutes: number;
+  source: AgendaPlanMinutesSource;
+  listName?: string;
+}
+
+export type AgendaPlanMinutesSource = 'manual' | 'mark' | 'rule' | 'default';
+
+export interface AgendaPlanLeftover {
+  title: string;
+  minutes: number;
+  why: string;
+  tasks: AgendaPlanTask[];
+}
+
+export interface AgendaPlanPrefs {
+  blockMinutes: number;
+  dailyBlocks: number;
+  smallMinutes: number;
+  marginMinutes: number;
+  soonDays: number;
+  workDays: number[];
+  morning: AgendaPlanRange;
+  work: AgendaPlanRange;
+  evening: AgendaPlanRange;
+  weekend: AgendaPlanRange;
+  rest: AgendaPlanRange[];
+  rules: AgendaPlanRule[];
+  gardenList: string;
+  gardenMinutes: number;
+  gardenRules: AgendaPlanRule[];
+  gardenSetupMinutes: number;
+  morningNotice: boolean;
+  morningAt: string;
+  remindMinutes: number;
+}
+
+export interface AgendaPlanRange {
+  from: string;
+  to: string;
+}
+
+export interface AgendaPlanRule {
+  word: string;
+  minutes: number;
 }
 
 export interface JardinStatus {
@@ -816,6 +1041,301 @@ export interface ConnectionInfo {
   lastUsedAt?: string;
 }
 
+export interface OfertasStatus {
+  type: 'ofertasStatus';
+  watches: OfertasWatch[];
+  alerts: OfertasAlert[];
+  sources: OfertasSource[];
+  settings: OfertasSettings;
+  checking: boolean;
+}
+
+export interface OfertasWatch {
+  id: string;
+  query: string;
+  target?: number;
+  mustHave: string[];
+  exclude: string[];
+  best?: OfertasOffer;
+  others?: OfertasOffer[];
+  lowest?: number;
+  lowestAt?: string;
+  history: OfertasPoint[];
+  checkedAt?: string;
+  nextCheckAt?: string;
+  note?: string;
+  reached: boolean;
+  error?: string;
+  reference?: OfertasReference;
+  pick?: OfertasPick;
+  verdict?: OfertasVerdict;
+  asistente?: OfertasWatchAsistente;
+}
+
+export interface OfertasOffer {
+  sourceId: string;
+  store: string;
+  title: string;
+  price: number;
+  listPrice?: number;
+  seller?: string;
+  official: boolean;
+  sellerUnknown?: boolean;
+  freeShipping?: boolean;
+  url: string;
+  image?: string;
+  installments?: OfertasInstallments;
+}
+
+export interface OfertasInstallments {
+  months?: number;
+  bank?: string;
+}
+
+export interface OfertasPoint {
+  at: string;
+  price: number;
+}
+
+export interface OfertasReference {
+  price: number;
+  at: string;
+}
+
+export interface OfertasPick {
+  offer: OfertasOffer;
+  reason: string;
+}
+
+export interface OfertasVerdict {
+  kind: OfertasVerdictKind;
+  reason: string;
+}
+
+export type OfertasVerdictKind = 'good' | 'normal' | 'expensive' | 'unknown';
+
+export interface OfertasWatchAsistente {
+  precio?: OfertasAsistenteInvestigacion;
+  similares?: OfertasAsistenteBusquedaSimilares;
+}
+
+export interface OfertasAsistenteInvestigacion {
+  precioTipico?: number;
+  minimoVisto?: number;
+  maximoVisto?: number;
+  nota: string;
+  confianza: OfertasAsistenteConfianza;
+  fuentes: OfertasAsistenteFuente[];
+  revisado: string;
+}
+
+export type OfertasAsistenteConfianza = 'alta' | 'media' | 'baja';
+
+export interface OfertasAsistenteFuente {
+  titulo: string;
+  url: string;
+  fecha?: string;
+  precio?: number;
+}
+
+export interface OfertasAsistenteBusquedaSimilares {
+  similares: OfertasAsistenteSimilar[];
+  revisado: string;
+}
+
+export interface OfertasAsistenteSimilar {
+  tipo: OfertasAsistenteTipoSimilar;
+  nombre: string;
+  porque: string;
+  precioAprox?: number;
+  consulta: string;
+  fuentes: OfertasAsistenteFuente[];
+}
+
+export type OfertasAsistenteTipoSimilar = 'compa' | 'alternativa';
+
+export interface OfertasAlert {
+  id: string;
+  watchId: string;
+  at: string;
+  kind: OfertasAlertKind;
+  text: string;
+  price?: number;
+  store?: string;
+  url?: string;
+  seen: boolean;
+}
+
+export type OfertasAlertKind = 'target' | 'drop' | 'lowest' | 'community';
+
+export interface OfertasSource {
+  id: string;
+  name: string;
+  state: OfertasSourceState;
+  fragile: boolean;
+  enabled: boolean;
+  detail?: string;
+  count?: number;
+  lastOkAt?: string;
+}
+
+export type OfertasSourceState = 'ok' | 'error' | 'blocked' | 'nokey' | 'off' | 'idle';
+
+export interface OfertasSettings {
+  everyMinutes: number;
+  buenFin: boolean;
+  dropPercent: number;
+  disabledSources: string[];
+}
+
+export interface OfertasResults {
+  type: 'ofertasResults';
+  requestId: string;
+  query: string;
+  searching: boolean;
+  groups: OfertasGroup[];
+  deals: OfertasDeal[];
+  sources: OfertasSource[];
+  links: OfertasLink[];
+}
+
+export interface OfertasGroup {
+  key: string;
+  title: string;
+  offers: OfertasOffer[];
+  pick?: OfertasPick;
+  verdict?: OfertasVerdict;
+}
+
+export interface OfertasDeal {
+  id: string;
+  title: string;
+  price?: number;
+  merchant?: string;
+  temperature: number;
+  url: string;
+  publishedAt?: string;
+  expired: boolean;
+  installments?: OfertasInstallments;
+}
+
+export interface OfertasLink {
+  name: string;
+  url: string;
+}
+
+export interface OfertasAsistenteEstado {
+  type: 'ofertasAsistenteEstado';
+  installed: boolean;
+  enabled: boolean;
+  available: boolean;
+  model: string;
+  busy: boolean;
+  job?: OfertasAsistenteJob;
+  product?: string;
+  startedAt?: string;
+  watchId?: string;
+  requestId?: string;
+  groupKey?: string;
+}
+
+export type OfertasAsistenteJob = 'precio' | 'similares';
+
+export interface OfertasAsistenteResultado {
+  type: 'ofertasAsistenteResultado';
+  job: OfertasAsistenteJob;
+  product: string;
+  ok: boolean;
+  reason?: OfertasAsistenteFallo;
+  detail?: string;
+  watchId?: string;
+  requestId?: string;
+  groupKey?: string;
+  precio?: OfertasAsistenteInvestigacion;
+  similares?: OfertasAsistenteBusquedaSimilares;
+}
+
+export type OfertasAsistenteFallo =
+  'no-cli' | 'off' | 'busy' | 'no-subscription' | 'timeout' | 'cancelled' | 'bad-output' | 'failed';
+
+export interface DecksStatus {
+  type: 'decksStatus';
+  decks: DecksDeck[];
+  folder: string;
+  db: DecksDb;
+  problems: string[];
+}
+
+export interface DecksDeck {
+  id: string;
+  name: string;
+  owner: string;
+  createdAt: string;
+  updatedAt: string;
+  cover: number;
+  box: DecksBox;
+  notes: string;
+  main: number[];
+  extra: number[];
+  side: number[];
+}
+
+export interface DecksBox {
+  color: string;
+}
+
+export interface DecksDb {
+  state: DecksDbState;
+  count?: number;
+  updatedAt?: string;
+  detail?: string;
+}
+
+export type DecksDbState = 'missing' | 'loading' | 'ready' | 'error';
+
+export interface DecksSearchResults {
+  type: 'decksSearchResults';
+  requestId: string;
+  query: string;
+  cards: DecksCard[];
+}
+
+export interface DecksCard {
+  id: number;
+  name: string;
+  kind: DecksCardKind;
+  extraDeck: boolean;
+  type: string;
+  frameType: string;
+  desc: string;
+  race?: string;
+  attribute?: string;
+  level?: number;
+  atk?: number;
+  def?: number;
+  archetype?: string;
+  banTcg?: DecksBan;
+  banOcg?: DecksBan;
+}
+
+export type DecksCardKind = 'monster' | 'spell' | 'trap';
+
+export type DecksBan = 'Banned' | 'Limited' | 'Semi-Limited';
+
+export interface DecksCardInfo {
+  type: 'decksCardInfo';
+  cards: DecksCard[];
+  missing: number[];
+}
+
+export interface DecksImportResult {
+  type: 'decksImportResult';
+  requestId: string;
+  ok: boolean;
+  deck?: DecksDeck;
+  problems: string[];
+}
+
 export interface WebviewReady {
   type: 'webviewReady';
   office?: string;
@@ -876,6 +1396,11 @@ export interface SetGhostHeadlessAgents {
 
 export interface SetShadowsEnabled {
   type: 'setShadowsEnabled';
+  enabled: boolean;
+}
+
+export interface SetOwnerEnabled {
+  type: 'setOwnerEnabled';
   enabled: boolean;
 }
 
@@ -959,14 +1484,56 @@ export interface InstallMusicExtension {
 
 export interface MusicControl {
   type: 'musicControl';
-  action: AnonymousSchema_527;
+  action: AnonymousSchema_813;
 }
 
-export type AnonymousSchema_527 = 'previous' | 'togglePlay' | 'next';
+export type AnonymousSchema_813 = 'previous' | 'togglePlay' | 'next';
 
 export interface DisconnectSpotify {
   type: 'disconnectSpotify';
 }
+
+export interface PlaylistCommand {
+  type: 'playlistCommand';
+  action: PlaylistAction;
+  recipe?: PlaylistRecipe;
+  uri?: string;
+  id?: string;
+  play?: boolean;
+  text?: string;
+  minutes?: number;
+  name?: string;
+  uris?: string[];
+  mode?: PlaylistImproveMode;
+  avoidRecent?: boolean;
+}
+
+export type PlaylistAction =
+  | 'open'
+  | 'preview'
+  | 'reroll'
+  | 'reject'
+  | 'unreject'
+  | 'create'
+  | 'cancel'
+  | 'keep'
+  | 'delete'
+  | 'saveRecipe'
+  | 'deleteRecipe'
+  | 'setAutoPlay'
+  | 'describe'
+  | 'play'
+  | 'openList'
+  | 'closeList'
+  | 'searchSongs'
+  | 'saveList'
+  | 'improve'
+  | 'applyImprove'
+  | 'dropImprove'
+  | 'checkLists'
+  | 'forget';
+
+export type PlaylistImproveMode = 'more' | 'bin' | 'reroll' | 'discover' | 'text';
 
 export interface RefreshConcerts {
   type: 'refreshConcerts';
@@ -1002,6 +1569,21 @@ export interface AddAgendaItem {
 export interface CompleteAgendaTask {
   type: 'completeAgendaTask';
   id: string;
+}
+
+export interface AgendaPlanAction {
+  type: 'agendaPlanAction';
+  action: AgendaPlanActionKind;
+  ids: string[];
+  minutes?: number;
+}
+
+export type AgendaPlanActionKind = 'done' | 'skip' | 'minutes';
+
+export interface SetAgendaPlanPrefs {
+  type: 'setAgendaPlanPrefs';
+  prefs?: AgendaPlanPrefs;
+  reset?: boolean;
 }
 
 export interface RefreshJardin {
@@ -1124,4 +1706,102 @@ export interface ScheduleSearchResult {
   title: string;
   date: string;
   time?: string;
+}
+
+export interface SearchOfertas {
+  type: 'searchOfertas';
+  requestId: string;
+  query: string;
+}
+
+export interface SaveOfertasWatch {
+  type: 'saveOfertasWatch';
+  id?: string;
+  query: string;
+  target?: number;
+  mustHave?: string[];
+  exclude?: string[];
+  reference?: OfertasReference;
+}
+
+export interface DeleteOfertasWatch {
+  type: 'deleteOfertasWatch';
+  id: string;
+}
+
+export interface CheckOfertas {
+  type: 'checkOfertas';
+  id?: string;
+}
+
+export interface SetOfertasSettings {
+  type: 'setOfertasSettings';
+  everyMinutes?: number;
+  buenFin?: boolean;
+  dropPercent?: number;
+  disabledSources?: string[];
+}
+
+export interface MarkOfertasAlertsSeen {
+  type: 'markOfertasAlertsSeen';
+}
+
+export interface OfertasAsistenteInvestigar {
+  type: 'ofertasAsistenteInvestigar';
+  producto: string;
+  precioActual?: number;
+  tienda?: string;
+  watchId?: string;
+  requestId?: string;
+  groupKey?: string;
+}
+
+export interface OfertasAsistenteSimilares {
+  type: 'ofertasAsistenteSimilares';
+  producto: string;
+  presupuesto?: number;
+  watchId?: string;
+  requestId?: string;
+  groupKey?: string;
+}
+
+export interface OfertasAsistenteCancelar {
+  type: 'ofertasAsistenteCancelar';
+}
+
+export interface SetOfertasAsistente {
+  type: 'setOfertasAsistente';
+  enabled?: boolean;
+  model?: string;
+}
+
+export interface DecksOpen {
+  type: 'decksOpen';
+}
+
+export interface DecksSearch {
+  type: 'decksSearch';
+  requestId: string;
+  query: string;
+}
+
+export interface DecksCards {
+  type: 'decksCards';
+  ids: number[];
+}
+
+export interface DecksSave {
+  type: 'decksSave';
+  deck: DecksDeck;
+}
+
+export interface DecksDelete {
+  type: 'decksDelete';
+  id: string;
+}
+
+export interface DecksImport {
+  type: 'decksImport';
+  requestId: string;
+  text: string;
 }

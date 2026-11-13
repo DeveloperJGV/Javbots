@@ -23,6 +23,7 @@ export const GLOBAL_KEY_WATCH_ALL_SESSIONS = 'pixel-agents.watchAllSessions';
 export const GLOBAL_KEY_HOOKS_INFO_SHOWN = 'pixel-agents.hooksInfoShown';
 export const GLOBAL_KEY_SHOW_AREAS = 'pixel-agents.showAreas';
 export const GLOBAL_KEY_SHADOWS_ENABLED = 'pixel-agents.shadowsEnabled';
+export const GLOBAL_KEY_OWNER_ENABLED = 'pixel-agents.ownerEnabled';
 export const GLOBAL_KEY_PARTICLES_ENABLED = 'pixel-agents.particlesEnabled';
 export const GLOBAL_KEY_DAY_NIGHT_MODE = 'pixel-agents.dayNightMode';
 

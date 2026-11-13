@@ -10,8 +10,9 @@ más reciente, y los demás siguen en orden de lectura. Los archiveros que sobra
 - **Tablero de contribuciones** (`GITHUB_GRAPH`): tus últimas 9 semanas con los verdes de GitHub.
 - **Corcho** (`GITHUB_PRS`): una nota por PR abierto en tus repos (caben 6).
 
-Al pasar el mouse sobre un archivero sale el nombre del repo y sus commits. Un clic (en un archivero, el tablero o
-el corcho) abre la lista de repos y PRs, con enlaces a GitHub.
+Al pasar el mouse sobre un archivero sale el letrero de la oficina con el nombre del repo y sus commits (y sobre el
+tablero, "Contribuciones de las últimas semanas"). Un clic en un archivero o en el tablero abre la lista de repos y
+PRs, con enlaces a GitHub. El corcho es de adorno: no tiene clic.
 
 ## De dónde salen los datos
 
@@ -28,7 +29,7 @@ y los archiveros se quedan de madera.
 | Carpeta    | Qué hay                                                                                |
 | ---------- | -------------------------------------------------------------------------------------- |
 | `server/`  | `createGithubFeature`: consulta `gh` y manda `githubStatus`                            |
-| `webview/` | `githubStore`, los muebles (`githubFurniture.ts`) y el panel con el nombre y la lista  |
+| `webview/` | `githubStore`, los muebles (`githubFurniture.ts`) y el panel con la lista              |
 | `arte/`    | `armar.py` dibuja los tres muebles por código (`python features/github/arte/armar.py`) |
 | `assets/`  | `GITHUB_CABINET`, `GITHUB_GRAPH`, `GITHUB_PRS`                                         |
 | `test/`    | Pruebas del servidor y de la página                                                    |

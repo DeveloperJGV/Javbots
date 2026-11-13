@@ -9,12 +9,12 @@ import {
   applyConnectionsFurniture,
   isConnectionsRack,
 } from '../../../../features/conexiones/webview/rackFurniture.js';
+import { isDecksFurniture } from '../../../../features/decks/webview/decksStore.js';
 import { isDirectorioFurniture } from '../../../../features/directorio/webview/directorioStore.js';
 import {
   applyGithubFurniture,
   isCabinet,
   isGraph,
-  isPrBoard,
   repoForCabinet,
 } from '../../../../features/github/webview/githubFurniture.js';
 import { githubStore } from '../../../../features/github/webview/githubStore.js';
@@ -26,6 +26,18 @@ import {
   MusicNotes,
 } from '../../../../features/musica/webview/musicFurniture.js';
 import { musicStore } from '../../../../features/musica/webview/musicStore.js';
+// Playlist of the day (features/musica)
+import type { PlaylistPiece } from '../../../../features/musica/webview/playlists/constants.js';
+import { applyPlaylistFurniture } from '../../../../features/musica/webview/playlists/playlistFurniture.js';
+import {
+  playlistPieceOf,
+  playlistStore,
+} from '../../../../features/musica/webview/playlists/playlistStore.js';
+import { applyOfertasFurniture } from '../../../../features/ofertas/webview/ofertasFurniture.js';
+import {
+  isOfertasFurniture,
+  ofertasStore,
+} from '../../../../features/ofertas/webview/ofertasStore.js';
 import { applyPerfilFurniture } from '../../../../features/perfil/webview/perfilFurniture.js';
 import { isPerfilFurniture, perfilStore } from '../../../../features/perfil/webview/perfilStore.js';
 import { applyPomodoroFurniture } from '../../../../features/pomodoro/webview/pomodoroFurniture.js';
@@ -131,6 +143,9 @@ import {
   shuffled,
   sleepingIn,
 } from '../leisure/leisure.js';
+import { ownerCovered, ownerCoverReady } from '../owner/ownerCover.js';
+import type { OwnerMode, OwnerWorld } from '../owner/ownerPresence.js';
+import { ownerBoxAt, OwnerPresence } from '../owner/ownerPresence.js';
 import type { DiscoLight, PartyBounds, PartyState } from '../party/party.js';
 import { discoLights, partyBounds } from '../party/party.js';
 import { getPetCount, getPetName } from '../sprites/petSpriteData.js';
@@ -283,6 +298,14 @@ export class OfficeState {
    *  overlay's per-frame updates stop re-centering. Reset on spawn/despawn. */
   private greeterCameraCancelled = false;
 
+  /**
+   * The office's owner (office/owner): the person the office belongs to, walking around the floor the page shows.
+   * Like the greeter, deliberately NOT in `characters`: it takes no desk and nothing that counts agents sees it.
+   */
+  private ownerPresence = new OwnerPresence();
+  /** The cursor is over the owner (its label shows). */
+  ownerHovered = false;
+
   setAreaMappings(mappings: Record<string, string[]>): void {
     this.areaMappings = mappings;
   }
@@ -426,6 +449,8 @@ export class OfficeState {
 
     // Reconcile pets against the layout roster (handles editor add/remove)
     this.rebuildPetsFromLayout(layout);
+
+    this.ownerPresence.layoutChanged(this.ownerWorld(), shift);
   }
 
   /** Move a character to a random walkable tile */
@@ -595,7 +620,7 @@ export class OfficeState {
   /** Closest walkable tile to (col,row) not occupied by another character, or null. */
   private closestFreeWalkableTile(col: number, row: number): { col: number; row: number } | null {
     const occupied = new Set<string>();
-    for (const ch of this.characters.values()) {
+    for (const ch of this.everyone()) {
       occupied.add(`${ch.tileCol},${ch.tileRow}`);
     }
     let best: { col: number; row: number } | null = null;
@@ -756,6 +781,71 @@ export class OfficeState {
   cancelGreeterCamera(): void {
     this.greeterCameraTarget = null;
     this.greeterCameraCancelled = true;
+  }
+
+  // ── Owner ─────────────────────────────────────────────────────
+  // The person the office belongs to (office/owner/ownerPresence.ts). Not an agent — see `ownerPresence`.
+
+  /** The owner's character while it is on this floor, or null. */
+  get owner(): Character | null {
+    return this.ownerPresence.ch;
+  }
+
+  /** What the owner is up to: strolling, at the piece whose panel is open, or leaving the floor. */
+  get ownerMode(): OwnerMode {
+    return this.ownerPresence.getMode();
+  }
+
+  /** A click on the office outside edit mode: the owner walks there if it opens a panel. */
+  noteCanvasClick(worldX: number, worldY: number): void {
+    this.ownerPresence.noteClick(worldX, worldY);
+  }
+
+  /** The page is changing floor: the owner walks out, then `done` runs (right away without an owner). */
+  ownerLeave(done: () => void): void {
+    this.ownerPresence.leave(done);
+  }
+
+  /** Whether a world point lands on the owner. */
+  isOwnerAt(worldX: number, worldY: number): boolean {
+    return this.ownerPresence.isAt(worldX, worldY);
+  }
+
+  /** A click on the owner: he greets. False when he has no greet emote (the click goes on as before). */
+  ownerClicked(): boolean {
+    return this.ownerPresence.noteOwnerClick();
+  }
+
+  /** The emote the owner is playing (office/owner/ownerEmotes.ts), or null. */
+  get ownerEmote(): string | null {
+    return this.ownerPresence.getEmote();
+  }
+
+  private ownerWorld(): OwnerWorld {
+    return {
+      layout: this.layout,
+      tileMap: this.tileMap,
+      blockedTiles: this.blockedTiles,
+      walkableTiles: this.walkableTiles,
+      seats: this.seats,
+      occupied: () => {
+        const tiles = new Set<string>();
+        for (const ch of this.characters.values()) tiles.add(`${ch.tileCol},${ch.tileRow}`);
+        return tiles;
+      },
+      leisure: (ch, dt) => this.updateLeisure(ch, dt),
+      endLeisure: (ch) => this.endLeisure(ch),
+      covered: (tile) => ownerCovered(ownerBoxAt(tile)),
+      coverReady: ownerCoverReady,
+      partyDancing: () => this.party !== null && this.party.danceSec !== null,
+    };
+  }
+
+  /** The agents plus the owner: whoever can hold a tile or a free-time spot. */
+  private everyone(): Character[] {
+    const all = Array.from(this.characters.values());
+    if (this.ownerPresence.ch) all.push(this.ownerPresence.ch);
+    return all;
   }
 
   removeAgent(id: number): void {
@@ -1219,8 +1309,16 @@ export class OfficeState {
       perfilStore.get().profile,
       this.furnitureAnimTimer,
     );
+    // Playlist of the day (features/musica): the record press window blinks while a list is built or created
+    const withPlaylist = applyPlaylistFurniture(
+      withPerfil,
+      playlistStore.get().status,
+      this.furnitureAnimTimer,
+    );
+    // Optional feature: the deals kiosk lights up while there are unseen alerts (features/ofertas)
+    const withOfertas = applyOfertasFurniture(withPlaylist, ofertasStore.get().status);
     // Private packs (webview-ui/src/packs/registry.ts)
-    const withPacks = applyPackFurniture(withPerfil, {
+    const withPacks = applyPackFurniture(withOfertas, {
       timeSec: this.furnitureAnimTimer,
       officeState: this,
     });
@@ -1283,7 +1381,7 @@ export class OfficeState {
   /** Pieces with someone asleep switch to their on-state (see rebuildFurnitureInstances). */
   private updateSleepers(): void {
     const beds = new Set<string>();
-    for (const ch of this.characters.values()) {
+    for (const ch of this.everyone()) {
       const bed = sleepingIn(ch);
       if (bed) beds.add(bed);
     }
@@ -1345,6 +1443,14 @@ export class OfficeState {
     return placed?.uid ?? null;
   }
 
+  /** Playlist of the day (features/musica): which piece of the playlist corner is under a world point. */
+  playlistPieceAt(worldX: number, worldY: number): PlaylistPiece | null {
+    const hit = this.furniture.find(
+      (f) => playlistPieceOf(f.type) !== null && hitsPaintedPixel(f, worldX, worldY),
+    );
+    return hit ? playlistPieceOf(hit.type) : null;
+  }
+
   /** Whether a world point lands on the storage shelf (features/bodega: a click opens the stored furniture). */
   isBodegaAt(worldX: number, worldY: number): boolean {
     return this.furniture.some((f) => isBodega(f) && hitsPaintedPixel(f, worldX, worldY));
@@ -1387,6 +1493,20 @@ export class OfficeState {
     );
   }
 
+  /** Whether a world point lands on the deals kiosk (features/ofertas). */
+  isOfertasAt(worldX: number, worldY: number): boolean {
+    return this.furniture.some(
+      (f) => isOfertasFurniture(f.type) && hitsPaintedPixel(f, worldX, worldY),
+    );
+  }
+
+  /** Whether a world point lands on the deck boxes shelf (features/decks). */
+  isDecksAt(worldX: number, worldY: number): boolean {
+    return this.furniture.some(
+      (f) => isDecksFurniture(f.type) && hitsPaintedPixel(f, worldX, worldY),
+    );
+  }
+
   /** Whether a world point lands on a piece of the Directorio room (features/directorio). */
   isDirectorioAt(worldX: number, worldY: number): boolean {
     return this.furniture.some(
@@ -1406,14 +1526,14 @@ export class OfficeState {
     return this.furniture.some((f) => isUsageMeter(f) && hitsPaintedPixel(f, worldX, worldY));
   }
 
-  /** What of the GitHub room a world point lands on (features/github): a cabinet's repository, the graph or the PRs. */
+  /** What of the GitHub room a world point lands on (features/github): a cabinet's repository or the graph (the PR
+   *  board is decoration). */
   githubAt(worldX: number, worldY: number): { label: string; repo?: string } | null {
     const hit = this.furniture.find(
-      (f) => (isCabinet(f) || isGraph(f) || isPrBoard(f)) && hitsPaintedPixel(f, worldX, worldY),
+      (f) => (isCabinet(f) || isGraph(f)) && hitsPaintedPixel(f, worldX, worldY),
     );
     if (!hit) return null;
     if (isGraph(hit)) return { label: 'Contribuciones de las últimas semanas' };
-    if (isPrBoard(hit)) return { label: 'PRs abiertos' };
     const repo = repoForCabinet(this.furniture, hit, githubStore.get().status);
     return repo ? { label: `${repo.name} · ${repo.commits} commits`, repo: repo.name } : null;
   }
@@ -1496,7 +1616,7 @@ export class OfficeState {
   /** "col,row" of every place someone else holds: where they are, their zone spot, their free-time stops. */
   private leisureTaken(ch: Character): Set<string> {
     const taken = new Set<string>();
-    for (const other of this.characters.values()) {
+    for (const other of this.everyone()) {
       if (other === ch) continue;
       taken.add(`${other.tileCol},${other.tileRow}`);
       if (other.zoneSpot) taken.add(`${other.zoneSpot.col},${other.zoneSpot.row}`);
@@ -1561,7 +1681,7 @@ export class OfficeState {
 
   /** Whoever is resting on (or heading to) this tile gets up for an agent coming to work. */
   private makeRoomAt(worker: Character, col: number, row: number): void {
-    for (const other of this.characters.values()) {
+    for (const other of this.everyone()) {
       if (other === worker || !other.leisure) continue;
       const here = other.tileCol === col && other.tileRow === row;
       if (here || other.leisure.stops.some((s) => s.col === col && s.row === row)) {
@@ -1686,6 +1806,7 @@ export class OfficeState {
     if (areParticlesEnabled()) {
       this.particles.burstConfetti(ch.x, ch.y - SPARK_HEAD_HEIGHT_PX);
     }
+    this.ownerPresence.noteTurnEnd(); // the owner cheers too, if he is free (office/owner)
     return 'cheer';
   }
 
@@ -2176,6 +2297,8 @@ export class OfficeState {
       this.greeter = null;
     }
 
+    this.ownerPresence.update(dt, this.ownerWorld());
+
     this.updateParty(dt);
 
     // A pack's calm office: agents don't wander between turns (WebviewPack.agentsStayAtDesk)
@@ -2317,6 +2440,7 @@ export class OfficeState {
   getCharacters(): Character[] {
     const chars = Array.from(this.characters.values());
     if (this.greeter) chars.push(this.greeter);
+    if (this.ownerPresence.ch) chars.push(this.ownerPresence.ch);
     return chars;
   }
 

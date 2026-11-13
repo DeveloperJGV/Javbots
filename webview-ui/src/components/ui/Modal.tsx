@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
+import { useEffect } from 'react';
 
+import { panelClosed, panelOpened } from '../../office/owner/panelPresence.js';
 import { Button } from './Button.js';
 
 interface ModalProps {
@@ -20,6 +22,13 @@ export function Modal({
   zIndex = 50,
   className = '',
 }: ModalProps) {
+  // The office knows a panel is up (office/owner: its owner stays by the piece that opened it)
+  useEffect(() => {
+    if (!isOpen) return;
+    panelOpened();
+    return panelClosed;
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (

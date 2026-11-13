@@ -1399,6 +1399,12 @@
       "type": "JARDIN_FERN",
       "col": 5,
       "row": 8
+    },
+    {
+      "uid": "ofertas-kiosco",
+      "type": "OFERTAS_KIOSK",
+      "col": 15,
+      "row": 2
     }
   ],
   "areas": [

@@ -79,6 +79,8 @@ export interface WebviewPack {
   click?(worldX: number, worldY: number, officeState: OfficeState): boolean;
   /** Whether the pointer over this world point should show a hand. */
   hover?(worldX: number, worldY: number, officeState: OfficeState): boolean;
+  /** The hover sign over this world point (what a click there opens), or null for none (office/hint). */
+  hint?(worldX: number, worldY: number, officeState: OfficeState): string | null;
   /**
    * Every frame: sprites that move on their own (things on a conveyor belt…), drawn on top of the furniture until
    * the next call. Return null to keep the last ones. Call `officeState.refreshFurniture()` when what `furniture`
@@ -163,6 +165,15 @@ export function packClick(worldX: number, worldY: number, officeState: OfficeSta
 
 export function packHover(worldX: number, worldY: number, officeState: OfficeState): boolean {
   return activePacks().some((p) => p.hover?.(worldX, worldY, officeState) ?? false);
+}
+
+/** The first hover sign an active pack gives for this world point, or null. */
+export function packHint(worldX: number, worldY: number, officeState: OfficeState): string | null {
+  for (const pack of activePacks()) {
+    const hint = pack.hint?.(worldX, worldY, officeState);
+    if (hint) return hint;
+  }
+  return null;
 }
 
 /** The live sprites of every active pack (see WebviewPack.tick); `last` holds each pack's previous answer. */

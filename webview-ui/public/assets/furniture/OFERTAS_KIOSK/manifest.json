@@ -1,0 +1,13 @@
+{
+  "id": "OFERTAS_KIOSK",
+  "name": "Quiosco de ofertas",
+  "category": "decor",
+  "canPlaceOnWalls": false,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 1,
+  "type": "asset",
+  "width": 16,
+  "height": 32,
+  "footprintW": 1,
+  "footprintH": 2
+}

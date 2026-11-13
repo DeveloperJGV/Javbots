@@ -39,6 +39,6 @@ class AgendaStore {
 
 export const agendaStore = new AgendaStore();
 
-/** Any piece of the agenda room (rotations and states share the base type). */
+/** The piece of the agenda room that opens the panel, the console (rotations and states share the base type). */
 export const isAgendaFurniture = (type: string | undefined): boolean =>
   AGENDA_FURNITURE_TYPES.includes((type ?? '').split(':')[0]);

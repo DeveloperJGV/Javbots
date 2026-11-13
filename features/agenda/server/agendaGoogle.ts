@@ -1,5 +1,5 @@
 import type { AgendaCalendar, AgendaItem } from '../../../core/src/messages.js';
-import type { GoogleApi } from '../../google/server/googleAccount.js';
+import { type GoogleApi, GoogleReconnectNeeded } from '../../google/server/googleAccount.js';
 import {
   AGENDA_TIME_ZONE,
   BUSY_TITLE,
@@ -58,7 +58,7 @@ export function parseEvents(raw: unknown, calendarId?: string): AgendaItem[] {
  * Pending tasks → agenda items: the ones due before `untilDay` (overdue included) and the ones without a date.
  * A task's due date is a day: Google keeps no time for it.
  */
-export function parseTasks(raw: unknown, untilDay: string): AgendaItem[] {
+export function parseTasks(raw: unknown, untilDay: string, list?: TaskList): AgendaItem[] {
   const out: AgendaItem[] = [];
   for (const t of items(raw)) {
     if (t.status === 'completed' || t.deleted === true || t.hidden === true) continue;
@@ -69,9 +69,47 @@ export function parseTasks(raw: unknown, untilDay: string): AgendaItem[] {
     const item: AgendaItem = { id: str(t.id), kind: 'task', title, allDay: true };
     if (day) item.start = day;
     if (str(t.webViewLink)) item.link = str(t.webViewLink);
+    if (list) {
+      item.list = list.id;
+      if (list.name) item.listName = list.name;
+    }
     out.push(item);
   }
   return out;
+}
+
+/** A Google Tasks list (no name for the fallback `@default`). */
+export interface TaskList {
+  id: string;
+  name?: string;
+}
+
+/** What the plan reads from a task and the protocol doesn't carry. */
+export interface TaskExtra {
+  notes?: string;
+  updated?: string;
+}
+
+/** Task id → its notes and last change. */
+export function parseTaskExtras(raw: unknown): Map<string, TaskExtra> {
+  const out = new Map<string, TaskExtra>();
+  for (const t of items(raw)) {
+    if (!str(t.id)) continue;
+    const extra: TaskExtra = {};
+    if (str(t.notes).trim()) extra.notes = str(t.notes);
+    if (str(t.updated)) extra.updated = str(t.updated);
+    out.set(str(t.id), extra);
+  }
+  return out;
+}
+
+/** The owner's task lists; empty when the answer has none. */
+export function parseTaskLists(raw: unknown): TaskList[] {
+  return items(raw)
+    .filter((l) => str(l.id))
+    .map((l) =>
+      str(l.title).trim() ? { id: str(l.id), name: str(l.title).trim() } : { id: str(l.id) },
+    );
 }
 
 /**
@@ -194,9 +232,25 @@ export function eventBody(item: NewAgendaItem): Raw {
   };
 }
 
+/** A task list in a URL ('@default' stays as Google spells it). */
+const listPath = (id: string): string => (id === TASK_LIST ? id : encodeURIComponent(id));
+
 /** The calendar and the tasks, through the shared Google session (features/google). */
 export function createAgendaGoogle(api: GoogleApi) {
+  /** The owner's lists; on none (or an answer that isn't usable) the default list alone, as before. */
+  async function listTaskLists(): Promise<TaskList[]> {
+    try {
+      const lists = parseTaskLists(await api(`${TASKS_API}/users/@me/lists?maxResults=100`));
+      if (lists.length) return lists;
+    } catch (err) {
+      if (err instanceof GoogleReconnectNeeded) throw err;
+    }
+    return [{ id: TASK_LIST }];
+  }
+
   return {
+    listTaskLists,
+
     /** An existing calendar the owner can write to, by id or by name (any case). Never creates one. */
     async findCalendar(name: string, knownId?: string): Promise<string> {
       const list = await api(
@@ -257,16 +311,26 @@ export function createAgendaGoogle(api: GoogleApi) {
       });
     },
 
-    async listTasks(untilDay: string): Promise<AgendaItem[]> {
+    /** Pending tasks of every list, each tagged with its list, plus what the plan needs of each one. */
+    async listTasks(
+      untilDay: string,
+    ): Promise<{ items: AgendaItem[]; extras: Map<string, TaskExtra> }> {
       const q = new URLSearchParams({
         showCompleted: 'false',
         showHidden: 'false',
         maxResults: '100',
       });
-      return parseTasks(
-        await api(`${TASKS_API}/lists/${TASK_LIST}/tasks?${q.toString()}`),
-        untilDay,
+      const lists = await listTaskLists();
+      const raws = await Promise.all(
+        lists.map((l) => api(`${TASKS_API}/lists/${listPath(l.id)}/tasks?${q.toString()}`)),
       );
+      const out: AgendaItem[] = [];
+      const extras = new Map<string, TaskExtra>();
+      raws.forEach((raw, i) => {
+        out.push(...parseTasks(raw, untilDay, lists[i]));
+        for (const [id, extra] of parseTaskExtras(raw)) extras.set(id, extra);
+      });
+      return { items: out, extras };
     },
 
     async addTask(item: NewAgendaItem): Promise<void> {
@@ -276,8 +340,8 @@ export function createAgendaGoogle(api: GoogleApi) {
       await api(`${TASKS_API}/lists/${TASK_LIST}/tasks`, { method: 'POST', body });
     },
 
-    async completeTask(id: string): Promise<void> {
-      await api(`${TASKS_API}/lists/${TASK_LIST}/tasks/${encodeURIComponent(id)}`, {
+    async completeTask(id: string, listId = TASK_LIST): Promise<void> {
+      await api(`${TASKS_API}/lists/${listPath(listId)}/tasks/${encodeURIComponent(id)}`, {
         method: 'PATCH',
         body: { status: 'completed' },
       });

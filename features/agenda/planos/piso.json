@@ -5428,6 +5428,12 @@
       "type": "JARDIN_FERN",
       "col": 23,
       "row": 18
+    },
+    {
+      "uid": "ofertas-kiosco",
+      "type": "OFERTAS_KIOSK",
+      "col": 33,
+      "row": 12
     }
   ],
   "areas": [

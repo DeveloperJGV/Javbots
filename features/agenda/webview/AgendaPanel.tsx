@@ -21,7 +21,9 @@ import {
   splitPrefix,
   timeText,
 } from './agendaText.js';
-import { AGENDA_KINDS } from './constants.js';
+import { AGENDA_KINDS, HALF_HOURS_LIST_ID } from './constants.js';
+import { PlanSection, TimeField } from './PlanSection.js';
+import { halfHours, planOf, timeFieldOk } from './planView.js';
 
 const linkClass = 'text-accent-bright underline';
 const inputClass = 'py-2 px-4 bg-bg-dark border-2 border-border rounded-none text-text';
@@ -76,6 +78,7 @@ function ItemLine({
             rest
           )}
           {calendar && <span className="text-text-muted"> · {calendar.name}</span>}
+          {item.listName && <span className="text-text-muted"> · {item.listName}</span>}
           {clash && <span className="text-status-error"> · choca con otro</span>}
           {overdue && <span className="text-status-error"> · atrasada</span>}
         </span>
@@ -108,6 +111,8 @@ function AddForm({ status, send }: { status: AgendaStatus; send: (d: AgendaDraft
   const draft = (): AgendaDraft | null => {
     const rest = text.trim();
     if (!rest || (!isTask && (!date || !calendar))) return null;
+    // Times are typed as 24 h text: nothing is sent while one of them is not a time.
+    if (!isTask && (!timeFieldOk(time, true) || !timeFieldOk(endTime, true))) return null;
     return {
       kind: kind.kind,
       title: kind.prefix ? `${kind.prefix} ${rest}` : rest,
@@ -198,25 +203,32 @@ function AddForm({ status, send }: { status: AgendaStatus; send: (d: AgendaDraft
         </label>
         {!isTask && (
           <>
-            <label className="flex items-center gap-4">
+            <span className="flex items-center gap-4">
               De
-              <input
-                type="time"
+              <TimeField
+                label="Hora de inicio (24 h)"
                 value={time}
-                onChange={(e) => setTime(e.target.value)}
-                className={inputClass}
+                optional
+                list={HALF_HOURS_LIST_ID}
+                onChange={setTime}
               />
-            </label>
-            <label className="flex items-center gap-4">
+            </span>
+            <span className="flex items-center gap-4">
               a
-              <input
-                type="time"
+              <TimeField
+                label="Hora de fin (24 h)"
                 value={endTime}
+                optional
                 disabled={!time}
-                onChange={(e) => setEndTime(e.target.value)}
-                className={inputClass}
+                list={HALF_HOURS_LIST_ID}
+                onChange={setEndTime}
               />
-            </label>
+            </span>
+            <datalist id={HALF_HOURS_LIST_ID}>
+              {halfHours().map((t) => (
+                <option key={t} value={t} />
+              ))}
+            </datalist>
             <span>(sin hora = todo el día)</span>
           </>
         )}
@@ -267,6 +279,7 @@ export function AgendaPanel({ transport }: { transport: MessageTransport }) {
   const done = (id: string) => transport.send({ type: 'completeAgendaTask', id });
   const calendarOf = (i: AgendaItem) => status.calendars?.find((c) => c.id === i.calendar);
   const homeMissing = status.connected && !!status.calendars?.length && !status.homeCalendar;
+  const plan = planOf(status);
 
   return (
     <Modal
@@ -298,6 +311,15 @@ export function AgendaPanel({ transport }: { transport: MessageTransport }) {
 
         {status.connected && (
           <>
+            {plan && (
+              <PlanSection
+                plan={plan}
+                today={status.from}
+                saving={status.saving}
+                transport={transport}
+              />
+            )}
+
             <section className="flex flex-col gap-4">
               <div className="text-lg text-accent-bright">Agregar</div>
               <AddForm

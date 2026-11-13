@@ -267,6 +267,9 @@ export interface Character {
    *  per-consumer guard reads this flag. It exists for the render/e2e snapshot
    *  (testHooks.getCharacters) to tell the greeter from agents. */
   isGreeter?: boolean;
+  /** The office's owner (office/owner). A MARKER like `isGreeter`: it lives in OfficeState's owner presence, outside
+   *  the agent map; the renderer reads it to draw its own sheet and fade it in and out. */
+  isOwner?: boolean;
 
   // -- Agent Teams --
   /** Team name this agent belongs to */

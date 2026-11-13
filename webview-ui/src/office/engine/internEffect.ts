@@ -2,8 +2,8 @@
 // their boss and walk to the interns' room; when done they walk back to the
 // boss and fade out there. The walking is OfficeState's; this is the fade.
 
-import { INTERN_FADE_SEC } from '../../constants.js';
 import type { Character, SpriteData } from '../types.js';
+import { effectDurationSec } from './matrixEffectState.js';
 
 export function renderInternEffect(
   ctx: CanvasRenderingContext2D,
@@ -13,7 +13,7 @@ export function renderInternEffect(
   drawY: number,
   zoom: number,
 ): void {
-  const p = Math.min(1, ch.matrixEffectTimer / INTERN_FADE_SEC);
+  const p = Math.min(1, ch.matrixEffectTimer / effectDurationSec(ch));
   ctx.save();
   ctx.globalAlpha *= ch.matrixEffect === 'spawn' ? p : 1 - p;
   for (let row = 0; row < sprite.length; row++) {

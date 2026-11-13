@@ -38,6 +38,7 @@ import type {
 export type { CharacterDirectionSprites } from '../../core/src/assets/types.js';
 export type { PetManifest, PetSpriteFrames } from '../../core/src/assets/types.js';
 
+import type { LoadedOwnerEmote } from './avatarLoader.js';
 import { LAYOUT_REVISION_KEY } from './constants.js';
 
 export type { FurnitureAsset };
@@ -476,6 +477,8 @@ export interface LoadedCharacterSprites {
    * `characters`. They come after the numbered ones, so they never take the place of a bundled char_N.
    */
   names?: Record<string, number>;
+  /** Office owner (not an agent): index of its sheet in `characters`, always the last one. */
+  owner?: { sheet: number; name?: string; emotes?: LoadedOwnerEmote[] };
 }
 
 export function mergeCharacterSprites(
@@ -621,6 +624,7 @@ export function sendCharacterSpritesToWebview(
     type: 'characterSpritesLoaded',
     characters: charSprites.characters,
     ...(charSprites.names ? { names: charSprites.names } : {}),
+    ...(charSprites.owner ? { owner: charSprites.owner } : {}),
   });
   console.log(`📤 Sent ${charSprites.characters.length} character sprites to webview`);
 }

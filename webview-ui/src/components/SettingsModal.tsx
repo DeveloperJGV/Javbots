@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
-import { useRef, useState } from 'react';
+import { useRef, useState, useSyncExternalStore } from 'react';
 
 import { isSoundEnabled, setSoundEnabled } from '../notificationSound.js';
+import { ownerStore } from '../office/owner/ownerStore.js';
 import { isBrowserRuntime } from '../runtime.js';
 import { transport } from '../transport/index.js';
 import { Button } from './ui/Button.js';
@@ -75,6 +76,8 @@ export function SettingsModal({
   const [soundLocal, setSoundLocal] = useState(isSoundEnabled);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [assetDirDraft, setAssetDirDraft] = useState('');
+  // The office's owner (office/owner): its switch shows only when an asset folder brings an avatar
+  const owner = useSyncExternalStore(ownerStore.subscribe, ownerStore.get);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Ajustes">
@@ -224,6 +227,17 @@ export function SettingsModal({
         <Checkbox label="Mostrar áreas" checked={showAreas} onChange={onToggleShowAreas} />
       )}
       <Checkbox label="Sombras" checked={shadowsEnabled} onChange={onToggleShadows} />
+      {owner.sheet !== undefined && (
+        <Checkbox
+          label="Mi personaje en la oficina"
+          checked={owner.enabled}
+          onChange={() => {
+            const next = !owner.enabled;
+            ownerStore.setEnabled(next);
+            transport.send({ type: 'setOwnerEnabled', enabled: next });
+          }}
+        />
+      )}
       <Checkbox
         label="Partículas (vapor, chispas, polvo)"
         checked={particlesEnabled}

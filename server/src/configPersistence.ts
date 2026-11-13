@@ -19,6 +19,7 @@ export interface AdapterSettings {
   hooksInfoShown: boolean;
   showAreas: boolean;
   shadowsEnabled: boolean;
+  ownerEnabled: boolean;
   particlesEnabled: boolean;
   dayNightMode: DayNightMode;
   areaMappings: Record<string, string[]>;
@@ -46,6 +47,7 @@ export const ADAPTER_SETTING_KEYS = [
   'hooksInfoShown',
   'showAreas',
   'shadowsEnabled',
+  'ownerEnabled',
   'particlesEnabled',
   'dayNightMode',
   'areaMappings',
@@ -119,6 +121,7 @@ const DEFAULT_ADAPTER_SETTINGS: AdapterSettings = {
   hooksInfoShown: false,
   showAreas: false,
   shadowsEnabled: true,
+  ownerEnabled: true,
   particlesEnabled: true,
   dayNightMode: 'auto',
   areaMappings: {},
@@ -206,6 +209,10 @@ function parseAdapterSettings(raw: unknown): AdapterSettings {
       typeof obj.shadowsEnabled === 'boolean'
         ? obj.shadowsEnabled
         : DEFAULT_ADAPTER_SETTINGS.shadowsEnabled,
+    ownerEnabled:
+      typeof obj.ownerEnabled === 'boolean'
+        ? obj.ownerEnabled
+        : DEFAULT_ADAPTER_SETTINGS.ownerEnabled,
     particlesEnabled:
       typeof obj.particlesEnabled === 'boolean'
         ? obj.particlesEnabled

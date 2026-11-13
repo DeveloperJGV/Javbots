@@ -17,6 +17,7 @@ declare global {
         waitingAwaitingInput?: boolean;
         isHeadless?: boolean;
         isGreeter?: boolean;
+        isOwner?: boolean;
         x: number;
         y: number;
         palette: number;
@@ -24,6 +25,8 @@ declare global {
       }>;
       /** Effective "Display headless as ghosts" setting the renderer is using. */
       getGhostHeadlessAgents?: () => boolean;
+      /** The emote the office owner is playing (office/owner/ownerEmotes.ts), or null. */
+      getOwnerEmote?: () => string | null;
       // ── Carpet + Areas observability (added for carpet/areas e2e) ──
       /** Sparse list of painted carpet tiles with their grid coords. */
       getCarpetTiles?: () => Array<{
@@ -136,6 +139,7 @@ export function installTestHooks(officeStateRef: { current: OfficeState | null }
       waitingAwaitingInput: ch.waitingAwaitingInput,
       isHeadless: ch.isHeadless,
       isGreeter: ch.isGreeter,
+      isOwner: ch.isOwner,
       // World position (sprite px, feet) + sheet: the trailer camera follows characters.
       x: ch.x,
       y: ch.y,
@@ -147,6 +151,7 @@ export function installTestHooks(officeStateRef: { current: OfficeState | null }
   // The ghost setting lives in the renderer module (read every rAF frame), not
   // in OfficeState, so e2e reads it from there to assert what is actually drawn.
   hooks.getGhostHeadlessAgents = () => isGhostHeadlessAgentsEnabled();
+  hooks.getOwnerEmote = () => officeStateRef.current?.ownerEmote ?? null;
 
   hooks.selectAgent = (id) => {
     const os = officeStateRef.current;

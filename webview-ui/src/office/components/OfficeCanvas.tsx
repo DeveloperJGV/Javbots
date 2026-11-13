@@ -1,16 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
 
-import { agendaStore } from '../../../../features/agenda/webview/agendaStore.js';
-import { bodegaStore } from '../../../../features/bodega/webview/bodegaStore.js';
-import { concertsStore } from '../../../../features/conciertos/webview/concertsStore.js';
-import { connectionsStore } from '../../../../features/conexiones/webview/connectionsStore.js';
-import { directorioStore } from '../../../../features/directorio/webview/directorioStore.js';
-import { githubStore } from '../../../../features/github/webview/githubStore.js';
-import { jardinStore } from '../../../../features/jardin/webview/jardinStore.js';
-import { musicStore } from '../../../../features/musica/webview/musicStore.js';
-import { perfilStore } from '../../../../features/perfil/webview/perfilStore.js';
-import { pomodoroStore } from '../../../../features/pomodoro/webview/pomodoroStore.js';
-import { usageStore } from '../../../../features/usage/webview/usageStore.js';
 import {
   CAMERA_FOLLOW_LERP,
   CAMERA_FOLLOW_SNAP_THRESHOLD,
@@ -20,7 +9,7 @@ import {
   ZOOM_SCROLL_THRESHOLD,
 } from '../../constants.js';
 import { playIsaacDanceSound, unlockAudio } from '../../notificationSound.js';
-import { packClick, packHover } from '../../packs/registry.js';
+import { packClick } from '../../packs/registry.js';
 import { transport } from '../../transport/index.js';
 import { onRenderScaleChange, renderDpr } from '../../viewScale.js';
 import { getColorizedSprite } from '../colorize.js';
@@ -35,7 +24,11 @@ import type {
   SelectionRenderState,
 } from '../engine/renderer.js';
 import { renderFrame } from '../engine/renderer.js';
+import { FurnitureHint } from '../hint/FurnitureHint.js';
+import { furnitureTargetAt } from '../hint/furnitureTargets.js';
+import { hintStore } from '../hint/hintStore.js';
 import { getCatalogEntry, isRotatable } from '../layout/furnitureCatalog.js';
+import { panelsOpen } from '../owner/panelPresence.js';
 import { EditTool, TILE_SIZE } from '../types.js';
 import { computeNormalModeCursor } from './officeCanvasCursor.js';
 
@@ -61,6 +54,11 @@ interface OfficeCanvasProps {
   /** Clicked the activity whiteboard: open its panel. */
   onOpenBoard: () => void;
 }
+
+/** Isaac's dance music (office/hint: a click on him that starts the dance). */
+const onIsaacDance = (): void => {
+  void playIsaacDanceSound();
+};
 
 export function OfficeCanvas({
   officeState,
@@ -409,6 +407,7 @@ export function OfficeCanvas({
     (e: React.MouseEvent) => {
       // Handle middle-mouse panning
       if (isPanningRef.current) {
+        hintStore.clear();
         const dpr = renderDpr();
         const dx = (e.clientX - panStartRef.current.mouseX) * dpr;
         const dy = (e.clientY - panStartRef.current.mouseY) * dpr;
@@ -417,6 +416,7 @@ export function OfficeCanvas({
       }
 
       if (isEditMode) {
+        hintStore.clear();
         const tile = screenToTile(e.clientX, e.clientY);
         if (tile) {
           editorState.ghostCol = tile.col;
@@ -526,12 +526,20 @@ export function OfficeCanvas({
       const pos = screenToWorld(e.clientX, e.clientY);
       if (!pos) return;
       const hitId = officeState.getCharacterAt(pos.worldX, pos.worldY);
+      officeState.ownerHovered = hitId === null && officeState.isOwnerAt(pos.worldX, pos.worldY);
       // Only run pet hit-test if no character was hit (avoids redundant work).
       const petId = hitId === null ? officeState.getPetAt(pos.worldX, pos.worldY) : null;
-      // GitHub room (features/github): the repository of the cabinet under the mouse
-      const github =
-        hitId === null && petId === null ? officeState.githubAt(pos.worldX, pos.worldY) : null;
-      githubStore.setHover(github ? { label: github.label, x: e.clientX, y: e.clientY } : null);
+      // The piece a click would open something from (office/hint): the hand and its hover sign
+      const target =
+        hitId === null && petId === null
+          ? furnitureTargetAt(officeState, pos.worldX, pos.worldY, {
+              openBoard: onOpenBoard,
+              onIsaacDance,
+            })
+          : null;
+      // No sign over people (they have their own label) nor while a panel is up
+      const hint = officeState.ownerHovered || panelsOpen() > 0 ? null : target?.hint;
+      hintStore.set(hint ? { label: hint, x: e.clientX, y: e.clientY } : null);
       const tile = screenToTile(e.clientX, e.clientY);
       officeState.hoveredTile = tile;
       const canvas = canvasRef.current;
@@ -539,21 +547,7 @@ export function OfficeCanvas({
         canvas.style.cursor = computeNormalModeCursor({
           hitId,
           petId,
-          boardHit:
-            hitId === null &&
-            petId === null &&
-            (officeState.isBoardAt(pos.worldX, pos.worldY) ||
-              officeState.isBodegaAt(pos.worldX, pos.worldY) ||
-              officeState.isConcertTicketsAt(pos.worldX, pos.worldY) ||
-              officeState.isAgendaAt(pos.worldX, pos.worldY) ||
-              officeState.jardinFurnitureAt(pos.worldX, pos.worldY) !== null ||
-              officeState.isPomodoroAt(pos.worldX, pos.worldY) ||
-              officeState.isPerfilAt(pos.worldX, pos.worldY) ||
-              officeState.isConnectionsRackAt(pos.worldX, pos.worldY) ||
-              packHover(pos.worldX, pos.worldY, officeState) ||
-              officeState.musicPlayerUidAt(pos.worldX, pos.worldY) !== null ||
-              officeState.isUsageMeterAt(pos.worldX, pos.worldY) ||
-              github !== null),
+          boardHit: target?.hand ?? false,
           selectedAgentId: officeState.selectedAgentId,
           tile,
           getSeatAtTile: (col, row) => officeState.getSeatAtTile(col, row),
@@ -575,12 +569,14 @@ export function OfficeCanvas({
       hitTestDeleteButton,
       hitTestRotateButton,
       clampPan,
+      onOpenBoard,
     ],
   );
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
       unlockAudio();
+      hintStore.clear();
       // Middle mouse button (button 1) starts panning
       if (e.button === 1) {
         e.preventDefault();
@@ -765,6 +761,8 @@ export function OfficeCanvas({
       if (isEditMode) return; // handled by mouseDown/mouseUp
       const pos = screenToWorld(e.clientX, e.clientY);
       if (!pos) return;
+      // The owner walks to the piece this click opens a panel for (office/owner)
+      officeState.noteCanvasClick(pos.worldX, pos.worldY);
 
       const hitId = officeState.getCharacterAt(pos.worldX, pos.worldY);
       if (hitId !== null) {
@@ -781,6 +779,8 @@ export function OfficeCanvas({
         onClick(hitId); // still focus terminal
         return;
       }
+      // A click on the owner: he greets (not a selection; without a greet emote it goes on as before)
+      if (officeState.isOwnerAt(pos.worldX, pos.worldY) && officeState.ownerClicked()) return;
 
       // Pet hit: toggle the heart bubble.
       const petId = officeState.getPetAt(pos.worldX, pos.worldY);
@@ -794,89 +794,18 @@ export function OfficeCanvas({
         return;
       }
 
-      // Music player (features/musica): its menu (style, show / hide the music column).
-      const playerUid = officeState.musicPlayerUidAt(pos.worldX, pos.worldY);
-      if (playerUid) {
-        musicStore.openJukeboxPicker(playerUid);
+      // A piece that opens something (office/hint: the same path as the hand and the hover sign)
+      const target = furnitureTargetAt(officeState, pos.worldX, pos.worldY, {
+        openBoard: onOpenBoard,
+        onIsaacDance,
+      });
+      if (target) {
+        hintStore.clear();
+        target.open();
         return;
       }
-
-      // Storage shelf (features/bodega): open the stored furniture.
-      if (officeState.isBodegaAt(pos.worldX, pos.worldY)) {
-        bodegaStore.open();
-        return;
-      }
-
-      // Concert tickets (features/conciertos): the upcoming concerts.
-      if (officeState.isConcertTicketsAt(pos.worldX, pos.worldY)) {
-        concertsStore.open();
-        return;
-      }
-
-      // Agenda room (features/agenda): today and this week.
-      if (officeState.isAgendaAt(pos.worldX, pos.worldY)) {
-        agendaStore.open();
-        return;
-      }
-
-      // Roof garden (features/jardin): the plants, their care and the supplies.
-      const jardin = officeState.jardinFurnitureAt(pos.worldX, pos.worldY);
-      if (jardin !== null) {
-        jardinStore.openFor(jardin);
-        return;
-      }
-
-      // Personality screen of the freelance room (features/perfil): the result's panel.
-      if (officeState.isPerfilAt(pos.worldX, pos.worldY)) {
-        perfilStore.open();
-        return;
-      }
-
-      // Pomodoro corner of the roof (features/pomodoro): the timer.
-      if (officeState.isPomodoroAt(pos.worldX, pos.worldY)) {
-        pomodoroStore.open();
-        return;
-      }
-
-      // Directorio room (features/directorio): searches by an agent with criteria.
-      if (officeState.isDirectorioAt(pos.worldX, pos.worldY)) {
-        directorioStore.open();
-        return;
-      }
-
-      // Private packs (webview-ui/src/packs/registry.ts): their own furniture.
+      // A pack's piece that takes a click without a hand
       if (packClick(pos.worldX, pos.worldY, officeState)) return;
-
-      // Connections rack (features/conexiones): which outside services the office talks to.
-      if (officeState.isConnectionsRackAt(pos.worldX, pos.worldY)) {
-        connectionsStore.open();
-        return;
-      }
-
-      // Usage meter (features/usage): open the plan limits and cost per agent.
-      if (officeState.isUsageMeterAt(pos.worldX, pos.worldY)) {
-        usageStore.setDetailOpen(true);
-        return;
-      }
-
-      // GitHub room (features/github): the detail, with the clicked cabinet's repository first.
-      const github = officeState.githubAt(pos.worldX, pos.worldY);
-      if (github) {
-        githubStore.open(github.repo);
-        return;
-      }
-
-      // Activity whiteboard: open its panel.
-      if (officeState.isBoardAt(pos.worldX, pos.worldY)) {
-        onOpenBoard();
-        return;
-      }
-
-      // Easter egg: Isaac dances after enough clicks in a row (no cursor hint: it is a secret).
-      if (officeState.isIsaacAt(pos.worldX, pos.worldY)) {
-        if (officeState.pokeIsaac() === 'dance') void playIsaacDanceSound();
-        return;
-      }
 
       // No agent hit — check seat click while agent is selected
       if (officeState.selectedAgentId !== null) {
@@ -918,6 +847,12 @@ export function OfficeCanvas({
     [officeState, onClick, onOpenBoard, screenToWorld, screenToTile, isEditMode],
   );
 
+  // Entering the editor (or leaving the canvas for good) drops the hover sign
+  useEffect(() => {
+    hintStore.clear();
+  }, [isEditMode]);
+  useEffect(() => () => hintStore.clear(), []);
+
   const handleMouseLeave = useCallback(() => {
     isPanningRef.current = false;
     isEraseDraggingRef.current = false;
@@ -930,8 +865,9 @@ export function OfficeCanvas({
     editorState.ghostCol = -1;
     editorState.ghostRow = -1;
     officeState.hoveredAgentId = null;
+    officeState.ownerHovered = false;
     officeState.hoveredTile = null;
-    githubStore.setHover(null);
+    hintStore.clear();
 
     // Reset cursor in non-edit mode so pointer doesn't get stuck after hovering a pet.
     if (!isEditMode) {
@@ -1013,6 +949,7 @@ export function OfficeCanvas({
         onContextMenu={handleContextMenu}
         className="block"
       />
+      <FurnitureHint />
     </div>
   );
 }

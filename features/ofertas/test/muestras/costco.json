@@ -1,0 +1,100 @@
+{
+ "products": [
+  {
+   "code": "692827",
+   "name": "Xbox Audífonos Bluetooth",
+   "url": "/Electronicos/Videojuegos/Accesorios-para-Videojuegos/Xbox-Audifonos-Bluetooth/p/692827",
+   "price": {
+    "currencyIso": "MXN",
+    "formattedValue": "$2,499.00",
+    "value": 2499
+   },
+   "basePrice": {
+    "currencyIso": "MXN",
+    "formattedValue": "$2,499.00",
+    "value": 2499
+   },
+   "images": [
+    {
+     "format": "thumbnail",
+     "url": "/medias/sys_master/products/hc8/h6e/312548432019486.jpg"
+    }
+   ],
+   "stock": {
+    "stockLevelStatus": "inStock"
+   }
+  },
+  {
+   "code": "686855",
+   "name": "Sonos Ace Audífonos Bluetooth Negros",
+   "url": "/Electronicos/Audio/Audifonos-y-Auriculares/Sonos-Ace-Audifonos-Bluetooth-Negros/p/686855",
+   "price": {
+    "currencyIso": "MXN",
+    "formattedValue": "$4,549.00",
+    "value": 4549
+   },
+   "basePrice": {
+    "currencyIso": "MXN",
+    "formattedValue": "$6,999.00",
+    "value": 6999
+   },
+   "images": [
+    {
+     "format": "thumbnail",
+     "url": "/medias/sys_master/products/h08/h59/278830864236574.jpg"
+    }
+   ],
+   "stock": {
+    "stockLevelStatus": "inStock"
+   }
+  },
+  {
+   "code": "688386",
+   "name": "Sonos Ace Audífonos Bluetooth Blancos",
+   "url": "/Electronicos/Audio/Audifonos-y-Auriculares/Sonos-Ace-Audifonos-Bluetooth-Blancos/p/688386",
+   "price": {
+    "currencyIso": "MXN",
+    "formattedValue": "$4,549.00",
+    "value": 4549
+   },
+   "basePrice": {
+    "currencyIso": "MXN",
+    "formattedValue": "$6,999.00",
+    "value": 6999
+   },
+   "images": [
+    {
+     "format": "thumbnail",
+     "url": "/medias/sys_master/products/h7b/h33/278830871511070.jpg"
+    }
+   ],
+   "stock": {
+    "stockLevelStatus": "inStock"
+   }
+  },
+  {
+   "code": "VA700960",
+   "name": "PlayStation Audífonos Inalámbricos Pulse Explore",
+   "url": "/c/PlayStation-Audifonos-Inalambricos-Pulse-Explore/p/VA700960",
+   "price": {
+    "currencyIso": "MXN",
+    "formattedValue": "$2,999.00",
+    "value": 2999
+   },
+   "basePrice": {
+    "currencyIso": "MXN",
+    "formattedValue": "$2,999.00",
+    "value": 2999
+   },
+   "images": [
+    {
+     "format": "thumbnail",
+     "url": "/medias/sys_master/products/h55/hd5/486867365330974.jpg"
+    }
+   ],
+   "stock": {
+    "stockLevelStatus": "inStock"
+   }
+  }
+ ]
+}

@@ -77,6 +77,73 @@ avisa al instante); la cuenta se consulta cada 4 s solo cuando la extensión no 
 en otro aparato sí suena algo, gana ese. La letra entonces viene de LRCLIB. Los botones de la música (también los
 de otras pantallas) funcionan igual sin la extensión, a través de la API.
 
+## Playlist del día (opcional, con la cuenta conectada)
+
+Un clic en la **prensa de vinilos** de la sala de música (o en el neón "Hoy suena") abre el panel **Playlist del
+día**. Todo se arma por reglas: no hay modelo de IA de por medio.
+
+**Dime qué quieres** (lo primero del panel): escribes lo que quieres oír ("rock en español de los 90 para manejar de
+noche"), escoges 30 min, 1 h o 2 h y das **Buscar y armar**. Del texto se entiende, sin importar mayúsculas ni
+acentos: la duración ("media hora", "2 horas"; siempre queda en 30 min, 1 h o 2 h, y lo escrito gana a los botones),
+décadas o años ("de los 80", "noventas", "2005", "del 1990 al 1995"), géneros comunes ("rock en español", "cumbia",
+"jazz"…), "solo lo mío" / "mis me gusta" y "para descubrir" / "nuevas". Con eso busca en Spotify: tus listas cuyo
+nombre se parece, listas públicas parecidas (cuenta las canciones que se repiten entre ellas), canciones que casan
+con las palabras (con filtros de género y año) y discos de los artistas que nombres. Lo tuyo (lo que más oyes, tus
+me gusta, tus listas) sube; lo del bote nunca sale. La vista previa dice de dónde salió ("De 3 listas públicas
+parecidas, 5 canciones que casan con lo que pediste y 4 canciones tuyas"); si no encontró nada lo dice y propone
+quitar palabras. Las llamadas tienen tope (`PLAYLIST_SEARCH_MAX_CALLS`) y lo que Spotify no deja leer se salta.
+Palabras de ánimo ("más movida") no se entienden: no hay de dónde sacarlo sin IA.
+
+Ojo: desde 2026 Spotify solo deja leer las canciones de **tus** listas (o colaborativas); las de otras personas
+responden 403. La oficina lo intenta una vez por sesión y, si Spotify dice que no, sigue con búsqueda de canciones y
+artistas y lo avisa.
+
+Debajo siguen las recetas y "A mi gusto", con botones:
+
+- **De dónde:** lo que más escuchas, tus "me gusta", cualquiera de tus listas, una sorpresa (tres de tus listas al
+  azar) o artistas de entre los que más oyes (sus discos más nuevos y alguno más).
+- **Década** (por la fecha del álbum), **duración** (30 min, 1 h o 2 h) y **mezcla:** solo lo tuyo o con algo para
+  descubrir (canciones que no tienes, de discos de los artistas que salieron), sin repetir lo de las listas de estos
+  días. Nunca pone el mismo artista dos veces seguidas si hay con qué evitarlo.
+- **Recetas rápidas:** combinaciones con nombre que arman con un clic ("Lo de siempre", "Para trabajar"…). Se editan,
+  se quitan y puedes guardar las tuyas.
+
+Antes de crear nada ves la **vista previa** (canciones y duración). Ahí hay **Otra tirada** y, en cada canción,
+**Esta no**: la manda al bote (no vuelve a salir en ninguna lista) y pone otra en su lugar. El bote se revisa en su
+pestaña, o con un clic en el **bote** que está junto a la prensa; de ahí se pueden sacar.
+
+**Crear en Spotify** la crea en tu cuenta como "Hoy suena · 12 nov · Para trabajar" (o con las primeras palabras de
+lo que escribiste; tu texto va en la descripción de la lista) y, si quieres, la pone a sonar (necesita Spotify
+abierto en algún aparato). Con cada lista se guarda qué se pidió (texto o receta) para poder mejorarla después.
+
+**Mis listas** muestra todas las que hizo la oficina: nombre, fecha, canciones, duración (en medias horas) y con qué
+se hizo. En cada una:
+
+- **Tocar**, y **Guardar** si todavía no la decides.
+- **Modificar:** cambiar el nombre, ver sus canciones, quitar las que quieras, buscar y agregar otras; **Guardar
+  cambios** lo manda a Spotify.
+- **Mejorar:** un cuadro "¿qué le cambio?" con las mismas reglas, y botones que siempre se pueden cumplir: **Más
+  canciones (+30 min)**, **Cambia las que mandé al bote**, **Otra tirada con la misma idea** y **Más para
+  descubrir**. Primero enseña qué quita y qué agrega; solo cambia algo cuando dices **Sí, aplicar**.
+- **Borrar** en dos pasos (se quita de tu biblioteca).
+
+Si quitaste una lista desde Spotify, al abrir "Mis listas" sale marcada ("Ya no está en tu Spotify") y se quita de
+aquí sin error. Al día siguiente el panel pregunta por las que quedaron sin decidir; la oficina **nunca borra una
+lista por su cuenta** y solo toca las que ella creó (guarda sus ids en `~/.pixel-agents/playlists.json`, junto con
+las recetas y el bote).
+
+Permisos: además de los de arriba pide `playlist-read-private`, `playlist-modify-private`,
+`playlist-modify-public`, `user-library-read` y `user-library-modify` (este último porque hoy Spotify quita una
+lista de la biblioteca con `DELETE /me/library`). Si conectaste la cuenta antes de que existiera esta función, el
+panel lo dice y trae el botón **Reconectar Spotify**.
+
+Lo que Spotify ya no deja (2026): recomendaciones, géneros de un artista, "lo más popular" de un artista, leer
+listas ajenas, y la búsqueda da 10 resultados por página. Por eso "descubrir" sale de los discos de tus artistas y
+el género solo funciona como filtro de búsqueda (`genre:`). Los
+discos de un artista gastan rápido la cuota de la API; si Spotify pide esperar, la lista sale solo con lo tuyo y el
+panel lo avisa. Una lista creada con `public: false` no aparece en tu perfil, pero Spotify ya no la marca como
+privada del todo: eso se cambia a mano en Spotify.
+
 ## Pantallas en la red (opcional)
 
 Otra pantalla de la casa (una tablet que muestra la letra, por ejemplo) puede leer lo que suena y usar los botones
@@ -102,14 +169,16 @@ botones de volumen. Para tenerlo, vuelve a instalar la extensión desde Ajustes.
 
 ## Carpetas
 
-| Carpeta             | Qué hay                                                                                                                                      |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `server/`           | Ruta `/api/music`, token, carátulas, instalación en Spicetify, puerto de pantallas (`screenServer.ts`), API web de Spotify (`spotifyApi.ts`) |
-| `webview/`          | Columna, sección de Ajustes, estado, tocadiscos que gira, cuadro y notas                                                                     |
-| `spicetify/`        | La extensión que corre dentro de Spotify                                                                                                     |
-| `assets/furniture/` | Muebles `TURNTABLE` y `ALBUM_FRAME` (esbuild los copia a `dist/assets`)                                                                      |
-| `arte/`             | Originales de PixelLab, `armar.py` (muebles) y `poner-en-plano.cjs` (los pone en un `layout.json`)                                           |
-| `test/`             | Pruebas del servidor y de la página (corren con `npm test`)                                                                                  |
+| Carpeta                                   | Qué hay                                                                                                                                                                             |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `server/`                                 | Ruta `/api/music`, token, carátulas, instalación en Spicetify, puerto de pantallas (`screenServer.ts`), API web de Spotify (`spotifyApi.ts`)                                        |
+| `webview/`                                | Columna, sección de Ajustes, estado, tocadiscos que gira, cuadro y notas                                                                                                            |
+| `spicetify/`                              | La extensión que corre dentro de Spotify                                                                                                                                            |
+| `assets/furniture/`                       | Muebles `TURNTABLE` y `ALBUM_FRAME` (esbuild los copia a `dist/assets`)                                                                                                             |
+| `arte/`                                   | Originales de PixelLab, `armar.py` (muebles) y `poner-en-plano.cjs` (los pone en un `layout.json`)                                                                                  |
+| `test/`                                   | Pruebas del servidor y de la página (corren con `npm test`)                                                                                                                         |
+| `server/playlists/`, `webview/playlists/` | Playlist del día: reglas (`generator.ts`), el texto (`describe.ts`) y su búsqueda (`describeSearch.ts`), llamadas a Spotify, `playlists.json` y el panel                            |
+| `test/dobles/`                            | Spotify de mentira para pruebas (`fakeSpotify.ts`) y para una oficina aislada (`servidor.ts`, con `JAVBOTS_SPOTIFY_API_URL` y `JAVBOTS_SPOTIFY_ACCOUNTS_URL` apuntando a 127.0.0.1) |
 
 Puntos donde toca al resto del proyecto (todos chicos y marcados con `features/musica`): mensajes en
 `core/asyncapi.yaml`, `features` en `server/src/httpServer.ts` + `cli.ts`, la columna en `App.tsx`, la sección

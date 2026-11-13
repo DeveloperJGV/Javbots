@@ -1,8 +1,8 @@
 # Jardín de la azotea (feature opcional)
 
 Un piso de **azotea** que siempre va hasta arriba del edificio principal (botón **R** del elevador, "Roof garden"), con un jardín.
-Un clic en la **pantalla de control**, el **cobertizo**, el **tablero de herramientas** o la **placa de planta** abre
-el panel del jardín:
+Un clic en la **pantalla de control** (lo de hoy), el **cobertizo** (inventario) o el mueble de una planta abre el
+panel del jardín (el tablero de herramientas y la placa de planta son de adorno):
 
 - **Hoy en el jardín:** los cuidados de hoy y los atrasados, con el botón **Hecho**, y lo que viene en la semana.
 - **Plantas:** nombre, especie, lugar, fotos, notas y sus cuidados (regar, abonar, limpiar, podar), cada uno

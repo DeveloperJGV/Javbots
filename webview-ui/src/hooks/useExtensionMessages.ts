@@ -20,6 +20,7 @@ import { setGhostHeadlessAgents as setRendererGhostHeadlessAgents } from '../off
 import { setFloorSprites } from '../office/floorTiles.js';
 import { buildDynamicCatalog } from '../office/layout/furnitureCatalog.js';
 import { migrateLayoutColors } from '../office/layout/layoutSerializer.js';
+import { ownerStore } from '../office/owner/ownerStore.js';
 import { setCarpetSprites } from '../office/sprites/carpetTiles.js';
 import { setPetTemplates } from '../office/sprites/petSpriteData.js';
 import { setCharacterTemplates } from '../office/sprites/spriteData.js';
@@ -733,6 +734,7 @@ export function useExtensionMessages(
         }>;
         console.log(`[Webview] Received ${characters.length} pre-colored character sprites`);
         setCharacterTemplates(characters, (msg.names ?? {}) as Record<string, number>);
+        ownerStore.setSheet(msg.owner);
       } else if (msg.type === 'petSpritesLoaded') {
         const pets = msg.pets;
         if (!Array.isArray(pets)) {
@@ -795,6 +797,7 @@ export function useExtensionMessages(
         if (typeof msg.shadowsEnabled === 'boolean') {
           applyShadowsEnabled(msg.shadowsEnabled);
         }
+        ownerStore.setEnabled(msg.ownerEnabled !== false);
         if (typeof msg.particlesEnabled === 'boolean') {
           applyParticlesEnabled(msg.particlesEnabled);
         }

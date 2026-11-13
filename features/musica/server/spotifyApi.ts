@@ -2,10 +2,15 @@ import * as crypto from 'crypto';
 
 import {
   SPOTIFY_ACCOUNTS_URL,
+  SPOTIFY_ACCOUNTS_URL_ENV,
   SPOTIFY_API_URL,
+  SPOTIFY_API_URL_ENV,
   SPOTIFY_FETCH_TIMEOUT_MS,
+  SPOTIFY_MAX_RETRIES,
+  SPOTIFY_RETRY_MAX_WAIT_SEC,
   SPOTIFY_SCOPES,
   SPOTIFY_VOLUME_STEP,
+  spotifyBaseUrl,
 } from './constants.js';
 
 type Fetcher = (
@@ -22,6 +27,34 @@ export interface SpotifyApiOptions {
   onRefreshToken: (token: string | undefined) => void;
   fetcher?: Fetcher;
   now?: () => number;
+  /** Permissions granted to the saved session (music.json), when known. */
+  scopes?: string;
+  /** Called when Spotify reports the granted permissions (login, refresh): persist them. */
+  onScopes?: (scopes: string) => void;
+  /** Waits before a retry (tests pass one that doesn't really wait). */
+  sleep?: (ms: number) => Promise<void>;
+}
+
+export type SpotifyErrorKind =
+  'no-session' | 'permission' | 'forbidden' | 'rate-limit' | 'not-found' | 'http' | 'network';
+
+/** A failed `request`: what kind of failure, so callers can tell the owner something useful. */
+export class SpotifyError extends Error {
+  constructor(
+    readonly kind: SpotifyErrorKind,
+    message: string,
+    readonly status?: number,
+    readonly retryAfterSec?: number,
+  ) {
+    super(message);
+    this.name = 'SpotifyError';
+  }
+}
+
+export interface SpotifyRequestOptions {
+  method?: string;
+  body?: unknown;
+  query?: Record<string, string | number | undefined>;
 }
 
 /** What `/me/player` says, in the shape of the extension's report body (so one path handles both). */
@@ -47,7 +80,11 @@ export interface SpotifyPlayback {
 export function createSpotifyApi(opts: SpotifyApiOptions) {
   const fetcher: Fetcher = opts.fetcher ?? ((url, init) => fetch(url, init));
   const now = opts.now ?? Date.now;
+  const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  const apiUrl = spotifyBaseUrl(SPOTIFY_API_URL_ENV, SPOTIFY_API_URL);
+  const accountsUrl = spotifyBaseUrl(SPOTIFY_ACCOUNTS_URL_ENV, SPOTIFY_ACCOUNTS_URL);
   let refreshToken = opts.refreshToken;
+  let grantedScopes = opts.scopes;
   let accessToken: string | undefined;
   let expiresAt = 0;
   /** PKCE verifier of the login in progress, by state (a login that never comes back just expires). */
@@ -82,6 +119,7 @@ export function createSpotifyApi(opts: SpotifyApiOptions) {
     access_token?: unknown;
     expires_in?: unknown;
     refresh_token?: unknown;
+    scope?: unknown;
   }): void {
     if (typeof json.access_token !== 'string') throw new Error('spotify: sin access_token');
     accessToken = json.access_token;
@@ -89,6 +127,10 @@ export function createSpotifyApi(opts: SpotifyApiOptions) {
     expiresAt = now() + (seconds - 60) * 1000;
     if (typeof json.refresh_token === 'string' && json.refresh_token)
       setRefreshToken(json.refresh_token);
+    if (typeof json.scope === 'string' && json.scope !== grantedScopes) {
+      grantedScopes = json.scope;
+      opts.onScopes?.(json.scope);
+    }
   }
 
   /** The URL to send the browser to; the verifier waits for the callback with the same `state`. */
@@ -107,7 +149,7 @@ export function createSpotifyApi(opts: SpotifyApiOptions) {
       state,
       scope: SPOTIFY_SCOPES,
     });
-    return `${SPOTIFY_ACCOUNTS_URL}/authorize?${params}`;
+    return `${accountsUrl}/authorize?${params}`;
   }
 
   /** The callback: swaps the code for tokens. Returns null when it worked, else what went wrong. */
@@ -122,7 +164,7 @@ export function createSpotifyApi(opts: SpotifyApiOptions) {
       redirect_uri: opts.redirectUri(),
       code_verifier: login.verifier,
     });
-    const res = await call(`${SPOTIFY_ACCOUNTS_URL}/api/token`, {
+    const res = await call(`${accountsUrl}/api/token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: body.toString(),
@@ -141,7 +183,7 @@ export function createSpotifyApi(opts: SpotifyApiOptions) {
       grant_type: 'refresh_token',
       refresh_token: refreshToken,
     });
-    const res = await call(`${SPOTIFY_ACCOUNTS_URL}/api/token`, {
+    const res = await call(`${accountsUrl}/api/token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: body.toString(),
@@ -160,12 +202,96 @@ export function createSpotifyApi(opts: SpotifyApiOptions) {
   async function api(path: string, method = 'GET'): Promise<Response | undefined> {
     const t = await token();
     if (!t) return undefined;
-    const res = await call(`${SPOTIFY_API_URL}${path}`, {
+    const res = await call(`${apiUrl}${path}`, {
       method,
       headers: { Authorization: `Bearer ${t}` },
     });
     if (res.status === 401) accessToken = undefined;
     return res;
+  }
+
+  /** Spotify's message in an error body ({ error: { message } }), when there is one. */
+  async function errorMessage(res: Response): Promise<string | undefined> {
+    try {
+      const json = (await res.json()) as { error?: { message?: unknown } | string };
+      if (typeof json.error === 'string') return json.error;
+      return typeof json.error?.message === 'string' ? json.error.message : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * A Web API call that returns the JSON (undefined on 204 / empty body) or throws a SpotifyError. A 401 refreshes
+   * the session and retries once; a short 429 waits and retries, a long one fails at once; a 5xx retries.
+   */
+  async function request(path: string, options: SpotifyRequestOptions = {}): Promise<unknown> {
+    const method = options.method ?? 'GET';
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(options.query ?? {}))
+      if (value !== undefined) params.set(key, String(value));
+    const qs = params.toString();
+    const url = `${apiUrl}${path}${qs ? `?${qs}` : ''}`;
+    let refreshed = false;
+    let retries = 0;
+    for (;;) {
+      let t: string | undefined;
+      try {
+        t = await token();
+      } catch (err) {
+        throw new SpotifyError('network', `spotify: ${(err as Error).message}`);
+      }
+      if (!t) throw new SpotifyError('no-session', 'spotify: sin sesión');
+      const headers: Record<string, string> = { Authorization: `Bearer ${t}` };
+      if (options.body !== undefined) headers['Content-Type'] = 'application/json';
+      let res: Response;
+      try {
+        res = await call(url, {
+          method,
+          headers,
+          ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
+        });
+      } catch (err) {
+        throw new SpotifyError('network', `spotify: ${(err as Error).message}`);
+      }
+      if (res.status === 401 && !refreshed) {
+        refreshed = true;
+        accessToken = undefined;
+        continue;
+      }
+      if (res.status === 429) {
+        const wait = Number(res.headers.get('Retry-After') ?? '1');
+        const seconds = Number.isFinite(wait) && wait >= 0 ? wait : 1;
+        if (seconds > SPOTIFY_RETRY_MAX_WAIT_SEC || retries >= SPOTIFY_MAX_RETRIES)
+          throw new SpotifyError('rate-limit', 'spotify: demasiadas peticiones', 429, seconds);
+        retries++;
+        await sleep(seconds * 1000);
+        continue;
+      }
+      if (res.status >= 500 && retries < 1) {
+        retries++;
+        continue;
+      }
+      if (res.status === 204) return undefined;
+      if (!res.ok) {
+        const message = (await errorMessage(res)) ?? `Spotify respondió ${res.status}`;
+        if (res.status === 401) {
+          accessToken = undefined;
+          throw new SpotifyError('no-session', message, 401);
+        }
+        if (res.status === 403)
+          throw new SpotifyError(/scope/i.test(message) ? 'permission' : 'forbidden', message, 403);
+        if (res.status === 404) throw new SpotifyError('not-found', message, 404);
+        throw new SpotifyError('http', message, res.status);
+      }
+      const text = await res.text();
+      if (!text) return undefined;
+      try {
+        return JSON.parse(text) as unknown;
+      } catch {
+        return undefined;
+      }
+    }
   }
 
   /**
@@ -239,6 +365,10 @@ export function createSpotifyApi(opts: SpotifyApiOptions) {
   return {
     authorizeUrl,
     exchangeCode,
+    request,
+    /** Permissions granted to the session; undefined while unknown (no login or refresh seen yet). */
+    scopes: (): string[] | undefined =>
+      grantedScopes === undefined ? undefined : grantedScopes.split(/\s+/).filter(Boolean),
     playback,
     control,
     topArtists,
@@ -247,6 +377,7 @@ export function createSpotifyApi(opts: SpotifyApiOptions) {
     /** Forget the session (the user disconnects). */
     disconnect: () => {
       accessToken = undefined;
+      grantedScopes = undefined;
       setRefreshToken(undefined);
     },
   };

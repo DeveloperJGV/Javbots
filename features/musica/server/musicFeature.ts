@@ -20,6 +20,7 @@ import {
 import { CoverCache } from './cover.js';
 import { cleanLines, fetchLrclib, type Lyrics, songKey } from './lyrics.js';
 import { type MusicConfig, readMusicConfig, writeMusicConfig } from './musicConfig.js';
+import { createPlaylists, type Playlists } from './playlists/playlistFeature.js';
 import { startScreenServer } from './screenServer.js';
 import {
   installExtension,
@@ -49,6 +50,9 @@ export interface MusicFeatureOptions {
   spotifyFetch?: Parameters<typeof createSpotifyApi>[0]['fetcher'];
   /** Ask the account every few seconds while connected (off in tests, which call `pollSpotify()`). */
   pollSpotify?: boolean;
+  /** Waits before a Spotify retry (tests); and the playlists' randomness. */
+  spotifySleep?: (ms: number) => Promise<void>;
+  rng?: () => number;
 }
 
 /** Who reported the current track. */
@@ -106,6 +110,8 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
   sendControl(action: string): boolean;
   /** One round of asking Spotify's Web API what's playing (exposed for tests; the timer calls it). */
   pollSpotify(): Promise<void>;
+  /** "Playlist del día" (exposed for tests). */
+  playlists: Playlists;
 } {
   const run = opts.run ?? runSpicetify;
   const covers = opts.covers ?? new CoverCache();
@@ -139,17 +145,46 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
         clientId: config.spotifyClientId,
         redirectUri: () => `${opts.serverUrl() ?? 'http://127.0.0.1'}${SPOTIFY_CALLBACK_PATH}`,
         refreshToken: config.spotifyRefreshToken,
+        scopes: config.spotifyScopes,
         fetcher: opts.spotifyFetch,
+        sleep: opts.spotifySleep,
         now,
         onRefreshToken: (refresh) => {
-          const { spotifyRefreshToken: _old, ...rest } = config;
-          config = refresh ? { ...rest, spotifyRefreshToken: refresh } : rest;
+          const { spotifyRefreshToken: _old, spotifyScopes: scopes, ...rest } = config;
+          // Spotify rotates the refresh token on every refresh: the session is the same one and keeps its
+          // permissions. Without a session they go with it.
+          config = refresh
+            ? {
+                ...rest,
+                spotifyRefreshToken: refresh,
+                ...(scopes ? { spotifyScopes: scopes } : {}),
+              }
+            : rest;
           writeMusicConfig(config);
+          // Only a lost session drops what was read with it (a rotation must not wipe a preview under review).
+          if (!refresh) playlists.sessionChanged();
           broadcastStatus();
+          broadcastPlaylists();
           if (refresh) scheduleSpotify();
+        },
+        onScopes: (scopes) => {
+          config = { ...config, spotifyScopes: scopes };
+          writeMusicConfig(config);
+          broadcastPlaylists();
         },
       })
     : undefined;
+  /** "Playlist del día": only the owner (privileged clients) sees it or drives it. */
+  const playlists: Playlists = createPlaylists({
+    spotify,
+    now,
+    rng: opts.rng,
+    onChange: () => broadcastPlaylists(),
+  });
+  function broadcastPlaylists(): void {
+    const msg = playlists.status() as unknown as Record<string, unknown>;
+    for (const c of clients) if (c.privileged) c.send(msg);
+  }
   const spotifyConnected = () => spotify?.connected() ?? false;
   let spotifyTimer: ReturnType<typeof setTimeout> | undefined;
   /** Off by default where Spicetify isn't installed (and no Spotify session): nobody sees an empty music corner. */
@@ -471,14 +506,22 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
           name: 'Spotify Web API',
           feature: 'Música',
           purpose:
-            'Lo que suena aunque Spotify esté cerrado aquí, botones y artistas más escuchados',
+            'Lo que suena aunque Spotify esté cerrado aquí, botones, artistas más escuchados y playlist del día',
           auth: `OAuth PKCE, sin secreto. Permisos: ${SPOTIFY_SCOPES}`,
-          state: !spotify ? 'off' : spotifyConnected() ? 'ok' : 'off',
+          state: !spotify
+            ? 'off'
+            : !spotifyConnected()
+              ? 'off'
+              : playlists.needsReconnect()
+                ? 'warn'
+                : 'ok',
           detail: !spotify
             ? 'Falta spotifyClientId en music.json'
-            : spotifyConnected()
-              ? 'Cuenta conectada'
-              : 'Sin conectar la cuenta',
+            : !spotifyConnected()
+              ? 'Sin conectar la cuenta'
+              : playlists.needsReconnect()
+                ? 'Falta el permiso de playlists: vuelve a conectar Spotify'
+                : 'Cuenta conectada',
         },
         {
           id: 'lrclib',
@@ -551,6 +594,9 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
           if (problem) console.warn(`${LOG_PREFIX} Spotify: no se pudo conectar (${problem})`);
           else {
             console.log(`${LOG_PREFIX} Conectado a la cuenta de Spotify`);
+            // A new login: forget a "missing permission" answer and what the old session read.
+            playlists.sessionChanged();
+            broadcastPlaylists();
             void pollSpotify();
           }
           const text = problem
@@ -586,6 +632,8 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
           client.send(status(client) as unknown as Record<string, unknown>);
           client.send(nowPlaying());
           client.send(lyricsMessage());
+          if (client.privileged)
+            client.send(playlists.status() as unknown as Record<string, unknown>);
           return false;
         case 'setMusicEnabled':
           if (typeof msg.enabled !== 'boolean') return true;
@@ -612,6 +660,8 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
           broadcastStatus();
           return true;
         }
+        case 'playlistCommand':
+          return playlists.handle(msg as Record<string, unknown>, client);
         case 'installMusicExtension': {
           if (!client.privileged) return true;
           const serverUrl = opts.serverUrl();
@@ -648,5 +698,6 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
     screenState,
     sendControl,
     pollSpotify,
+    playlists,
   };
 }

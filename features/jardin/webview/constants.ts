@@ -1,22 +1,14 @@
 import type { JardinCareKind, JardinSupplyCategory } from '../../../core/src/messages.js';
 
-/** The roof's furniture that opens the garden panel (control screen, shed, tool rack, plant plaque). */
+/** The roof's furniture that opens the garden panel: the control screen (today) and the shed (the supplies). The
+ *  tool rack and the plant plaque are decoration. */
 export const JARDIN_CONTROL_TYPE = 'JARDIN_CONTROL';
 export const JARDIN_SHED_TYPE = 'JARDIN_SHED';
-export const JARDIN_TOOL_RACK_TYPE = 'JARDIN_TOOL_RACK';
-export const JARDIN_PLAQUE_TYPE = 'JARDIN_PLAQUE';
-export const JARDIN_PANEL_TYPES: readonly string[] = [
-  JARDIN_CONTROL_TYPE,
-  JARDIN_SHED_TYPE,
-  JARDIN_TOOL_RACK_TYPE,
-  JARDIN_PLAQUE_TYPE,
-];
-/** Panel section each one opens on (the shed and the tool rack: the supplies). */
+export const JARDIN_PANEL_TYPES: readonly string[] = [JARDIN_CONTROL_TYPE, JARDIN_SHED_TYPE];
+/** Panel section each one opens on. */
 export const JARDIN_PANEL_SECTION: Record<string, 'hoy' | 'inventario'> = {
   [JARDIN_CONTROL_TYPE]: 'hoy',
   [JARDIN_SHED_TYPE]: 'inventario',
-  [JARDIN_TOOL_RACK_TYPE]: 'inventario',
-  [JARDIN_PLAQUE_TYPE]: 'hoy',
 };
 
 export const CARE_ORDER: readonly JardinCareKind[] = ['regar', 'abonar', 'limpiar', 'podar'];

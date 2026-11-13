@@ -268,6 +268,7 @@ export function Elevator({ children }: { children?: ReactNode }) {
       className="absolute top-8 left-8 z-44 flex flex-col items-center gap-8 px-12 pt-14 pb-12 shadow-pixel select-none"
       style={{ ...BEVEL, background: ELEVATOR_PLATE_BG }}
       aria-label="Elevador"
+      data-elevator-plate
     >
       <Rivet className="top-3 left-3" />
       <Rivet className="top-3 right-3" />

@@ -103,7 +103,7 @@
     "asyncapi:validate": "node scripts/validate-asyncapi.mjs",
     "check-types": "npm run packs:generate && tsc --noEmit && tsc --noEmit -p server/tsconfig.test.json",
     "prepare": "husky",
-    "lint": "eslint adapters/vscode server core \"features/*/server/**/*.ts\" && eslint --no-error-on-unmatched-pattern \"privado/*/features/*/server/**/*.ts\" \"privado/*/server.ts\" && cd webview-ui && eslint . && cd .. && eslint -c webview-ui/eslint.config.js \"features/*/webview/**/*.{ts,tsx}\" && eslint --no-error-on-unmatched-pattern -c webview-ui/eslint.config.js \"privado/*/features/*/webview/**/*.{ts,tsx}\" \"privado/*/webview.tsx\"",
+    "lint": "eslint adapters/vscode server core \"features/*/server/**/*.ts\" \"features/*/core/**/*.ts\" && eslint --no-error-on-unmatched-pattern \"privado/*/features/*/server/**/*.ts\" \"privado/*/server.ts\" && cd webview-ui && eslint . && cd .. && eslint -c webview-ui/eslint.config.js \"features/*/webview/**/*.{ts,tsx}\" && eslint --no-error-on-unmatched-pattern -c webview-ui/eslint.config.js \"privado/*/features/*/webview/**/*.{ts,tsx}\" \"privado/*/webview.tsx\"",
     "lint:fix": "eslint adapters/vscode server core --fix && cd webview-ui && eslint . --fix",
     "import-tileset": "tsx scripts/import-tileset-cli.ts",
     "format": "prettier --write \"adapters/vscode/**/*.ts\" \"server/**/*.ts\" \"core/src/**/*.ts\" \"webview-ui/src/**/*.{ts,tsx,css}\" \"*.{js,mjs}\" \"webview-ui/*.{js,ts}\"",

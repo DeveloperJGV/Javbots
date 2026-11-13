@@ -3,8 +3,8 @@
 El rincón de descanso del **Roof garden** (features/jardin) tiene un reloj de jitomate en la pared, el letrero de
 **DESCANSO**, un reloj de arena grande, tapete, agua y pesas. Con esta feature el reloj funciona:
 
-- **Un clic en el jitomate** (`POMODORO_TIMER_WALL`, también el de mesa `POMODORO_TIMER`) **o en un reloj de arena**
-  abre el panel: **Enfoque 25 min**, **Descanso 5 min**, **Descanso largo 15 min**, **Pausar** / **Seguir**,
+- **Un clic en el jitomate** (`POMODORO_TIMER_WALL`, también el de mesa `POMODORO_TIMER`) abre el panel (los relojes
+  de arena son de adorno): **Enfoque 25 min**, **Descanso 5 min**, **Descanso largo 15 min**, **Pausar** / **Seguir**,
   **Parar** y cuántos pomodoros llevas hoy. El botón resaltado es el que toca: enfoque, o el descanso que sigue a un
   enfoque terminado (el largo después de 4).
 - **El tiempo lo lleva el servidor**, no la página: al terminar un bloque manda un aviso de escritorio (Mac o Windows)

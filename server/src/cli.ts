@@ -15,6 +15,7 @@ import { AGENDA_FLOOR_LAYOUT_FILE } from '../../features/agenda/server/constants
 import { createHerdrLauncher } from '../../features/busquedas/server/herdrLauncher.js';
 import { createConcertsFeature } from '../../features/conciertos/server/concertsFeature.js';
 import { createConnectionsFeature } from '../../features/conexiones/server/connectionsFeature.js';
+import { createDecksFeature } from '../../features/decks/server/decksFeature.js';
 import {
   DIRECTORIO_ROOM,
   DIRECTORIO_SKILL_FILE,
@@ -26,6 +27,7 @@ import { createHerdrFeature } from '../../features/herdr/server/herdrFeature.js'
 import { JARDIN_FLOOR_LAYOUT_FILE } from '../../features/jardin/server/constants.js';
 import { createJardinFeature } from '../../features/jardin/server/jardinFeature.js';
 import { createMusicFeature } from '../../features/musica/server/musicFeature.js';
+import { createOfertasFeature } from '../../features/ofertas/server/ofertasFeature.js';
 import { createPerfilFeature } from '../../features/perfil/server/perfilFeature.js';
 import { createPomodoroFeature } from '../../features/pomodoro/server/pomodoroFeature.js';
 import { runUsageCommand } from '../../features/usage/server/usageCommand.js';
@@ -285,6 +287,7 @@ async function main(): Promise<void> {
           type: 'characterSpritesLoaded',
           characters: characters.characters,
           ...(characters.names ? { names: characters.names } : {}),
+          ...(characters.owner ? { owner: characters.owner } : {}),
         });
       }
       if (pets) {
@@ -351,6 +354,11 @@ async function main(): Promise<void> {
       // Optional feature: the pomodoro corner of the roof, timed by the server so it rings with the page closed
       // (features/pomodoro).
       createPomodoroFeature(),
+      // Optional feature: price searches and saved price watches with desktop alerts (features/ofertas).
+      createOfertasFeature(),
+      // Optional feature: Yu-Gi-Oh! deck boxes, one file per deck, card data from YGOPRODeck kept locally
+      // (features/decks).
+      createDecksFeature({ officeToken: () => currentConfig?.token ?? null }),
       // Optional feature: the owner's personality screen in the freelance room, from a private file (features/perfil).
       createPerfilFeature(),
     ];

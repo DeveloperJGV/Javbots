@@ -25,12 +25,15 @@ cambiamos el idioma, el arte, los cuartos y le agregamos cosas nuevas. La docume
 
 ## Novedades
 
-- **11 de noviembre de 2026**: el panel del jardín sirve para muchas plantas (fichas que se abren y se cierran,
-  galería de fotos, buscador y filtro por lugar), "Hoy en el jardín" avisa cuando no hay cuidados programados y el
-  inventario sale por categoría. Un cuidado nuevo ya no nace atrasado (tú dices cuándo toca la primera vez) y las
-  fotos que se quitan no se borran: se guardan en "Ya no están".
-- **10 de noviembre de 2026**: la oficina distingue a un agente que te espera, uno atorado y uno que falló, cada
-  uno con su globo y su aviso, y Esc ya detiene al personaje.
+- **13 de noviembre de 2026**: la playlist también se pide **con tus palabras** ("rock en español de los 90 para
+  manejar de noche") y la oficina la busca y la arma; **Mis listas** junta las que ya hizo para tocarlas, modificarlas,
+  mejorarlas o borrarlas; el dueño de la oficina **hace gestos** (saluda, festeja, baila); una repisa guarda tus **decks de
+  Yu-Gi-Oh!** como cajas que se abren para ver su lista; Ofertas ya dice si algo es **buen precio** y por qué; y cada
+  mueble que abre algo lo dice **al pasar el mouse**.
+- **12 de noviembre de 2026**: la Agenda arma tu **plan del día** (tus tareas en tus huecos libres, en ratos de 30
+  minutos, con resumen de la mañana), la oficina busca y vigila precios (**Ofertas**: varias tiendas a la vez, historial y
+  aviso cuando llega a tu precio), arma la **playlist del día** con botones desde la prensa de vinilos, y el **dueño
+  de la oficina** puede tener su propio personaje, que cambia de piso contigo.
 
 Todo lo nuevo, por fecha, en [NOVEDADES.md](NOVEDADES.md).
 

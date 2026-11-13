@@ -124,9 +124,10 @@ describe('agenda text', () => {
 });
 
 describe('agenda furniture', () => {
-  it('knows its pieces', () => {
+  it('only the console opens the panel', () => {
     expect(isAgendaFurniture('AGENDA_CONSOLE')).toBe(true);
-    expect(isAgendaFurniture('AGENDA_WEEK_MAP:left')).toBe(true);
+    for (const t of ['AGENDA_WEEK_MAP:left', 'AGENDA_RADAR', 'AGENDA_TASKS'])
+      expect(isAgendaFurniture(t)).toBe(false);
     expect(isAgendaFurniture('CONNECTIONS_RACK')).toBe(false);
     expect(isAgendaFurniture(undefined)).toBe(false);
   });

@@ -3,6 +3,57 @@
 Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
 (Pixel Agents) está en [CHANGELOG.md](CHANGELOG.md).
 
+## 13 de noviembre de 2026
+
+- **Playlist por descripción.** En la prensa de vinilos ahora lo primero es "Dime qué quieres": escribes algo como
+  "rock en español de los 90 para manejar de noche", escoges cuánto dura y la oficina busca en Spotify y la arma (por
+  reglas: entiende géneros, décadas, artistas, duración, "solo lo mío" y "para descubrir"), y te dice de dónde salió.
+- **Mis listas.** Todas las playlists que hizo la oficina en un solo lugar: tócalas, cámbiales el nombre, quita o
+  busca y agrega canciones, o mejóralas ("más canciones", "cambia las del bote", "otra tirada", "más para descubrir"
+  o lo que escribas), siempre viendo antes qué cambia. Se borran en dos pasos.
+- **Ofertas: ¿es oferta de verdad?** Cada producto dice **Buen precio**, **Precio normal**, **Caro** o **Todavía no
+  sé**, con el porqué ("el más bajo en 34 días", "18 % abajo del precio típico entre tiendas"), resalta **la mejor**
+  opción (la más barata que vende la tienda misma), muestra el mínimo y el máximo que ha visto la oficina, los meses
+  sin intereses cuando la tienda los dice, y ligas a Keepa y al comparador de Profeco. Puedes anotar "Lo he visto en
+  $…" para que cuente en el veredicto. Al vaciar el cuadro de búsqueda se borra la búsqueda anterior.
+- **Ofertas: asistente opcional.** Si tienes Claude Code, cada producto trae "Investigar precio (asistente)" y "Buscar
+  similares (asistente)": busca a mano en la web (cerca de un minuto), te da el precio típico con sus ligas, que
+  cuenta en el veredicto marcado "(asistente)", o productos parecidos con "Buscar en tiendas" y "Vigilar". Usa tu
+  suscripción, nunca una llave de pago, y se apaga en Ajustes.
+- **Un clic, un mueble.** Agenda, Directorio, Pomodoro, Jardín y GitHub se abren solo desde su mueble principal; lo
+  demás queda de adorno (se sigue moviendo igual). El mostrador del Directorio ya enseña la manita.
+- **Letrero al pasar el mouse.** Todo mueble que abre algo dice qué abre en un cuadrito junto al cursor.
+- **Decks de Yu-Gi-Oh!** Una repisa en Becarios guarda tus decks como cajas en fila con perspectiva; la escogida sale
+  al frente con su portada y el fondo toma su color. Ábrela para ver la lista por grupos y cada carta en grande; arma,
+  edita, importa y exporta (`.ydk` y `ydke://`), o deja que «Escoge uno» decida.
+- **El dueño hace gestos.** Si su `manifest.json` trae `emotes`, saluda al llegar y cuando le das clic, festeja
+  cuando un agente termina, baila en la fiesta y de vez en cuando hace algo por su cuenta. Además ya no se queda
+  parado detrás de la placa del elevador. Formato en `docs/agregar-pixeles.md`.
+
+## 12 de noviembre de 2026
+
+- **Agenda: plan del día.** La oficina acomoda tus tareas pendientes en tus huecos libres, en ratos de 30 minutos:
+  "Plan de hoy" con hora, duración y porqué, tope diario para no abrumar, la semana repartida y lo que no cupo.
+  Botones Hecho, Hoy no y cuánto tarda; resumen de la mañana como aviso de escritorio. Las cosas chicas van juntas en
+  "Pendientes rápidos" y los cuidados del jardín en una "Ronda de plantas". Todo por reglas, sin escribir nada en tu
+  Google. Las horas se escriben en 24 h.
+- **Ofertas: buscador y vigía de precios.** Escribe un producto y la oficina lo busca al momento en Elektra, Costco,
+  Cyberpuerta, El Palacio de Hierro, Office Depot y Promodescuentos, con el mismo producto agrupado entre tiendas y
+  el más barato primero; las tiendas que no se pueden leer salen como liga a su búsqueda. Con **Vigilar** lo revisa
+  sola cada 45 minutos (más seguido en modo Buen Fin), guarda el historial y avisa cuando llega a tu precio, baja de
+  golpe o marca su mínimo. El quiosco de ofertas se prende cuando hay un aviso. Amazon y Walmart vienen apagadas
+  (sus sitios no permiten lectura automática) y se prenden en Ajustes. El mismo vigía puede correr como programa de
+  consola en una máquina siempre prendida.
+- **Playlist del día.** Un clic en la prensa de vinilos de la sala de música abre un panel para armar una lista con
+  botones: de dónde (lo que más escuchas, tus me gusta, tus listas, artistas), década, duración y si lleva algo para
+  descubrir; hay recetas de un clic que se pueden editar. Ves la vista previa, pides otra tirada o mandas canciones
+  al bote de "esta no", y la creas en tu Spotify. Después la guardas en la repisa o la borras; la oficina nunca borra
+  sola y solo toca las listas que ella hizo. Pide permisos nuevos: hay que volver a conectar Spotify.
+- **El dueño de la oficina.** Si una carpeta de pixeles trae `assets/avatar/` (hoja + `manifest.json`), ese personaje
+  anda por el piso que estás viendo: entra por el elevador, pasea y descansa, camina al mueble cuyo panel abres y
+  cambia de piso contigo. No es un agente. Se apaga en Ajustes → "Mi personaje en la oficina". Formato en
+  `docs/agregar-pixeles.md`.
+
 ## 11 de noviembre de 2026
 
 - **El panel del jardín, pensado para muchas plantas.** Las fichas se abren y se cierran: cerrada enseña la foto, el

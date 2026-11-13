@@ -56,6 +56,7 @@ import type { ParticleSystem } from '../effects/particles.js';
 import { renderShadows } from '../effects/shadowRender.js';
 import { getColorizedFloorSprite, hasFloorSprites, WALL_COLOR } from '../floorTiles.js';
 import { leisurePose } from '../leisure/leisure.js';
+import { ownerEmoteFrame } from '../owner/ownerEmotes.js';
 import type { DiscoLight, PartyBounds } from '../party/party.js';
 import { hopOffsetPx } from '../party/party.js';
 import { renderDisco } from '../party/partyRender.js';
@@ -91,6 +92,7 @@ import { getWallInstances, hasWallSprites, wallColorToHex } from '../wallTiles.j
 import { getCharacterSprite } from './characters.js';
 import { renderInternEffect } from './internEffect.js';
 import { renderMatrixEffect } from './matrixEffect.js';
+import { fadesInAndOut } from './matrixEffectState.js';
 import { getPetSpriteData } from './petEntity.js';
 import { bubbleSittingDropPx, sittingDropPx } from './posture.js';
 
@@ -414,10 +416,11 @@ export function renderScene(
   for (const ch of characters) {
     // Asleep: the piece it lies in is drawn with it tucked in (officeState swaps it), so it is not drawn
     if (leisurePose(ch) === 'sleep') continue;
-    // Interns carry their own sheet; agents carry a palette slot the office may draw with its own boss
-    const sheet = ch.isSubagent ? ch.palette : bossSheet(ch.palette);
+    // Interns and the owner carry their own sheet; agents carry a palette slot the office may draw with its own boss
+    const sheet = ch.isSubagent || ch.isOwner ? ch.palette : bossSheet(ch.palette);
     const sprites = getCharacterSprites(sheet, ch.hueShift);
-    const spriteData = getCharacterSprite(ch, sprites);
+    // The owner playing an emote draws its frame instead (bottom-center anchored like any frame)
+    const spriteData = (ch.isOwner ? ownerEmoteFrame(ch) : null) ?? getCharacterSprite(ch, sprites);
     // Sub-agents (interns) draw smaller, at the next whole zoom level down so
     // they stay pixel-perfect. Positions still use the office zoom.
     const charZoom = ch.isSubagent ? Math.max(1, Math.round(zoom * SUBAGENT_SCALE)) : zoom;
@@ -450,7 +453,7 @@ export function renderScene(
         draw: (c) => {
           c.save();
           c.globalAlpha = alpha;
-          if (mCh.isSubagent) {
+          if (fadesInAndOut(mCh)) {
             renderInternEffect(c, mCh, mSpriteData, mDrawX, mDrawY, charZoom);
           } else {
             renderMatrixEffect(c, mCh, mSpriteData, mDrawX, mDrawY, charZoom);

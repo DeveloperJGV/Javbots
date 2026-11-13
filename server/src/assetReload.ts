@@ -13,6 +13,7 @@ import {
   mergeLoadedAssets,
   mergePetSprites,
 } from './assetLoader.js';
+import { loadAvatar } from './avatarLoader.js';
 import type { AssetCache } from './clientMessageHandler.js';
 import { setPaletteCount } from './paletteAssigner.js';
 
@@ -58,7 +59,28 @@ export async function loadAllCharacters(
   // point -- standalone startup, standalone reload, VS Code startup,
   // VS Code reload -- sees the same count without four scattered calls.
   if (chars) setPaletteCount(chars.characters.length);
-  return chars;
+  return chars ? withOwner(chars, [assetsRoot, ...externalDirs]) : chars;
+}
+
+/**
+ * Append the office owner sheet (docs/agregar-pixeles.md) after every other sheet, so no
+ * numbered or named index moves. The last dir that has one wins (an external dir over the
+ * bundled one). Runs after all merges, so mergeCharacterSprites never sees `owner`.
+ */
+function withOwner(chars: LoadedCharacterSprites, dirs: string[]): LoadedCharacterSprites {
+  let avatar = null;
+  for (const dir of dirs) avatar = loadAvatar(dir) ?? avatar;
+  if (!avatar) return chars;
+  const sheet = chars.characters.length;
+  return {
+    ...chars,
+    characters: [...chars.characters, avatar.sheet],
+    owner: {
+      sheet,
+      ...(avatar.name ? { name: avatar.name } : {}),
+      ...(avatar.emotes ? { emotes: avatar.emotes } : {}),
+    },
+  };
 }
 
 export async function loadAllPets(

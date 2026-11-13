@@ -1,0 +1,13 @@
+{
+  "id": "DECKS_SHELF",
+  "name": "Repisa de decks",
+  "category": "storage",
+  "canPlaceOnWalls": false,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 1,
+  "type": "asset",
+  "width": 32,
+  "height": 32,
+  "footprintW": 2,
+  "footprintH": 2
+}

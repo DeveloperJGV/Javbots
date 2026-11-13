@@ -54,9 +54,11 @@ describe('pomodoro (page)', () => {
     );
   });
 
-  it('the tomato timers and hourglasses open the panel', () => {
+  it('only the tomato timer (wall or table) opens the panel', () => {
     expect(isPomodoroFurniture('POMODORO_TIMER_WALL')).toBe(true);
-    expect(isPomodoroFurniture('POMODORO_HOURGLASS_BIG:left')).toBe(true);
+    expect(isPomodoroFurniture('POMODORO_TIMER')).toBe(true);
+    expect(isPomodoroFurniture('POMODORO_HOURGLASS')).toBe(false);
+    expect(isPomodoroFurniture('POMODORO_HOURGLASS_BIG:left')).toBe(false);
     expect(isPomodoroFurniture('POMODORO_YOGA_MAT')).toBe(false);
   });
 

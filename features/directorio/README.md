@@ -1,7 +1,8 @@
 # Directorio (feature opcional)
 
 Un cuarto del piso Personal con estilo de **vestíbulo de edificio**: directorio de fieltro negro con letras blancas,
-mostrador con campanita, tablero de llaves y teléfono de disco. Un clic en cualquiera abre el panel **Directorio**:
+mostrador con campanita, tablero de llaves y teléfono de disco. Un clic en el **mostrador** abre el panel
+**Directorio** (lo demás es de adorno):
 
 1. **Pedido.** Escribes qué necesitas, dónde y para cuándo ("reparar refrigerador que no enfría, mi ciudad, esta
    semana") y escoges un juego de criterios. Guardarlo no lanza nada todavía.

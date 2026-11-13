@@ -99,6 +99,32 @@ function remember(key: string, value: string): void {
   }
 }
 
+/** Runs before the page leaves for another floor or office; it calls `go` when the page may leave. */
+type BeforeLeave = (go: () => void) => void;
+let beforeLeave: BeforeLeave | null = null;
+let leaving = false;
+
+/** Lets something finish before the page changes floor or office (office/owner walks out first). */
+export function setBeforeLeave(handler: BeforeLeave | null): void {
+  beforeLeave = handler;
+}
+
+/** Leaves through the handler, once: a second click while leaving does nothing. */
+function leaveTo(url: URL): void {
+  if (leaving) return;
+  leaving = true;
+  const go = () => window.location.assign(url.toString());
+  if (!beforeLeave) {
+    go();
+    return;
+  }
+  try {
+    beforeLeave(go);
+  } catch {
+    go();
+  }
+}
+
 /** Goes to another office, on the floor this browser last saw there (the ground floor the first time). */
 export function switchOffice(office: string): void {
   if (office === officesStore.get().current) return;
@@ -106,7 +132,7 @@ export function switchOffice(office: string): void {
   const url = new URL(window.location.href);
   url.searchParams.set(OFFICE_URL_PARAM, office);
   url.searchParams.delete(FLOOR_URL_PARAM);
-  window.location.assign(url.toString());
+  leaveTo(url);
 }
 
 /** Goes to another floor of this page's office. */
@@ -118,5 +144,5 @@ export function switchFloor(floor: string): void {
   url.searchParams.set(OFFICE_URL_PARAM, current);
   if (floor === GROUND_FLOOR) url.searchParams.delete(FLOOR_URL_PARAM);
   else url.searchParams.set(FLOOR_URL_PARAM, floor);
-  window.location.assign(url.toString());
+  leaveTo(url);
 }

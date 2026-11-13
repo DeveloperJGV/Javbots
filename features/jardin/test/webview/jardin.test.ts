@@ -135,8 +135,10 @@ describe('jardin text', () => {
 
 describe('jardin furniture', () => {
   it("the control pieces open the panel, and so does a plant's own furniture", () => {
-    for (const t of ['JARDIN_CONTROL', 'JARDIN_SHED', 'JARDIN_TOOL_RACK', 'JARDIN_PLAQUE:off'])
+    for (const t of ['JARDIN_CONTROL', 'JARDIN_SHED'])
       expect(isJardinFurniture(t, garden)).toBe(true);
+    for (const t of ['JARDIN_TOOL_RACK', 'JARDIN_PLAQUE:off'])
+      expect(isJardinFurniture(t, garden)).toBe(false);
     expect(isJardinFurniture('JARDIN_FERN', garden)).toBe(false);
     expect(isJardinFurniture('JARDIN_MONSTERA', garden)).toBe(true);
     expect(plantOfFurniture('JARDIN_MONSTERA', garden)).toBe('monstera');

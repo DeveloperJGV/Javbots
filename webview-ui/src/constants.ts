@@ -944,3 +944,44 @@ export const STAFF_BOX_SIDE_PX = 6;
 export const STAFF_HANDOFF_SEC = 0.8;
 /** How far to look for a free tile next to a piece. */
 export const STAFF_NEAREST_TILE_RADIUS = 4;
+
+// ── Office owner (office/owner): the person the office belongs to, a character that is not an agent ──
+/** Reserved character id for the owner, next to the greeter's and just as far from agent and sub-agent ids. */
+export const OWNER_ID = -1_000_000_001;
+/** Hover label when neither a profile nor the avatar's manifest gives a name. */
+export const OWNER_DEFAULT_LABEL = 'Tú';
+/** The hover label: text size and how far above the head it sits (like an agent's one-line label). */
+export const OWNER_LABEL_FONT_PX = 22;
+export const OWNER_LABEL_RAISE_PX = 28;
+/** Pieces the owner comes in and out through (type prefixes); without one, the walkable tile closest to the
+ *  layout's top-left corner, under the elevator plate. */
+export const OWNER_EXIT_TYPE_PREFIXES: readonly string[] = ['ELEVATOR'];
+/** How far (tiles, Manhattan) the owner walks in from the elevator when arriving on a floor. */
+export const OWNER_ENTER_MIN_TILES = 5;
+/** Longest wait to come in for the page to say where the elevator plate is (office/owner/ownerCover.ts). */
+export const OWNER_COVER_WAIT_SEC = 1;
+export const OWNER_ENTER_MAX_TILES = 10;
+/** Fade in and out next to the elevator. */
+export const OWNER_FADE_SEC = 0.25;
+/** A panel that opens this soon after a click on the office was opened by that click: the owner walks there. */
+export const OWNER_PANEL_CLICK_WINDOW_SEC = 0.6;
+/** Standing in front of the clicked piece (below it) is preferred by this many sprite px over a closer tile. */
+export const OWNER_FRONT_BIAS_PX = 12;
+/** How many candidate tiles around the clicked piece are tried for a path. */
+export const OWNER_VISIT_CANDIDATES = 8;
+/** A piece hung on the wall: he stands at least this many rows below its bottom row (right under it, his head
+ *  would cover it), facing up at it. */
+export const OWNER_WALL_GAP_ROWS = 2;
+/** Leaving for another floor: walks this many times faster toward the elevator, for at most this long, then fades
+ *  and the page changes floor. 0 changes floor at once. */
+export const OWNER_HURRY_MULT = 2.5;
+export const OWNER_LEAVE_MAX_SEC = 0.7;
+/** The floor changes anyway after this long (a hidden tab runs no frames). */
+export const OWNER_LEAVE_FAILSAFE_MS = 1500;
+/** Owner emotes (office/owner/ownerEmotes.ts): after a "cheer", the next one waits at least this long. */
+export const OWNER_CHEER_COOLDOWN_SEC = 20;
+/** Standing still (no panel open) this long, he may play an idle emote, with this chance each time. */
+export const OWNER_IDLE_EMOTE_SEC = 8;
+export const OWNER_IDLE_EMOTE_CHANCE = 0.5;
+/** The elevator plate (components/Elevator.tsx): the owner never comes in behind it. */
+export const ELEVATOR_PLATE_SELECTOR = '[data-elevator-plate]';

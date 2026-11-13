@@ -66,8 +66,126 @@ export const SCREEN_MAX_BODY_BYTES = 1024;
 /** Spotify's Web API as a second source (works with Spotify closed here). Login with PKCE: no client secret. */
 export const SPOTIFY_ACCOUNTS_URL = 'https://accounts.spotify.com';
 export const SPOTIFY_API_URL = 'https://api.spotify.com/v1';
-export const SPOTIFY_SCOPES =
-  'user-read-currently-playing user-read-playback-state user-modify-playback-state user-top-read';
+/** Permissions the "Playlist del día" needs (a session without them has to connect again). */
+export const SPOTIFY_PLAYLIST_SCOPES = [
+  'playlist-read-private',
+  'playlist-modify-private',
+  'playlist-modify-public',
+  'user-library-read',
+  'user-library-modify',
+];
+export const SPOTIFY_SCOPES = [
+  'user-read-currently-playing',
+  'user-read-playback-state',
+  'user-modify-playback-state',
+  'user-top-read',
+  ...SPOTIFY_PLAYLIST_SCOPES,
+].join(' ');
+/**
+ * Spotify's base URLs can point at a local double (isolated test office) through these variables. Only
+ * http://127.0.0.1:<port> or http://localhost:<port> are accepted: a token never travels anywhere else.
+ */
+export const SPOTIFY_API_URL_ENV = 'JAVBOTS_SPOTIFY_API_URL';
+export const SPOTIFY_ACCOUNTS_URL_ENV = 'JAVBOTS_SPOTIFY_ACCOUNTS_URL';
+const LOCAL_OVERRIDE = /^http:\/\/(?:127\.0\.0\.1|localhost):\d{1,5}(?:\/[\w./-]*)?$/;
+/** The override in `env[name]` when it is a local URL (without trailing slash), else `fallback`. */
+export function spotifyBaseUrl(
+  name: string,
+  fallback: string,
+  env: Record<string, string | undefined> = process.env,
+): string {
+  const value = env[name]?.trim();
+  return value && LOCAL_OVERRIDE.test(value) ? value.replace(/\/+$/, '') : fallback;
+}
+/** A 429 asking to wait longer than this fails at once (the album routes ask for hours). */
+export const SPOTIFY_RETRY_MAX_WAIT_SEC = 5;
+/** Retries after a short 429 or a 5xx. */
+export const SPOTIFY_MAX_RETRIES = 2;
+
+/** "Playlist del día": state file beside music.json. */
+export const PLAYLIST_FILE = 'playlists.json';
+/** The total lands within this much of the chosen length when there is enough music. */
+export const PLAYLIST_DURATION_SLACK_MS = 3 * 60_000;
+/** Share of the time for songs to discover when the recipe asks for them. */
+export const PLAYLIST_DISCOVER_SHARE = 0.3;
+/** Lengths offered by the panel, in minutes. */
+export const PLAYLIST_MINUTES = [30, 60, 120];
+export const PLAYLIST_RECIPE_NAME_MAX = 40;
+export const PLAYLIST_RECIPE_MAX_LISTS = 20;
+export const PLAYLIST_RECIPE_MAX_ARTISTS = 5;
+export const PLAYLIST_RECIPES_MAX = 30;
+/** Oldest decade offered; it also takes everything before it ("70s y antes"). */
+export const PLAYLIST_OLDEST_DECADE = 1970;
+export const PLAYLIST_NEWEST_DECADE = 2020;
+/** Songs in the "don't play again" bin. */
+export const PLAYLIST_REJECTED_MAX = 500;
+/** Lists of the last days count as "recent" (and removed ones are kept this long only for that). */
+export const PLAYLIST_RECENT_DAYS = 7;
+/** Owner's lists and top artists are re-read after this. */
+export const PLAYLIST_SOURCES_TTL_MS = 10 * 60_000;
+/** Songs gathered per source (top, liked, a list…) are reused this long (rerolls don't call Spotify). */
+export const PLAYLIST_POOL_TTL_MS = 15 * 60_000;
+/** An artist's albums are reused this long (those routes run out of quota fast). */
+export const PLAYLIST_ALBUMS_TTL_MS = 24 * 60 * 60_000;
+/** Pages (of 100 / 50) read from one list, or from "Me gusta". */
+export const PLAYLIST_SOURCE_MAX_PAGES = 5;
+export const PLAYLIST_LIKED_MAX_PAGES = 10;
+export const PLAYLIST_MY_LISTS_MAX_PAGES = 10;
+/** "Sorpréndeme" takes this many of the owner's lists at random. */
+export const PLAYLIST_SURPRISE_LISTS = 3;
+/** Artists looked into for songs to discover, and albums per artist. */
+export const PLAYLIST_DISCOVER_ARTISTS = 3;
+export const PLAYLIST_DISCOVER_ALBUMS = 2;
+/** Per chosen artist: the newest albums plus one at random. */
+export const PLAYLIST_ARTIST_NEWEST_ALBUMS = 2;
+export const PLAYLIST_ARTIST_RANDOM_ALBUMS = 1;
+/** Spotify's page sizes and batch limit (playlist items: 50 at most since the 2026 API changes). */
+export const SPOTIFY_PAGE_ITEMS = 50;
+export const SPOTIFY_PAGE_SMALL = 50;
+export const SPOTIFY_ARTIST_ALBUMS_LIMIT = 10;
+export const SPOTIFY_ADD_BATCH = 100;
+export const PLAYLIST_DESCRIPTION = 'Hecha por la oficina';
+
+// ── "Dime qué quieres": a playlist from a typed description (rules, no AI) ──
+/** Longest description kept (characters). */
+export const PLAYLIST_REQUEST_MAX = 200;
+/** Spotify's limit for a playlist description. */
+export const SPOTIFY_DESCRIPTION_MAX = 300;
+/** Words of the description that go into the playlist's name, and its longest length. */
+export const PLAYLIST_REQUEST_NAME_WORDS = 7;
+export const PLAYLIST_REQUEST_NAME_MAX = 30;
+/** /search answers at most this many per page (2026), and this many pages per track query. */
+export const SPOTIFY_SEARCH_LIMIT = 10;
+export const PLAYLIST_SEARCH_TRACK_PAGES = 3;
+/** Public playlists found by name whose songs it tries to read (Spotify lets read only one's own). */
+export const PLAYLIST_SEARCH_PUBLIC_LISTS = 4;
+/** The owner's own lists whose name matches the description, read at most. */
+export const PLAYLIST_SEARCH_OWN_LISTS = 3;
+/** Artists named in the description whose albums are read. */
+export const PLAYLIST_SEARCH_ARTISTS = 2;
+/** Spotify calls one description may spend (cached reads don't count). */
+export const PLAYLIST_SEARCH_MAX_CALLS = 18;
+/** Points a song earns per place it was found; the owner's own songs climb. */
+export const PLAYLIST_SCORE = {
+  publicList: 1.25,
+  ownList: 1.5,
+  trackSearch: 1.5,
+  namedArtist: 2,
+  mine: 1,
+} as const;
+/** Random spread added to the score each roll (rerolls change, the best still lead). */
+export const PLAYLIST_SCORE_JITTER = 2.5;
+/** "Más canciones" adds this much. */
+export const PLAYLIST_IMPROVE_MORE_MS = 30 * 60_000;
+/** "Más para descubrir" swaps this share of the songs. */
+export const PLAYLIST_IMPROVE_DISCOVER_SHARE = 0.3;
+/** /me/library/contains takes this many uris per call; lists are checked at most this often. */
+export const SPOTIFY_CONTAINS_MAX = 40;
+export const PLAYLIST_CHECK_TTL_MS = 10 * 60_000;
+/** Song search while modifying a list: results shown. */
+export const PLAYLIST_FOUND_MAX = 10;
+/** Longest name for a list (renaming). */
+export const PLAYLIST_LIST_NAME_MAX = 100;
 /** GET with the music token: sends the browser to Spotify's login. */
 export const SPOTIFY_LOGIN_PATH = '/api/music/spotify/login';
 /** Where Spotify sends the browser back (register `http://127.0.0.1:<port>` + this in the app's dashboard). */

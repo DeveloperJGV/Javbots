@@ -1,10 +1,6 @@
-/** The pieces that open the pomodoro panel: the tomato timers and the hourglasses. */
-export const POMODORO_PANEL_TYPES: readonly string[] = [
-  'POMODORO_TIMER_WALL',
-  'POMODORO_TIMER',
-  'POMODORO_HOURGLASS',
-  'POMODORO_HOURGLASS_BIG',
-];
+/** The pieces that open the pomodoro panel: the tomato timer, on the wall or on a table (the hourglasses are
+ *  decoration). */
+export const POMODORO_PANEL_TYPES: readonly string[] = ['POMODORO_TIMER_WALL', 'POMODORO_TIMER'];
 
 /** The wall clock that shows the countdown (an ambient digital clock otherwise). */
 export const POMODORO_CLOCK_TYPE = 'POMODORO_TIMER_WALL';

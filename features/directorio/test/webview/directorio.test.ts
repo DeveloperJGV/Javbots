@@ -66,8 +66,9 @@ describe('Directorio en la página', () => {
     expect(store.get().status).toBeUndefined();
     store.setStatus(status('directorio'));
     expect(store.get().status?.room).toBe('directorio');
-    expect(isDirectorioFurniture('DIRECTORIO_BOARD')).toBe(true);
-    expect(isDirectorioFurniture('DIRECTORIO_PHONE:on')).toBe(true);
+    expect(isDirectorioFurniture('DIRECTORIO_DESK')).toBe(true);
+    for (const t of ['DIRECTORIO_BOARD', 'DIRECTORIO_KEYS', 'DIRECTORIO_PHONE:on'])
+      expect(isDirectorioFurniture(t)).toBe(false);
     expect(isDirectorioFurniture('AGENDA_CONSOLE')).toBe(false);
   });
 });

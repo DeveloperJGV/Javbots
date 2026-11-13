@@ -279,6 +279,7 @@ describe('configPersistence: areas', () => {
     it('defaults to shadows + particles on and auto lighting', () => {
       const cfg = readConfig();
       expect(cfg.standalone.shadowsEnabled).toBe(true);
+      expect(cfg.standalone.ownerEnabled).toBe(true);
       expect(cfg.standalone.particlesEnabled).toBe(true);
       expect(cfg.standalone.dayNightMode).toBe('auto');
     });
@@ -289,12 +290,18 @@ describe('configPersistence: areas', () => {
       fs.writeFileSync(
         path.join(configDir, 'config.json'),
         JSON.stringify({
-          standalone: { shadowsEnabled: 'no', particlesEnabled: false, dayNightMode: 'dusk' },
+          standalone: {
+            shadowsEnabled: 'no',
+            ownerEnabled: 0,
+            particlesEnabled: false,
+            dayNightMode: 'dusk',
+          },
         }),
         'utf-8',
       );
       const cfg = readConfig();
       expect(cfg.standalone.shadowsEnabled).toBe(true);
+      expect(cfg.standalone.ownerEnabled).toBe(true);
       expect(cfg.standalone.particlesEnabled).toBe(false);
       expect(cfg.standalone.dayNightMode).toBe('auto');
     });
