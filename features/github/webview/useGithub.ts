@@ -9,6 +9,7 @@ export function useGithub(transport: MessageTransport): GithubState {
     () =>
       transport.onMessage((msg) => {
         if (msg.type === 'githubStatus') githubStore.setStatus(msg);
+        if (msg.type === 'githubNotice') githubStore.setNotice(msg);
       }),
     [transport],
   );

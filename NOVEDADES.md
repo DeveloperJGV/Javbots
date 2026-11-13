@@ -113,6 +113,14 @@ Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
 - **El dueño hace gestos.** Si su `manifest.json` trae `emotes`, saluda al llegar y cuando le das clic, festeja
   cuando un agente termina, baila en la fiesta y de vez en cuando hace algo por su cuenta. Además ya no se queda
   parado detrás de la placa del elevador. Formato en `docs/agregar-pixeles.md`.
+- **La sala de GitHub ya no falla en silencio.** Cada oficina puede usar su propia cuenta de `gh` (las demás, la de
+  `~/.pixel-agents/sala-github.json` o la normal de `gh`). Al arrancar revisa una vez que cada cuenta tenga sesión; si
+  no, sale un solo aviso en la oficina con el comando exacto para arreglarlo, y se quita solo cuando la sesión vuelve,
+  sin reiniciar.
+- **La oficina funciona igual abierta desde el Dock.** Ya no depende del PATH de la terminal: encuentra `gh`, `node`
+  y los demás programas aunque se abra desde el Dock o después de reiniciar la Mac.
+- **Un agente que ya terminó se va de su silla.** Si una sesión se cierra sin avisar (por ejemplo una corrida con
+  `claude -p`), su personaje se va en unos segundos, nunca sale como "atorado" y no regresa al reiniciar la oficina.
 
 ## 12 de noviembre de 2026
 

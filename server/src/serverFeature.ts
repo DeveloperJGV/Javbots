@@ -8,6 +8,8 @@ export interface FeatureClient {
   send(message: Record<string, unknown>): void;
   /** Same privilege the core handler uses (out-of-band token proved on the handshake). */
   readonly privileged: boolean;
+  /** The office this page shows (core/src/offices.ts), as the page last said it; undefined outside the browser server. */
+  readonly office?: string;
 }
 
 /**

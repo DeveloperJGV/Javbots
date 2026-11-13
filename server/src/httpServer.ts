@@ -248,7 +248,13 @@ function registerWebSocketRoute(app: FastifyInstance, options: HttpServerOptions
     };
 
     const features = options.features ?? [];
-    const client: FeatureClient = { send: (m) => safeSend(socket, m), privileged };
+    const client: FeatureClient = {
+      send: (m) => safeSend(socket, m),
+      privileged,
+      get office() {
+        return session.office;
+      },
+    };
     const disconnectFeatures = features.map((f) => f.connect?.(client));
 
     // Handle incoming client messages

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { ConnectionInfo } from '../../../../core/src/messages.js';
 import type { ServerFeature } from '../../../../server/src/serverFeature.js';
@@ -75,11 +75,18 @@ describe('createConnectionsFeature', () => {
     const github = createGithubFeature({
       now: () => new Date(clock),
       tickMs: 3_600_000,
-      query: async () => answer,
+      defaultConfigDir: () => undefined,
+      check: async () => ({ ok: true, data: 'alguien' }),
+      query: async () =>
+        answer
+          ? { ok: true, data: answer }
+          : { ok: false, problem: 'error', detail: 'gh no contestó' },
     });
-    await github.poll(); // the read at start (nobody listening)
-    expect(github.connections()[0]).toMatchObject({ id: 'github', state: 'off' });
-    github.connect?.({ privileged: true, send: () => {} });
+    expect(github.connections()).toEqual([]); // nothing asked yet
+    await github.poll(); // the login check at start (nobody listening)
+    expect(github.connections()[0]).toMatchObject({ id: 'github', state: 'ok' });
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    github.connect?.({ privileged: true, office: 'principal', send: () => {} });
     answer = { data: { viewer: { login: 'alguien', repositories: { nodes: [] } } } };
     await github.poll();
     expect(github.connections()[0]).toMatchObject({

@@ -118,3 +118,17 @@ describe('github room', () => {
     expect(out[2].sprite[20][2]).toBe(WOOD_MID); // no repo left: plain wood
   });
 });
+
+describe('github notice', () => {
+  it('shows the notice, hides it when closed, and brings it back only when it changes or clears', async () => {
+    const { githubStore } = await import('../../webview/githubStore.js');
+    githubStore.setNotice({ type: 'githubNotice', text: 'sin sesión', command: 'gh auth login' });
+    expect(githubStore.get().notice).toEqual({ text: 'sin sesión', command: 'gh auth login' });
+    githubStore.dismissNotice();
+    expect(githubStore.get().dismissed).toBe('sin sesión');
+    githubStore.setNotice({ type: 'githubNotice', text: 'otra cosa' });
+    expect(githubStore.get().notice?.text).not.toBe(githubStore.get().dismissed);
+    githubStore.setNotice({ type: 'githubNotice' });
+    expect(githubStore.get().notice).toBeUndefined();
+  });
+});

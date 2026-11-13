@@ -136,6 +136,7 @@ components:
         - $ref: '#/components/schemas/HerdrTabLabels'
         # GitHub room (feature: features/github)
         - $ref: '#/components/schemas/GithubStatus'
+        - $ref: '#/components/schemas/GithubNotice'
         # Upcoming concerts (feature: features/conciertos)
         - $ref: '#/components/schemas/ConcertsStatus'
         # Personal agenda (feature: features/agenda)
@@ -1457,6 +1458,24 @@ components:
             items:
               type: number
         updatedAt:
+          type: string
+
+    GithubNotice:
+      description: >-
+        The GitHub room's notice for this page's office: why its gh login gives
+        no data (gh missing, no working login) and the exact command that fixes
+        it. Sent when it starts, when it changes and on webviewReady; without
+        `text` the notice is gone (the login works again). Privileged
+        connections only.
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: githubNotice
+        text:
+          type: string
+        command:
           type: string
 
     GithubRepo:

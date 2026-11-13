@@ -27,6 +27,9 @@ export interface AgentState {
   /** When the transcript last grew (ms since epoch); unset until it does. Counts as an event for
    *  the `atorado` attention state (agentAttention.ts). */
   lastTranscriptAt?: number;
+  /** The transcript's last record says its process exited (TRANSCRIPT_END_RECORD_TYPE); cleared if it writes again.
+   *  Such an agent is never `atorado` and leaves its seat (agentRuntime.onTranscriptEnded). */
+  transcriptEnded?: boolean;
   /** Total JSONL lines processed for this agent */
   linesProcessed: number;
   /** Set of record.type values we've already warned about (prevents log spam) */

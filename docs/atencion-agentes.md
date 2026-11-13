@@ -25,6 +25,11 @@ El estado vive en el servidor (`AgentStateStore`), lo calcula `server/src/agentA
 
 `atorado` no mata ni toca nada: solo marca y avisa.
 
+Una sesión cuyo proceso ya salió (su transcript termina con el renglón `cost-state` que Claude Code escribe al cerrar)
+nunca queda `atorado`: pasa a `termino` y, unos segundos después, el personaje deja su silla aunque no haya llegado el
+hook SessionEnd (por ejemplo un `claude -p` cuyos hooks no pudieron correr). Al reiniciar la oficina tampoco se
+restauran ni se adoptan sesiones así; si la sesión se reanuda y vuelve a escribir, regresa.
+
 ## Motivos
 
 `motivo` dice por qué está en ese estado. Es un texto fijo (para comparar), no una frase para mostrar.

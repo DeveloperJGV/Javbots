@@ -221,6 +221,12 @@ export class AttentionTracker {
     const now = this.now();
     const stuckMs = this.stuckMs();
     for (const cur of this.store.attentionList()) {
+      // A session whose process exited is done, never stuck (it leaves its seat shortly after).
+      if (this.store.get(cur.agentId)?.transcriptEnded) {
+        if (cur.estado === 'trabajando' || cur.estado === 'atorado')
+          this.set(cur.agentId, 'termino', 'fin-de-turno');
+        continue;
+      }
       const last = this.lastActivity(cur.agentId);
       if (cur.estado === 'trabajando' && now - last >= stuckMs) {
         this.set(cur.agentId, 'atorado', 'sin-eventos', undefined, last);

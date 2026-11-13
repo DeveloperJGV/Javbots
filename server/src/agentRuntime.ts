@@ -14,7 +14,11 @@ import * as path from 'path';
 
 import type { HookProvider } from '../../core/src/provider.js';
 import type { AgentStateStore } from './agentStateStore.js';
-import { DEFAULT_MAX_CONTEXT_TOKENS, EXTERNAL_IDLE_REMOVE_MS } from './constants.js';
+import {
+  DEFAULT_MAX_CONTEXT_TOKENS,
+  EXTERNAL_IDLE_REMOVE_MS,
+  TRANSCRIPT_END_GRACE_MS,
+} from './constants.js';
 import { DismissalTracker } from './dismissalTracker.js';
 import {
   adoptExternalSessionFromHook,
@@ -47,6 +51,8 @@ import {
   setBackgroundAgentDetectedCallback,
   setHookProvider,
   setTeamSwitchCallback,
+  setTranscriptEndedCallback,
+  transcriptEndedOnDisk,
 } from './transcriptParser.js';
 import type { AgentState } from './types.js';
 
@@ -100,6 +106,8 @@ export class AgentRuntime {
       setTeamProvider(provider.team);
     }
     setAgentRemovalCallback((id) => this.removeAgent(id));
+    // A session whose process exited without a SessionEnd hook (a `claude -p` whose hooks could not run) leaves too.
+    setTranscriptEndedCallback((id) => this.onTranscriptEnded(id));
     setTeammateRemovalCallback((id) => this.removeTeammate(id, 'team-config'));
     // New-style teammates run their own sessions; registering routes their hook
     // events (PreToolUse, Stop, SessionEnd) directly to the teammate agent.
@@ -263,22 +271,42 @@ export class AgentRuntime {
       onTeammateRemoved: (teammateAgentId) => {
         this.removeTeammate(teammateAgentId, 'hooks');
       },
-      onSessionEnd: (agentId) => {
-        const agent = this.store.get(agentId);
-        if (!agent) return;
-        this.dismissalTracker.clearSeededMtime(agent.jsonlFile);
-        this.dismissalTracker.dismiss(agent.jsonlFile);
-        // Covers real team leads AND leads of background teammates (which
-        // have children but no teamName). No-op when childless.
-        this.removeTeammates(agentId);
-        // Unnamed background spawns die with their lead's session too.
-        this.subagentWatch.removeByLead(agentId);
-        if (agent.isExternal) {
-          this.unregisterAgent(agent.sessionId);
-          this.removeAgent(agentId);
-        }
-      },
+      onSessionEnd: (agentId) => this.endSession(agentId),
     });
+  }
+
+  /** The session is over (SessionEnd hook, or its transcript's exit record): its character leaves. */
+  private endSession(agentId: number): void {
+    const agent = this.store.get(agentId);
+    if (!agent) return;
+    this.dismissalTracker.clearSeededMtime(agent.jsonlFile);
+    this.dismissalTracker.dismiss(agent.jsonlFile);
+    // Covers real team leads AND leads of background teammates (which
+    // have children but no teamName). No-op when childless.
+    this.removeTeammates(agentId);
+    // Unnamed background spawns die with their lead's session too.
+    this.subagentWatch.removeByLead(agentId);
+    if (agent.isExternal) {
+      this.unregisterAgent(agent.sessionId);
+      this.removeAgent(agentId);
+    }
+  }
+
+  /**
+   * Its transcript's last record says the process exited. After a short wait (a /resume or /clear writes again, or
+   * marks it pendingClear), the character leaves like on SessionEnd. Teammates leave with their lead.
+   */
+  private onTranscriptEnded(agentId: number): void {
+    const timer = setTimeout(() => {
+      const agent = this.store.get(agentId);
+      if (!agent || !agent.transcriptEnded || agent.pendingClear) return;
+      if (!agent.isExternal || agent.leadAgentId !== undefined) return;
+      console.log(
+        `[Pixel Agents] Agent ${agentId} - its session ended (${path.basename(agent.jsonlFile)}): leaving`,
+      );
+      this.endSession(agentId);
+    }, TRANSCRIPT_END_GRACE_MS);
+    timer.unref?.();
   }
 
   /** Register adapter-specific lifecycle callbacks. */
@@ -483,6 +511,13 @@ export class AgentRuntime {
         // re-adopted if its session ever writes again.
         if (Date.now() - fs.statSync(p.jsonlFile).mtimeMs > EXTERNAL_IDLE_REMOVE_MS) continue;
       } catch {
+        continue;
+      }
+      // A session that ended (its process exited) while the office was off, or before a restart, stays down too.
+      if (transcriptEndedOnDisk(p.jsonlFile)) {
+        console.log(
+          `[Pixel Agents] Not restoring agent ${p.id}: its session ended (${path.basename(p.jsonlFile)})`,
+        );
         continue;
       }
       if (this.store.has(p.id)) {

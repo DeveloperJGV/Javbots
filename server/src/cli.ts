@@ -48,6 +48,7 @@ import {
   loadAllPets,
 } from './assetReload.js';
 import type { AssetCache, ReloadAssetsSideEffect } from './clientMessageHandler.js';
+import { completeProcessPath } from './cliPath.js';
 import {
   getHooksConsent,
   getHooksEnabled,
@@ -159,6 +160,10 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
+  // Opened from the Dock (or after a reboot) the office gets a minimal PATH: every child it starts (gh, herdr, claude
+  // and the hooks of the sessions it launches, which call `node`) gets the usual install folders (cliPath.ts).
+  completeProcessPath();
+
   // dist/ contains both the CLI bundle and the assets/ + webview/ directories
   const distRoot = __dirname;
   const packageRoot = path.dirname(distRoot);
@@ -199,6 +204,8 @@ async function main(): Promise<void> {
     // Optional feature: each character named after its herdr terminal tab (features/herdr).
     // herdr's agent_status is also the second signal of each agent's attention state (below).
     let attentionTracker: AttentionTracker | null = null;
+    // The GitHub room: one gh login per office (packs pick theirs below; the rest use sala-github.json or gh's own).
+    const github = createGithubFeature();
     const herdr = createHerdrFeature({
       agents: () => store.entries(),
       onAgentStatus: (id, status) => attentionTracker?.noteHerdrStatus(id, status),
@@ -349,7 +356,7 @@ async function main(): Promise<void> {
       }),
       createUsageFeature({ command: () => runUsageCommand() }),
       herdr,
-      createGithubFeature(),
+      github,
       // Optional feature: upcoming concerts from Google Calendar + Ticketmaster (features/conciertos).
       createConcertsFeature({
         google,
@@ -395,6 +402,7 @@ async function main(): Promise<void> {
             packDir: path.join(distRoot, 'packs', pack.name),
             features: publicFeatures,
             attention,
+            githubConfigDir: (office, dir) => github.useConfigDirFor(office, dir),
           }),
         );
       } catch (err) {

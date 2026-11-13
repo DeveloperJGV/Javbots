@@ -9,6 +9,8 @@ import {
   BACKGROUND_AGENT_PAUSED_PATTERN,
   TEXT_IDLE_DELAY_MS,
   TOOL_DONE_DELAY_MS,
+  TRANSCRIPT_END_PROBE_BYTES,
+  TRANSCRIPT_END_RECORD_TYPE,
 } from './constants.js';
 import { updateContextUsage } from './contextUsage.js';
 import { hasInlineTeammates, hasPromotedBackgroundAgent } from './teamUtils.js';
@@ -79,6 +81,42 @@ export function notifyBackgroundAgentCompleted(leadAgentId: number, toolUseId: s
   backgroundAgentCompletedCallback?.(leadAgentId, toolUseId);
 }
 
+/** Called when a transcript's last record says its process exited: the host lets the character leave. */
+let transcriptEndedCallback: ((agentId: number) => void) | null = null;
+
+export function setTranscriptEndedCallback(cb: ((agentId: number) => void) | null): void {
+  transcriptEndedCallback = cb;
+}
+
+/** Whether the session of this transcript ended: its last record is the exit one. False when unreadable. */
+export function transcriptEndedOnDisk(file: string): boolean {
+  let fd: number | undefined;
+  try {
+    fd = fs.openSync(file, 'r');
+    const size = fs.fstatSync(fd).size;
+    const len = Math.min(size, TRANSCRIPT_END_PROBE_BYTES);
+    if (len === 0) return false;
+    const buf = Buffer.alloc(len);
+    fs.readSync(fd, buf, 0, len, size - len);
+    const last = buf
+      .toString('utf-8')
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .at(-1);
+    if (!last) return false;
+    try {
+      return (JSON.parse(last) as { type?: unknown }).type === TRANSCRIPT_END_RECORD_TYPE;
+    } catch {
+      return last.includes(`"type":"${TRANSCRIPT_END_RECORD_TYPE}"`);
+    }
+  } catch {
+    return false;
+  } finally {
+    if (fd !== undefined) fs.closeSync(fd);
+  }
+}
+
 /** Called when a lead's spawn result names a DIFFERENT team than the one it is
  *  latched to. Every CLI run of a session mints a fresh implicit team, so a
  *  resumed lead that spawns again belongs to the new team; the host removes
@@ -110,6 +148,13 @@ export function processTranscriptLine(
   agent.linesProcessed++;
   try {
     const record = JSON.parse(line);
+
+    // The process exited: the turn is over and nothing else will come (unless it is resumed).
+    if (record.type === TRANSCRIPT_END_RECORD_TYPE) {
+      markTranscriptEnded(agentId, agent, agents, waitingTimers, permissionTimers);
+      return;
+    }
+    agent.transcriptEnded = false;
 
     // -- Agent Teams: extract team metadata via the active provider --
     // The provider reads its CLI's own field names (Claude: record.teamName + record.agentName).
@@ -551,6 +596,34 @@ export function processTranscriptLine(
   } catch {
     // Ignore malformed lines
   }
+}
+
+/** The session ended: no tool is running any more, it is done (not working), and the host may let it leave. */
+function markTranscriptEnded(
+  agentId: number,
+  agent: AgentState,
+  agents: AgentStateStore,
+  waitingTimers: Map<number, ReturnType<typeof setTimeout>>,
+  permissionTimers: Map<number, ReturnType<typeof setTimeout>>,
+): void {
+  agent.transcriptEnded = true;
+  cancelWaitingTimer(agentId, waitingTimers);
+  cancelPermissionTimer(agentId, permissionTimers);
+  const hadForeground = agent.activeToolIds.size > agent.backgroundAgentToolIds.size;
+  for (const toolId of [...agent.activeToolIds]) {
+    if (agent.backgroundAgentToolIds.has(toolId)) continue;
+    agent.activeToolIds.delete(toolId);
+    agent.activeToolStatuses.delete(toolId);
+    agent.activeToolNames.delete(toolId);
+    agent.activeSubagentToolIds.delete(toolId);
+    agent.activeSubagentToolNames.delete(toolId);
+  }
+  if (hadForeground) agents.broadcast({ type: 'agentToolsClear', id: agentId });
+  agent.isWaiting = true;
+  agent.permissionSent = false;
+  agent.hadToolsInTurn = false;
+  agents.broadcast({ type: 'agentStatus', id: agentId, status: 'waiting', awaitingInput: false });
+  transcriptEndedCallback?.(agentId);
 }
 
 function processProgressRecord(

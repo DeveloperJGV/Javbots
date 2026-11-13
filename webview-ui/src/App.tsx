@@ -21,6 +21,7 @@ import { DirectorioPanel } from '../../features/directorio/webview/DirectorioPan
 import { directorioStore } from '../../features/directorio/webview/directorioStore.js';
 import { FreelancePanel } from '../../features/freelance/webview/FreelancePanel.js';
 import { useFreelance } from '../../features/freelance/webview/freelanceStore.js';
+import { GithubNotice } from '../../features/github/webview/GithubNotice.js';
 import { GithubPanel } from '../../features/github/webview/GithubPanel.js';
 import { useGithub } from '../../features/github/webview/useGithub.js';
 import { useHerdrTabs } from '../../features/herdr/webview/useHerdrTabs.js';
@@ -714,6 +715,7 @@ function App() {
 
         <ConnectionIndicator />
         <OfficeAccessNotice />
+        <GithubNotice />
 
         {/* The elevator plate top-left: buildings and floors (core/src/offices.ts) plus the office's function keys */}
         <Elevator>

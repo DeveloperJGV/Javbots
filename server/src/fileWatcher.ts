@@ -55,7 +55,11 @@ import { assignPaletteIfNeeded } from './paletteAssigner.js';
 import { pathsMatch } from './pathKey.js';
 import type { SubagentWatch } from './subagentWatch.js';
 import { cancelPermissionTimer, cancelWaitingTimer, clearAgentActivity } from './timerManager.js';
-import { getHookProvider, processTranscriptLine } from './transcriptParser.js';
+import {
+  getHookProvider,
+  processTranscriptLine,
+  transcriptEndedOnDisk,
+} from './transcriptParser.js';
 import type { AgentState } from './types.js';
 
 /** Dismissal tracker instance. Set once at startup via setDismissalTracker().
@@ -1438,6 +1442,8 @@ export function scanExternalDir(
     } catch {
       continue;
     }
+    // A session that already ended (its process exited) is not a live agent: adopting it would seat a ghost.
+    if (transcriptEndedOnDisk(file)) continue;
 
     // Content check with two-tick delay for /clear files:
     // First tick: skip /clear files (give per-agent 3s to claim for internal /clear).
@@ -1543,6 +1549,8 @@ function scanGlobalProjectDirs(
       } catch {
         continue;
       }
+      // Ended sessions (their process exited) stay out: they would sit there "working" forever.
+      if (transcriptEndedOnDisk(file)) continue;
 
       const folderName =
         folderNameResolver?.({ projectDir: dirPath }) ??

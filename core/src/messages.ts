@@ -50,6 +50,7 @@ export type ServerMessage =
   | UsageStatus
   | HerdrTabLabels
   | GithubStatus
+  | GithubNotice
   | ConcertsStatus
   | AgendaStatus
   | JardinStatus
@@ -764,6 +765,12 @@ export interface GithubPullRequest {
   title: string;
   url: string;
   author?: string;
+}
+
+export interface GithubNotice {
+  type: 'githubNotice';
+  text?: string;
+  command?: string;
 }
 
 export interface ConcertsStatus {
@@ -1932,10 +1939,10 @@ export interface InstallMusicExtension {
 
 export interface MusicControl {
   type: 'musicControl';
-  action: AnonymousSchema_1070;
+  action: AnonymousSchema_1073;
 }
 
-export type AnonymousSchema_1070 = 'previous' | 'togglePlay' | 'next';
+export type AnonymousSchema_1073 = 'previous' | 'togglePlay' | 'next';
 
 export interface DisconnectSpotify {
   type: 'disconnectSpotify';

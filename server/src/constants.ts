@@ -98,6 +98,14 @@ export const HOOK_EVENT_BUFFER_MS = 5_000;
  *  safety net: if SessionStart never arrives (e.g. the CLI crashes mid-transition),
  *  the agent is cleaned up instead of staying as a zombie with pendingClear forever. */
 export const SESSION_END_GRACE_MS = 2000;
+/** The record Claude Code appends to a transcript when its process exits (the session's cost totals). Nothing comes
+ *  after it unless the session is resumed, so it is the end of a session that sent no SessionEnd hook (a `claude -p`
+ *  whose hooks could not run, a session closed while the office was off). */
+export const TRANSCRIPT_END_RECORD_TYPE = 'cost-state';
+/** Wait after that record before the character leaves: a /resume or /clear may follow it. */
+export const TRANSCRIPT_END_GRACE_MS = 5000;
+/** Bytes read from a transcript's end to see whether its session ended (the cost row can be long). */
+export const TRANSCRIPT_END_PROBE_BYTES = 64 * 1024;
 export const MAX_HOOK_BODY_SIZE = 65_536; // 64KB
 
 // ── Layout/Config Persistence ──────────────────────────────

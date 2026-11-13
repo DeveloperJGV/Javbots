@@ -13,6 +13,11 @@ export interface PackServerContext {
   features: readonly ServerFeature[];
   /** Each agent's attention state (working, waiting on you, stuck, failed): docs/atencion-agentes.md. */
   attention: AgentAttentionApi;
+  /**
+   * Which gh login (its GH_CONFIG_DIR folder) the GitHub room uses in one of the pack's offices; read each time, so a
+   * change in the pack's own config applies without a restart. Offices that don't pick one use the default login.
+   */
+  githubConfigDir?(office: string, dir: () => string | undefined): void;
 }
 
 /** `export default function (ctx) { return [features…] }` in privado/<pack>/server.ts. */
