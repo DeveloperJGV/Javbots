@@ -26,9 +26,17 @@ export interface ScreenServerOptions {
   state: () => unknown;
   /** Current cover as a data URL, if any. */
   cover: () => string | undefined;
-  /** Runs a playback command; false when it isn't one or Spotify isn't listening. */
-  control?: (action: string) => boolean;
+  /**
+   * Runs a playback command and settles with what Spotify did (never rejects, and settles within
+   * CONTROL_RESULT_TIMEOUT_MS); undefined when it isn't one or Spotify isn't listening.
+   */
+  control?: (action: string) => Promise<ControlOutcome> | undefined;
 }
+
+/** What became of a playback command. */
+export type ControlOutcome =
+  | { ok: true; /** nobody answered in time: it may or may not have run */ unconfirmed?: boolean }
+  | { ok: false; /** Spotify's reason, one line */ reason: string };
 
 /** Small JSON body (a playback command), or undefined when it is too big or not JSON. */
 function readBody(req: http.IncomingMessage): Promise<unknown> {
@@ -58,12 +66,17 @@ function readBody(req: http.IncomingMessage): Promise<unknown> {
 }
 
 function json(res: http.ServerResponse, code: number, body: unknown): void {
-  res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+  res.writeHead(code, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store',
+  });
   res.end(JSON.stringify(body));
 }
 
 /** `data:<mime>;base64,<bytes>` → bytes and type. */
-export function decodeDataUrl(dataUrl: string | undefined): { type: string; bytes: Buffer } | undefined {
+export function decodeDataUrl(
+  dataUrl: string | undefined,
+): { type: string; bytes: Buffer } | undefined {
   const match = dataUrl ? /^data:([\w/+.-]+);base64,(.+)$/.exec(dataUrl) : null;
   return match ? { type: match[1], bytes: Buffer.from(match[2], 'base64') } : undefined;
 }
@@ -71,7 +84,8 @@ export function decodeDataUrl(dataUrl: string | undefined): { type: string; byte
 export function startScreenServer(opts: ScreenServerOptions): http.Server {
   const server = http.createServer((req, res) => {
     const url = new URL(req.url ?? '/', 'http://screen');
-    const isControl = req.method === 'POST' && url.pathname === SCREEN_CONTROL_PATH && Boolean(opts.control);
+    const isControl =
+      req.method === 'POST' && url.pathname === SCREEN_CONTROL_PATH && Boolean(opts.control);
     if (req.method !== 'GET' && !isControl) return json(res, 405, { error: 'method not allowed' });
 
     const auth = req.headers.authorization ?? '';
@@ -80,10 +94,20 @@ export function startScreenServer(opts: ScreenServerOptions): http.Server {
 
     if (isControl) {
       void readBody(req).then((body) => {
-        const action = body && typeof body === 'object' ? (body as { action?: unknown }).action : undefined;
+        const action =
+          body && typeof body === 'object' ? (body as { action?: unknown }).action : undefined;
         if (typeof action !== 'string') return json(res, 400, { error: 'bad command' });
+        const outcome = opts.control?.(action);
         // 409: a valid request Spotify can't take right now (closed, or the extension isn't connected).
-        return opts.control?.(action) ? json(res, 200, { ok: true }) : json(res, 409, { error: 'not sent' });
+        if (!outcome) return json(res, 409, { error: 'not sent' });
+        // Wait for Spotify: 200 when it ran it (or nobody answered in time), 502 with its reason when it refused.
+        return outcome.then(
+          (o) =>
+            o.ok
+              ? json(res, 200, o.unconfirmed ? { ok: true, unconfirmed: true } : { ok: true })
+              : json(res, 502, { error: 'spotify', reason: o.reason }),
+          () => json(res, 502, { error: 'spotify', reason: 'sin detalle' }),
+        );
       });
       return;
     }
@@ -99,7 +123,10 @@ export function startScreenServer(opts: ScreenServerOptions): http.Server {
     json(res, 404, { error: 'not found' });
   });
   server.on('error', (err) => {
-    console.warn(`${LOG_PREFIX} No se pudo abrir el puerto ${opts.port} para pantallas:`, err.message);
+    console.warn(
+      `${LOG_PREFIX} No se pudo abrir el puerto ${opts.port} para pantallas:`,
+      err.message,
+    );
   });
   server.listen(opts.port, opts.host ?? '0.0.0.0', () => {
     console.log(`${LOG_PREFIX} Pantallas en la red: puerto ${opts.port}`);

@@ -3,13 +3,13 @@ import * as fs from 'fs';
 import type { AddressInfo } from 'net';
 import * as os from 'os';
 import * as path from 'path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { FeatureClient } from '../../../../server/src/serverFeature.js';
 import { CoverCache } from '../../server/cover.js';
 import { readMusicConfig, writeMusicConfig } from '../../server/musicConfig.js';
 import { createMusicFeature } from '../../server/musicFeature.js';
-import { startScreenServer } from '../../server/screenServer.js';
+import { type ControlOutcome, startScreenServer } from '../../server/screenServer.js';
 import {
   enabledExtensions,
   installExtension,
@@ -254,22 +254,166 @@ describe('automatic on/off and playback control', () => {
     const guest = client(false);
     feature.connect?.(owner.c);
     feature.connect?.(guest.c);
-    const sent: string[] = [];
-    let onClose = () => {};
-    feature.attachControl({
-      send: (d) => sent.push(d),
-      close: () => {},
-      on: (_e, l) => {
-        onClose = l;
-      },
-    });
+    const socket = fakeControlSocket();
+    feature.attachControl(socket);
     expect((owner.last('musicStatus') as { controls?: boolean }).controls).toBe(true);
     feature.handleClientMessage?.({ type: 'musicControl', action: 'next' }, guest.c);
     feature.handleClientMessage?.({ type: 'musicControl', action: 'rm -rf' }, owner.c);
     feature.handleClientMessage?.({ type: 'musicControl', action: 'togglePlay' }, owner.c);
-    expect(sent).toEqual(['{"action":"togglePlay"}']);
-    onClose();
+    expect(socket.sent.map((d) => (JSON.parse(d) as { action: string }).action)).toEqual([
+      'togglePlay',
+    ]);
+    socket.emit('close');
     expect((owner.last('musicStatus') as { controls?: boolean }).controls).toBe(false);
+    feature.dispose?.();
+  });
+});
+
+/** The extension's end of the control WebSocket: records what it gets and lets the test answer. */
+function fakeControlSocket() {
+  const sent: string[] = [];
+  const listeners: Record<string, Array<(data?: unknown) => void>> = {};
+  return {
+    sent,
+    send: (d: string) => {
+      sent.push(d);
+    },
+    close: () => {},
+    on: (event: 'close' | 'message', listener: (data?: unknown) => void) => {
+      (listeners[event] ??= []).push(listener);
+    },
+    emit: (event: 'close' | 'message', data?: unknown) => {
+      for (const l of listeners[event] ?? []) l(data);
+    },
+    /** Answers the last command the way the extension does. */
+    answer(ok: boolean, error?: string, id?: number) {
+      const last = JSON.parse(sent[sent.length - 1]) as { id: number };
+      this.emit(
+        'message',
+        Buffer.from(JSON.stringify({ type: 'controlResult', id: id ?? last.id, ok, error })),
+      );
+    },
+  };
+}
+
+describe('playback command results', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  function setup() {
+    const feature = createMusicFeature({
+      templatePath: TEMPLATE,
+      serverUrl: () => null,
+      run: fakeSpicetify(null).run,
+      covers: fakeCovers(),
+    });
+    const socket = fakeControlSocket();
+    feature.attachControl(socket);
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    return { feature, socket, log, warn };
+  }
+
+  it('numbers each command so its answer can be matched', () => {
+    const { feature, socket } = setup();
+    feature.sendControl('previous');
+    feature.sendControl('next');
+    const [a, b] = socket.sent.map((d) => JSON.parse(d) as { action: string; id: number });
+    expect(a.action).toBe('previous');
+    expect(b.action).toBe('next');
+    expect(typeof a.id).toBe('number');
+    expect(b.id).not.toBe(a.id);
+    feature.dispose?.();
+  });
+
+  it('logs what Spotify ran, and why it did not run a command', () => {
+    const { feature, socket, log, warn } = setup();
+    feature.sendControl('next');
+    socket.answer(true);
+    expect(log).toHaveBeenCalledWith('[Musica] Spotify hizo "next"');
+    feature.sendControl('previous');
+    socket.answer(false, "Command failed with code '4'\nand reasons 'x'");
+    expect(warn).toHaveBeenCalledWith(
+      `[Musica] Spotify no pudo "previous": Command failed with code '4' and reasons 'x'`,
+    );
+    feature.dispose?.();
+  });
+
+  it('logs a command nobody confirmed (an extension that predates the answers)', () => {
+    vi.useFakeTimers();
+    const { feature, warn } = setup();
+    feature.sendControl('previous');
+    vi.advanceTimersByTime(2_000);
+    expect(warn).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(600);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(String(warn.mock.calls[0][0])).toContain('no confirmó "previous"');
+    feature.dispose?.();
+  });
+
+  it('settles the waiting command with the answer, and remembers it for the screens', async () => {
+    const { feature, socket } = setup();
+    expect(feature.screenState().lastControl).toBeUndefined();
+    const ran = feature.runControl('next');
+    socket.answer(true);
+    expect(await ran).toEqual({ ok: true });
+    expect(feature.screenState().lastControl).toMatchObject({ action: 'next', ok: true });
+    const refused = feature.runControl('previous');
+    socket.answer(false, '  Command failed\n  with code 3 ');
+    expect(await refused).toEqual({ ok: false, reason: 'Command failed with code 3' });
+    const last = feature.screenState().lastControl;
+    expect(last).toMatchObject({
+      action: 'previous',
+      ok: false,
+      reason: 'Command failed with code 3',
+    });
+    expect(Number.isNaN(Date.parse(String(last?.at)))).toBe(false);
+    expect(feature.runControl('rm -rf')).toBeUndefined();
+    feature.dispose?.();
+  });
+
+  it('settles as unconfirmed when the extension never answers, within the screen deadline', async () => {
+    vi.useFakeTimers();
+    const { feature } = setup();
+    const pending = feature.runControl('previous');
+    vi.advanceTimersByTime(2_500);
+    expect(await pending).toEqual({ ok: true, unconfirmed: true });
+    expect(feature.screenState().lastControl).toMatchObject({
+      action: 'previous',
+      ok: true,
+      unconfirmed: true,
+    });
+    feature.dispose?.();
+  });
+
+  it('settles a waiting command when the office shuts down', async () => {
+    const { feature } = setup();
+    const pending = feature.runControl('next');
+    feature.dispose?.();
+    expect(await pending).toEqual({ ok: true, unconfirmed: true });
+  });
+
+  it('ignores junk, unknown ids, repeated answers and the action named in the answer', () => {
+    vi.useFakeTimers();
+    const { feature, socket, log, warn } = setup();
+    feature.sendControl('togglePlay');
+    socket.emit('message', 'not json');
+    socket.emit('message', JSON.stringify({ type: 'other', id: 1, ok: true }));
+    socket.emit(
+      'message',
+      JSON.stringify({ type: 'controlResult', id: 999, ok: false, error: 'x' }),
+    );
+    socket.emit(
+      'message',
+      JSON.stringify({ type: 'controlResult', id: 1, ok: true, action: 'rm -rf' }),
+    );
+    socket.answer(true);
+    expect(log).toHaveBeenCalledTimes(1);
+    expect(log).toHaveBeenCalledWith('[Musica] Spotify hizo "togglePlay"');
+    vi.advanceTimersByTime(10_000); // answered: no "unconfirmed" warning later
+    expect(warn).not.toHaveBeenCalled();
     feature.dispose?.();
   });
 });
@@ -387,9 +531,19 @@ describe('screen port', () => {
 
     await post({ title: 'Una', artist: 'Otra', positionMs: 5_000, durationMs: 200_000 });
     t += 3_000;
-    expect(feature.screenState().track).toMatchObject({ title: 'Una', positionMs: 8_000, isPaused: false });
+    expect(feature.screenState().track).toMatchObject({
+      title: 'Una',
+      positionMs: 8_000,
+      isPaused: false,
+    });
 
-    await post({ title: 'Una', artist: 'Otra', positionMs: 9_000, durationMs: 200_000, isPaused: true });
+    await post({
+      title: 'Una',
+      artist: 'Otra',
+      positionMs: 9_000,
+      durationMs: 200_000,
+      isPaused: true,
+    });
     t += 5_000;
     expect(feature.screenState().track?.positionMs).toBe(9_000);
 
@@ -412,7 +566,9 @@ describe('screen port', () => {
     const auth = { authorization: `Bearer ${token}` };
 
     expect((await fetch(`${base}/api/music/now`)).status).toBe(401);
-    expect(await (await fetch(`${base}/api/music/now`, { headers: auth })).json()).toEqual({ track: null });
+    expect(await (await fetch(`${base}/api/music/now`, { headers: auth })).json()).toEqual({
+      track: null,
+    });
     const cover = await fetch(`${base}/api/music/cover`, { headers: auth });
     expect(cover.headers.get('content-type')).toBe('image/png');
     expect([...new Uint8Array(await cover.arrayBuffer())]).toEqual([1, 2, 3]);
@@ -431,9 +587,9 @@ describe('screen port', () => {
       state: () => ({ track: null }),
       cover: () => undefined,
       control: (action) => {
-        if (action !== 'next' && action !== 'volumeUp') return false;
+        if (action !== 'next' && action !== 'volumeUp') return undefined;
         sent.push(action);
-        return true;
+        return Promise.resolve({ ok: true });
       },
     });
     await new Promise<void>((resolve) => server.once('listening', () => resolve()));
@@ -447,14 +603,62 @@ describe('screen port', () => {
     expect((await post('{"action":"volumeUp"}')).status).toBe(200);
     expect((await post('{"action":"rm -rf"}')).status).toBe(409);
     expect((await post('not json')).status).toBe(400);
-    expect((await post(JSON.stringify({ action: 'next', pad: 'z'.repeat(4000) }))).status).not.toBe(200);
+    expect((await post(JSON.stringify({ action: 'next', pad: 'z'.repeat(4000) }))).status).not.toBe(
+      200,
+    );
     expect(sent).toEqual(['next', 'volumeUp']);
 
     await new Promise((resolve) => server.close(resolve));
   });
 
+  it('answers a screen with what Spotify did: ran it, refused it (with why) or never said', async () => {
+    const token = 'w'.repeat(32);
+    const outcomes: Record<string, ControlOutcome> = {
+      next: { ok: true },
+      previous: { ok: false, reason: "Command failed with code '3'" },
+      togglePlay: { ok: true, unconfirmed: true },
+    };
+    const server = startScreenServer({
+      port: 0,
+      host: '127.0.0.1',
+      token: () => token,
+      state: () => ({ track: null }),
+      cover: () => undefined,
+      control: (action) =>
+        action in outcomes
+          ? new Promise((resolve) => setTimeout(() => resolve(outcomes[action]), 20))
+          : undefined,
+    });
+    await new Promise<void>((resolve) => server.once('listening', () => resolve()));
+    const { port } = server.address() as AddressInfo;
+    const post = async (action: string) => {
+      const res = await fetch(`http://127.0.0.1:${port}/api/music/control`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action }),
+      });
+      return { status: res.status, body: (await res.json()) as unknown };
+    };
+
+    expect(await post('next')).toEqual({ status: 200, body: { ok: true } });
+    expect(await post('previous')).toEqual({
+      status: 502,
+      body: { error: 'spotify', reason: "Command failed with code '3'" },
+    });
+    expect(await post('togglePlay')).toEqual({
+      status: 200,
+      body: { ok: true, unconfirmed: true },
+    });
+    expect((await post('volumeDown')).status).toBe(409);
+
+    await new Promise((resolve) => server.close(resolve));
+  });
+
   it('keeps volume and tempo only when they make sense', () => {
-    expect(parseTrackReport({ track: { title: 'A', volume: 0.4, tempo: 92 } })).toMatchObject({ volume: 0.4, tempo: 92 });
+    expect(parseTrackReport({ track: { title: 'A', volume: 0.4, tempo: 92 } })).toMatchObject({
+      volume: 0.4,
+      tempo: 92,
+    });
     const junk = parseTrackReport({ track: { title: 'A', volume: 7, tempo: 'fast' } });
     expect(junk?.volume).toBeUndefined();
     expect(junk?.tempo).toBeUndefined();

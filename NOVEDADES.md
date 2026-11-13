@@ -23,6 +23,8 @@ Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
 - **Un clic, un mueble.** Agenda, Directorio, Pomodoro, Jardín y GitHub se abren solo desde su mueble principal; lo
   demás queda de adorno (se sigue moviendo igual). El mostrador del Directorio ya enseña la manita.
 - **Letrero al pasar el mouse.** Todo mueble que abre algo dice qué abre en un cuadrito junto al cursor.
+- **Música: los botones confirman.** "Anterior" ya obedece en Spotify de la PC (antes no hacía nada), y cada botón
+  de reproducción espera a que Spotify conteste: si no pudo, las otras pantallas reciben el motivo en vez de un "listo".
 - **Decks de Yu-Gi-Oh!** Una repisa en Becarios guarda tus decks como cajas en fila con perspectiva; la escogida sale
   al frente con su portada y el fondo toma su color. Ábrela para ver la lista por grupos y cada carta en grande; arma,
   edita, importa y exporta (`.ydk` y `ydke://`), o deja que «Escoge uno» decida.

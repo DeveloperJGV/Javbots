@@ -39,6 +39,17 @@ export const LOG_PREFIX = '[Musica]';
 export const MUSIC_LYRICS_API_PATH = '/api/music/lyrics';
 /** WebSocket the extension keeps open to receive playback commands (previous / play-pause / next). */
 export const MUSIC_CONTROL_PATH = '/api/music/control';
+/** The extension answers each command on the same socket with `{ type, id, ok, error? }`. */
+export const CONTROL_RESULT_TYPE = 'controlResult';
+/**
+ * No answer this long after a command: it settles as unconfirmed (an extension older than the answers, or hung).
+ * The screen port's POST waits at most this long, so it must stay well under the screens' own HTTP timeout.
+ */
+export const CONTROL_RESULT_TIMEOUT_MS = 2_500;
+/** Reason given when Spotify's Web API (no extension connected) refused a command; it reports no detail. */
+export const WEB_API_CONTROL_REJECTED = 'La Web API de Spotify no lo aceptó';
+/** Spotify's error text is clipped before it reaches the log. */
+export const CONTROL_ERROR_MAX_CHARS = 300;
 /** Closing code when the control channel's token is wrong (policy violation). */
 export const WS_CLOSE_POLICY = 1008;
 /** If the extension hasn't sent lyrics this long after a song starts, ask LRCLIB. */

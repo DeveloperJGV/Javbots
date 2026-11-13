@@ -22,7 +22,10 @@ function playerJson(overrides: Record<string, unknown> = {}) {
       name: 'Always',
       duration_ms: 258_000,
       artists: [{ name: 'Bon Jovi' }],
-      album: { name: 'This Left Feels Right', images: [{ url: `https://i.scdn.co/image/${COVER_ID}`, width: 640 }] },
+      album: {
+        name: 'This Left Feels Right',
+        images: [{ url: `https://i.scdn.co/image/${COVER_ID}`, width: 640 }],
+      },
     },
     ...overrides,
   };
@@ -76,7 +79,9 @@ describe('spotify web api', () => {
         volume: 0.34,
       },
     });
-    const here = toPlayback(playerJson({ device: { name: 'PC', type: 'Computer', volume_percent: 100 } }));
+    const here = toPlayback(
+      playerJson({ device: { name: 'PC', type: 'Computer', volume_percent: 100 } }),
+    );
     expect(here.track?.device).toBeUndefined();
     expect(toPlayback(playerJson({ currently_playing_type: 'episode' }))).toEqual({ track: null });
     expect(toPlayback(playerJson({ item: null }))).toEqual({ track: null });
@@ -87,9 +92,13 @@ describe('spotify web api', () => {
     let refreshStatus = 200;
     const spotify = fakeSpotify(({ url, body }) => {
       if (url.endsWith('/api/token') && body?.includes('authorization_code')) {
-        return { status: 200, json: { access_token: 'acc1', expires_in: 3600, refresh_token: 'ref1' } };
+        return {
+          status: 200,
+          json: { access_token: 'acc1', expires_in: 3600, refresh_token: 'ref1' },
+        };
       }
-      if (url.endsWith('/api/token')) return { status: refreshStatus, json: { access_token: 'acc2', expires_in: 3600 } };
+      if (url.endsWith('/api/token'))
+        return { status: refreshStatus, json: { access_token: 'acc2', expires_in: 3600 } };
       if (url.includes('/me/player')) return { status: 200, json: playerJson() };
       return { status: 404 };
     });
@@ -106,7 +115,9 @@ describe('spotify web api', () => {
     expect(url.origin + url.pathname).toBe('https://accounts.spotify.com/authorize');
     expect(url.searchParams.get('client_id')).toBe('cid');
     expect(url.searchParams.get('code_challenge_method')).toBe('S256');
-    expect(url.searchParams.get('redirect_uri')).toBe('http://127.0.0.1:3100/api/music/spotify/callback');
+    expect(url.searchParams.get('redirect_uri')).toBe(
+      'http://127.0.0.1:3100/api/music/spotify/callback',
+    );
     const state = url.searchParams.get('state') ?? '';
 
     expect(await api.exchangeCode('code', 'otro-state')).toContain('venció');
@@ -134,8 +145,10 @@ describe('spotify web api', () => {
 
   it('runs the playback buttons against the API', async () => {
     const spotify = fakeSpotify(({ url }) => {
-      if (url.endsWith('/api/token')) return { status: 200, json: { access_token: 'acc', expires_in: 3600 } };
-      if (url.endsWith('/me/player?additional_types=track')) return { status: 200, json: playerJson() };
+      if (url.endsWith('/api/token'))
+        return { status: 200, json: { access_token: 'acc', expires_in: 3600 } };
+      if (url.endsWith('/me/player?additional_types=track'))
+        return { status: 200, json: playerJson() };
       return { status: 204 };
     });
     const api = createSpotifyApi({
@@ -150,7 +163,9 @@ describe('spotify web api', () => {
     expect(await api.control('volumeUp', 0.34)).toBe(true);
     expect(await api.control('volumeDown', undefined)).toBe(false);
     expect(await api.control('nada', undefined)).toBe(false);
-    const paths = spotify.calls.map((c) => `${c.method} ${c.url.replace('https://api.spotify.com/v1', '')}`);
+    const paths = spotify.calls.map(
+      (c) => `${c.method} ${c.url.replace('https://api.spotify.com/v1', '')}`,
+    );
     expect(paths).toContain('POST /me/player/next');
     expect(paths).toContain('PUT /me/player/pause');
     expect(paths).toContain('PUT /me/player/volume?volume_percent=44');
@@ -159,7 +174,12 @@ describe('spotify web api', () => {
 
 describe('music feature with the web api', () => {
   function featureWith(answers: Parameters<typeof fakeSpotify>[0]) {
-    writeMusicConfig({ ...readMusicConfig(), enabled: true, spotifyClientId: 'cid', spotifyRefreshToken: 'ref' });
+    writeMusicConfig({
+      ...readMusicConfig(),
+      enabled: true,
+      spotifyClientId: 'cid',
+      spotifyRefreshToken: 'ref',
+    });
     const spotify = fakeSpotify(answers);
     let clock = 5_000_000;
     const feature = createMusicFeature({
@@ -200,6 +220,24 @@ describe('music feature with the web api', () => {
     writeMusicConfig({ token: readMusicConfig().token });
   });
 
+  it('waits for the Web API when there is no extension, and says when it refused a command', async () => {
+    const { feature } = featureWith(({ url }) =>
+      url.endsWith('/api/token')
+        ? tokenOk
+        : url.endsWith('/me/player/previous')
+          ? { status: 403, json: { error: { status: 403, message: 'Restriction violated' } } }
+          : { status: 204 },
+    );
+    expect(await feature.runControl('next')).toEqual({ ok: true });
+    expect(await feature.runControl('previous')).toEqual({
+      ok: false,
+      reason: 'La Web API de Spotify no lo aceptó',
+    });
+    expect(feature.screenState().lastControl).toMatchObject({ action: 'previous', ok: false });
+    feature.dispose?.();
+    writeMusicConfig({ token: readMusicConfig().token });
+  });
+
   it('leaves the extension alone while Spotify plays here, and takes over when it pauses or goes quiet', async () => {
     const { feature, spotify, tick } = featureWith(({ url }) =>
       url.endsWith('/api/token') ? tokenOk : { status: 200, json: playerJson() },
@@ -209,28 +247,59 @@ describe('music feature with the web api', () => {
     await app.ready();
     const token = readMusicConfig().token;
     const post = (track: Record<string, unknown> | null) =>
-      app.inject({ method: 'POST', url: '/api/music', headers: { authorization: `Bearer ${token}` }, payload: { track } });
+      app.inject({
+        method: 'POST',
+        url: '/api/music',
+        headers: { authorization: `Bearer ${token}` },
+        payload: { track },
+      });
 
-    await post({ title: 'Local', artist: 'PC', isPaused: false, positionMs: 0, durationMs: 100_000 });
+    await post({
+      title: 'Local',
+      artist: 'PC',
+      isPaused: false,
+      positionMs: 0,
+      durationMs: 100_000,
+    });
     await feature.pollSpotify();
     expect(spotify.calls.filter((c) => c.url.includes('/me/player'))).toHaveLength(0);
     expect(feature.current()?.title).toBe('Local');
 
     // Paused on the PC while the account plays elsewhere: the API's song wins and the extension's pause is ignored.
-    await post({ title: 'Local', artist: 'PC', isPaused: true, positionMs: 0, durationMs: 100_000 });
+    await post({
+      title: 'Local',
+      artist: 'PC',
+      isPaused: true,
+      positionMs: 0,
+      durationMs: 100_000,
+    });
     await feature.pollSpotify();
     expect(feature.current()?.title).toBe('Always');
-    await post({ title: 'Local', artist: 'PC', isPaused: true, positionMs: 0, durationMs: 100_000 });
+    await post({
+      title: 'Local',
+      artist: 'PC',
+      isPaused: true,
+      positionMs: 0,
+      durationMs: 100_000,
+    });
     expect(feature.current()?.title).toBe('Always');
 
     // The extension speaks again with a playing song: it is the source once more.
-    await post({ title: 'Local', artist: 'PC', isPaused: false, positionMs: 0, durationMs: 100_000 });
+    await post({
+      title: 'Local',
+      artist: 'PC',
+      isPaused: false,
+      positionMs: 0,
+      durationMs: 100_000,
+    });
     expect(feature.current()?.title).toBe('Local');
 
     // Extension gone for a while and nothing playing anywhere: the track clears.
     tick(30_000);
     spotify.calls.length = 0;
-    const silent = featureWith(({ url }) => (url.endsWith('/api/token') ? tokenOk : { status: 204 }));
+    const silent = featureWith(({ url }) =>
+      url.endsWith('/api/token') ? tokenOk : { status: 204 },
+    );
     await silent.feature.pollSpotify();
     expect(silent.feature.current()).toBeUndefined();
     silent.feature.dispose?.();

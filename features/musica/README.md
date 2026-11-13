@@ -19,6 +19,10 @@ perros se arma con `arte/perros.py`.
 
 **Botones:** anterior, pausa/play y siguiente. Viajan por un WebSocket que la extensión mantiene abierto
 (`/api/music/control`, con el token de música); solo los manda quien abrió la oficina con su token.
+La extensión contesta cada orden por el mismo canal y la consola de la oficina lo anota (`[Musica] Spotify hizo
+"next"`, o `Spotify no pudo "previous": <motivo de Spotify>`; si no contesta en 2.5 s, `no confirmó`: una
+extensión instalada antes de este cambio). Los botones del panel no esperan esa respuesta; las otras pantallas sí
+(ver abajo), y el último resultado sale en `lastControl` de `GET /api/music/now`.
 
 **Apagada sin Spicetify:** mientras nadie elija en Ajustes, la música se prende sola solo donde Spicetify está instalado.
 
@@ -154,11 +158,11 @@ canción, la letra y la carátula, y recibe los botones de reproducción. Viene 
 { "enabled": true, "token": "…", "screenPort": 3101 }
 ```
 
-| Ruta                      | Qué hace                                                                                                                                                                          |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET /api/music/now`      | `{ track, lyrics, lyricsLoading }`. `track.positionMs` ya viene adelantada al momento de pedirla; `track.volume` (0..1) y `track.tempo` (pulsos por minuto) si la fuente los sabe |
-| `GET /api/music/cover`    | La carátula (imagen)                                                                                                                                                              |
-| `POST /api/music/control` | `{ "action": "previous" \| "togglePlay" \| "next" \| "volumeUp" \| "volumeDown" }`. 409 si no hay extensión conectada ni cuenta de Spotify                                        |
+| Ruta                      | Qué hace                                                                                                                                                                                                                                                                                                                        |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/music/now`      | `{ track, lyrics, lyricsLoading, lastControl? }`. `track.positionMs` ya viene adelantada al momento de pedirla; `track.volume` (0..1) y `track.tempo` (pulsos por minuto) si la fuente los sabe. `lastControl` (desde el primer botón): `{ action, ok, reason?, unconfirmed?, at }`                                             |
+| `GET /api/music/cover`    | La carátula (imagen)                                                                                                                                                                                                                                                                                                            |
+| `POST /api/music/control` | `{ "action": "previous" \| "togglePlay" \| "next" \| "volumeUp" \| "volumeDown" }`. Espera a Spotify (2.5 s como mucho): 200 `{ ok: true }` si lo hizo; 502 `{ error: "spotify", reason }` si no pudo; 200 `{ ok: true, unconfirmed: true }` si nadie contestó a tiempo. 409 si no hay extensión conectada ni cuenta de Spotify |
 
 Todas piden `Authorization: Bearer <token de música>`. Cualquiera en tu red que tenga ese token puede ver qué
 escuchas y cambiar de canción o de volumen (nada más): no lo compartas. Windows puede pedir permiso en el firewall la primera vez.

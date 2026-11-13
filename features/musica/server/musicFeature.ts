@@ -3,6 +3,9 @@ import type { FastifyInstance } from 'fastify';
 import type { ConnectionInfo, MusicStatus, MusicTrack } from '../../../core/src/messages.js';
 import type { FeatureClient, ServerFeature } from '../../../server/src/serverFeature.js';
 import {
+  CONTROL_ERROR_MAX_CHARS,
+  CONTROL_RESULT_TIMEOUT_MS,
+  CONTROL_RESULT_TYPE,
   LOG_PREFIX,
   LYRICS_FALLBACK_MS,
   LYRICS_PENDING_SIZE,
@@ -15,13 +18,14 @@ import {
   SPOTIFY_LOGIN_PATH,
   SPOTIFY_POLL_MS,
   SPOTIFY_SCOPES,
+  WEB_API_CONTROL_REJECTED,
   WS_CLOSE_POLICY,
 } from './constants.js';
 import { CoverCache } from './cover.js';
 import { cleanLines, fetchLrclib, type Lyrics, songKey } from './lyrics.js';
 import { type MusicConfig, readMusicConfig, writeMusicConfig } from './musicConfig.js';
 import { createPlaylists, type Playlists } from './playlists/playlistFeature.js';
-import { startScreenServer } from './screenServer.js';
+import { type ControlOutcome, startScreenServer } from './screenServer.js';
 import {
   installExtension,
   isExtensionInstalled,
@@ -78,13 +82,28 @@ export interface ScreenState {
   } | null;
   lyrics: Lyrics | null;
   lyricsLoading: boolean;
+  /** What became of the last playback command (absent until the first one). Screens may ignore it. */
+  lastControl?: LastControl;
+}
+
+/** The last playback command and its outcome, as GET /api/music/now shows it. */
+export interface LastControl {
+  action: string;
+  ok: boolean;
+  /** Spotify's reason when it didn't run it. */
+  reason?: string;
+  /** Nobody answered in time (an extension older than the answers, or hung): it may or may not have run. */
+  unconfirmed?: boolean;
+  /** ISO time it was settled. */
+  at: string;
 }
 
 /** The bit of a WebSocket the control channel uses (a fake in tests). */
 export interface ControlSocket {
   send(data: string): void;
   close(code?: number, reason?: string): void;
-  on(event: 'close', listener: () => void): void;
+  /** 'close' (no args) and 'message' (the extension's answer to a command, as text or a Buffer). */
+  on(event: 'close' | 'message', listener: (data?: unknown) => void): void;
 }
 
 const CONTROL_ACTIONS = new Set(['previous', 'togglePlay', 'next', 'volumeUp', 'volumeDown']);
@@ -106,8 +125,10 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
   currentLyrics(): Lyrics | undefined;
   /** What other screens get from GET /api/music/now. */
   screenState(): ScreenState;
-  /** A playback command from a screen or the office (exposed for tests). */
+  /** A playback command from the office (no waiting); false when nobody can run it (exposed for tests). */
   sendControl(action: string): boolean;
+  /** A playback command that waits for Spotify's outcome (the screens use it); undefined when nobody can run it. */
+  runControl(action: string): Promise<ControlOutcome> | undefined;
   /** One round of asking Spotify's Web API what's playing (exposed for tests; the timer calls it). */
   pollSpotify(): Promise<void>;
   /** "Playlist del día" (exposed for tests). */
@@ -138,6 +159,13 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
   const clients = new Set<FeatureClient>();
   /** Spotify extensions connected for playback control (normally one). */
   const controlSockets = new Set<ControlSocket>();
+  /** Commands sent to the extension still waiting for its answer, by id. */
+  const pendingControls = new Map<
+    number,
+    { action: string; timer: ReturnType<typeof setTimeout>; resolve: (o: ControlOutcome) => void }
+  >();
+  let controlSeq = 0;
+  let lastControl: LastControl | undefined;
   // The account's playback through Spotify's Web API, when music.json has a client id: it also works with
   // Spotify closed here (a phone, an Echo…). The session (refresh token) lives in music.json.
   const spotify: SpotifyApi | undefined = config.spotifyClientId
@@ -381,7 +409,9 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
   }
 
   function screenState(): ScreenState {
-    if (!isEnabled() || !track) return { track: null, lyrics: null, lyricsLoading: false };
+    const control = lastControl ? { lastControl } : {};
+    if (!isEnabled() || !track)
+      return { track: null, lyrics: null, lyricsLoading: false, ...control };
     const elapsed = track.isPaused ? 0 : now() - trackReportedAt;
     return {
       track: {
@@ -400,6 +430,7 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
       // Other screens keep their contract: an instrumental song still reads as "no lyrics" there.
       lyrics: lyrics && !lyrics.instrumental ? lyrics : null,
       lyricsLoading: lyricsSearching,
+      ...control,
     };
   }
 
@@ -409,27 +440,89 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
         token: () => config.token,
         state: screenState,
         cover: () => track?.cover,
-        control: sendControl,
+        control: runControl,
       })
     : undefined;
 
-  /**
-   * Relays a playback command to the extension, or to Spotify's Web API when the extension isn't connected;
-   * false when it isn't one or nobody can run it.
-   */
+  /** The office's buttons don't wait for the outcome (it still reaches the log and GET /api/music/now). */
   function sendControl(action: string): boolean {
-    if (!CONTROL_ACTIONS.has(action)) return false;
+    const outcome = runControl(action);
+    void outcome;
+    return outcome !== undefined;
+  }
+
+  /** Remembers how a command ended, for GET /api/music/now. */
+  function recordControl(action: string, outcome: ControlOutcome): void {
+    lastControl = {
+      action,
+      ok: outcome.ok,
+      ...(outcome.ok
+        ? outcome.unconfirmed
+          ? { unconfirmed: true }
+          : {}
+        : { reason: outcome.reason }),
+      at: new Date(now()).toISOString(),
+    };
+  }
+
+  /**
+   * Relays a playback command to the extension, or to Spotify's Web API when the extension isn't connected,
+   * and settles with what Spotify did: ok, its reason for not doing it, or "unconfirmed" when nobody answered
+   * within CONTROL_RESULT_TIMEOUT_MS. Undefined when it isn't a command or nobody can run it. Never rejects.
+   */
+  function runControl(action: string): Promise<ControlOutcome> | undefined {
+    if (!CONTROL_ACTIONS.has(action)) return undefined;
     if (controlSockets.size > 0) {
-      const command = JSON.stringify({ action });
+      const id = ++controlSeq;
+      const command = JSON.stringify({ action, id });
       for (const s of controlSockets) s.send(command);
-      return true;
+      return new Promise<ControlOutcome>((resolve) => {
+        const timer = setTimeout(() => {
+          pendingControls.delete(id);
+          console.warn(
+            `${LOG_PREFIX} Spotify no confirmó "${action}" (¿la extensión instalada es anterior a las respuestas?)`,
+          );
+          const outcome: ControlOutcome = { ok: true, unconfirmed: true };
+          recordControl(action, outcome);
+          resolve(outcome);
+        }, CONTROL_RESULT_TIMEOUT_MS);
+        timer.unref?.();
+        pendingControls.set(id, { action, timer, resolve });
+      });
     }
-    if (!spotify?.connected()) return false;
-    void spotify.control(action, volume).then((ok) => {
-      // See it reflected soon (Spotify takes a moment to report the change).
-      if (ok) setTimeout(() => void pollSpotify(), 500).unref?.();
+    if (!spotify?.connected()) return undefined;
+    const viaApi = spotify.control(action, volume).then(
+      (ok): ControlOutcome => {
+        if (ok) {
+          // See it reflected soon (Spotify takes a moment to report the change).
+          setTimeout(() => void pollSpotify(), 500).unref?.();
+          console.log(`${LOG_PREFIX} La Web API de Spotify hizo "${action}"`);
+        } else {
+          console.warn(`${LOG_PREFIX} La Web API de Spotify no pudo "${action}"`);
+        }
+        const outcome: ControlOutcome = ok
+          ? { ok: true }
+          : { ok: false, reason: WEB_API_CONTROL_REJECTED };
+        recordControl(action, outcome);
+        return outcome;
+      },
+      (): ControlOutcome => {
+        const outcome: ControlOutcome = { ok: false, reason: WEB_API_CONTROL_REJECTED };
+        recordControl(action, outcome);
+        return outcome;
+      },
+    );
+    // The Web API can take longer than a screen should wait: past the deadline the screen hears "unconfirmed",
+    // and the real outcome still lands in the log and lastControl when it comes.
+    let deadline: ReturnType<typeof setTimeout> | undefined;
+    const late = new Promise<ControlOutcome>((resolve) => {
+      deadline = setTimeout(
+        () => resolve({ ok: true, unconfirmed: true }),
+        CONTROL_RESULT_TIMEOUT_MS,
+      );
+      deadline.unref?.();
     });
-    return true;
+    return Promise.race([viaApi, late]).finally(() => clearTimeout(deadline));
   }
 
   /**
@@ -463,9 +556,49 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
     void pollSpotify().finally(scheduleSpotify);
   }
 
+  /**
+   * The extension's answer to a command: whether Spotify ran it, or why not. It settles the waiting screen request
+   * and goes to the log and lastControl; the action name comes from our own record, never from the answer.
+   */
+  function controlResult(data: unknown): void {
+    let msg: unknown;
+    try {
+      msg = JSON.parse(String(data));
+    } catch {
+      return;
+    }
+    if (!msg || typeof msg !== 'object') return;
+    const { type, id, ok, error } = msg as {
+      type?: unknown;
+      id?: unknown;
+      ok?: unknown;
+      error?: unknown;
+    };
+    if (type !== CONTROL_RESULT_TYPE || typeof id !== 'number') return;
+    const pending = pendingControls.get(id);
+    if (!pending) return; // already answered (two extensions) or timed out
+    clearTimeout(pending.timer);
+    pendingControls.delete(id);
+    let outcome: ControlOutcome;
+    if (ok === true) {
+      console.log(`${LOG_PREFIX} Spotify hizo "${pending.action}"`);
+      outcome = { ok: true };
+    } else {
+      const reason = (typeof error === 'string' && error.trim() ? error : 'sin detalle')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, CONTROL_ERROR_MAX_CHARS);
+      console.warn(`${LOG_PREFIX} Spotify no pudo "${pending.action}": ${reason}`);
+      outcome = { ok: false, reason };
+    }
+    recordControl(pending.action, outcome);
+    pending.resolve(outcome);
+  }
+
   function attachControl(socket: ControlSocket): void {
     controlSockets.add(socket);
     broadcastStatus();
+    socket.on('message', controlResult);
     socket.on('close', () => {
       controlSockets.delete(socket);
       broadcastStatus();
@@ -688,6 +821,11 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
       if (staleTimer) clearTimeout(staleTimer);
       if (lyricsTimer) clearTimeout(lyricsTimer);
       if (spotifyTimer) clearTimeout(spotifyTimer);
+      for (const p of pendingControls.values()) {
+        clearTimeout(p.timer);
+        p.resolve({ ok: true, unconfirmed: true });
+      }
+      pendingControls.clear();
       screen?.close();
       clients.clear();
     },
@@ -697,6 +835,7 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
     currentLyrics: () => lyrics,
     screenState,
     sendControl,
+    runControl,
     pollSpotify,
     playlists,
   };

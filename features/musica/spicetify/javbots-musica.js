@@ -83,7 +83,9 @@
     if (!bpm) {
       try {
         const id = item.uri.split(':')[2];
-        const features = await globalThis.Spicetify.CosmosAsync.get('https://api.spotify.com/v1/audio-features/' + id);
+        const features = await globalThis.Spicetify.CosmosAsync.get(
+          'https://api.spotify.com/v1/audio-features/' + id,
+        );
         bpm = features && features.tempo;
       } catch (e) {
         // Spotify no lo da: las mascotas se mueven a su paso de siempre.
@@ -150,29 +152,89 @@
     });
   }
 
-  /** Botones de la oficina (anterior / play-pausa / siguiente): llegan por un WebSocket que se reabre solo. */
+  /**
+   * El reproductor de Spotify por dentro (Spicetify.Platform.PlayerAPI / PlaybackAPI). Player.back(), next(),
+   * togglePlay() y setVolume() de Spicetify lo llaman pero tiran la promesa: si Spotify rechaza la orden, nadie se
+   * entera. Llamándolo directo se espera la respuesta y el error llega a la oficina.
+   */
+  function platformApi(name) {
+    try {
+      return globalThis.Spicetify.Platform[name];
+    } catch (e) {
+      return undefined;
+    }
+  }
+  /** Corre `method` del API de Spotify si existe; si no, el atajo de Spicetify (que no avisa si falla). */
+  function viaPlatform(apiName, method, fallback) {
+    const api = platformApi(apiName);
+    if (api && typeof api[method] === 'function') return api[method]();
+    if (typeof fallback !== 'function')
+      throw new Error('Spotify no tiene ' + apiName + '.' + method);
+    return fallback();
+  }
+
+  /** Botones de la oficina (anterior / play-pausa / siguiente / volumen): llegan por un WebSocket que se reabre solo. */
   const ACTIONS = {
     previous: function () {
-      Player.back();
+      return viaPlatform('PlayerAPI', 'skipToPrevious', Player.back);
     },
     togglePlay: function () {
-      Player.togglePlay();
+      const playing =
+        typeof Player.isPlaying === 'function' ? Player.isPlaying() : !Player.data.isPaused;
+      return viaPlatform('PlayerAPI', playing ? 'pause' : 'resume', Player.togglePlay);
     },
     next: function () {
-      Player.next();
+      return viaPlatform('PlayerAPI', 'skipToNext', Player.next);
     },
     volumeUp: function () {
-      changeVolume(VOLUME_STEP);
+      return changeVolume(VOLUME_STEP);
     },
     volumeDown: function () {
-      changeVolume(-VOLUME_STEP);
+      return changeVolume(-VOLUME_STEP);
     },
   };
-  function changeVolume(delta) {
+  async function changeVolume(delta) {
     const v = volumeNow();
-    if (v === undefined) return;
-    Player.setVolume(Math.max(0, Math.min(1, Math.round((v + delta) * 100) / 100)));
+    if (v === undefined) throw new Error('Spotify no dice el volumen');
+    const target = Math.max(0, Math.min(1, Math.round((v + delta) * 100) / 100));
+    const api = platformApi('PlaybackAPI');
+    if (api && typeof api.setVolume === 'function') await api.setVolume(target);
+    else Player.setVolume(target);
     setTimeout(send, 300); // que las pantallas vean el volumen nuevo sin esperar al latido
+  }
+  /** Corre una orden y le dice a la oficina si Spotify la hizo o por qué no. */
+  function runCommand(socket, command) {
+    let result;
+    try {
+      result = Promise.resolve(ACTIONS[command.action]());
+    } catch (e) {
+      result = Promise.reject(e);
+    }
+    result.then(
+      function () {
+        answer(socket, command, true);
+      },
+      function (e) {
+        console.warn('[Javbots música] Spotify no hizo "' + command.action + '":', e);
+        answer(socket, command, false, (e && e.message) || String(e));
+      },
+    );
+  }
+  function answer(socket, command, ok, error) {
+    // Las oficinas viejas no mandan id ni esperan respuesta.
+    if (typeof command.id !== 'number' || socket.readyState !== WebSocket.OPEN) return;
+    try {
+      socket.send(
+        JSON.stringify({
+          type: 'controlResult',
+          id: command.id,
+          ok: ok,
+          error: ok ? undefined : error,
+        }),
+      );
+    } catch (e) {
+      // El canal se cerró justo ahora: la oficina lo nota por su cuenta.
+    }
   }
   function connectControl() {
     let socket;
@@ -192,7 +254,7 @@
         return;
       }
       if (command && Object.prototype.hasOwnProperty.call(ACTIONS, command.action)) {
-        ACTIONS[command.action]();
+        runCommand(socket, command);
       }
     };
     socket.onclose = function () {
@@ -212,7 +274,8 @@
   Player.addEventListener('onprogress', function () {
     const at = Date.now();
     const ms = Player.getProgress();
-    const expected = lastProgress.ms + (Player.data && Player.data.isPaused ? 0 : at - lastProgress.at);
+    const expected =
+      lastProgress.ms + (Player.data && Player.data.isPaused ? 0 : at - lastProgress.at);
     lastProgress = { at: at, ms: ms };
     if (Math.abs(ms - expected) > SEEK_JUMP_MS) send();
   });
