@@ -1,8 +1,8 @@
 # Búsquedas con agente (pieza común)
 
 La parte de **pedido → agente → resultados** que comparten los cuartos donde un agente de Claude Code busca algo en
-internet con criterios y deja lo que encontró en un panel. Hoy la usa el [Directorio](../directorio/README.md); está
-pensada para que el cuarto de freelance la use igual. No tiene cuarto ni panel propios.
+internet con criterios y deja lo que encontró en un panel. La usan el [Directorio](../directorio/README.md) y el cuarto
+de [Freelance](../freelance/README.md). No tiene cuarto ni panel propios.
 
 ## Qué da
 
@@ -58,12 +58,23 @@ un panel que use `SearchRequestCard` con sus propios botones en `actions`.
       "fuente": "…",
       "porque": "…",
       "puntuacion": 90,
-      "veredicto": "recomendado"
+      "veredicto": "recomendado",
+      "nota": "opcional, de este resultado",
+      "detalles": [{ "etiqueta": "Pago", "valor": "800 USD, precio fijo" }]
     }
   ]
 }
 ```
 
 Lo que no cuadra se tira: ligas que no son `http(s)`, tipos desconocidos (pasan al último tipo del cuarto),
-números fuera de rango, textos largos. El id de cada resultado sale de su nombre, así que las marcas sobreviven a
+números fuera de rango, textos largos, más de 6 `detalles` o detalles sin etiqueta o sin valor. El id de cada resultado sale de su nombre, así que las marcas sobreviven a
 que el agente reescriba el archivo.
+
+## Extras que un cuarto puede usar
+
+- `detalles` (opcional, a lo más 6 `{ etiqueta, valor }`) y `nota` por resultado: `SearchRequestCard` los muestra si
+  vienen. El Directorio no los usa y se ve igual.
+- `markLabels` en `SearchRequestCard`: cambia el rótulo de la marca "Contacté" (Freelance dice "Postulé"); la marca
+  guardada sigue siendo `contactado`.
+- `createHerdrLauncher(exec, now, { model })`: el modelo de Claude Code con que arranca el agente
+  (`herdr agent start … -- --model <modelo>`); solo nombres simples. Sin `model`, el de la máquina (el Directorio).

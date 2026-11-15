@@ -22,6 +22,8 @@ import {
   DIRECTORIO_SKILL_FILE,
 } from '../../features/directorio/server/constants.js';
 import { createDirectorioFeature } from '../../features/directorio/server/directorioFeature.js';
+import { FREELANCE_ROOM, FREELANCE_SKILL_FILE } from '../../features/freelance/server/constants.js';
+import { createFreelanceFeature } from '../../features/freelance/server/freelanceFeature.js';
 import { createGithubFeature } from '../../features/github/server/githubFeature.js';
 import { createGoogleFeature } from '../../features/google/server/googleFeature.js';
 import { createHerdrFeature } from '../../features/herdr/server/herdrFeature.js';
@@ -336,6 +338,11 @@ async function main(): Promise<void> {
         google,
         launcher: createHerdrLauncher(),
         skillFile: path.join(distRoot, DIRECTORIO_ROOM, 'skill', DIRECTORIO_SKILL_FILE),
+      }),
+      // Optional feature: the freelance room's job search, the owner's offer + an agent in herdr reading public job
+      // pages (features/freelance, on features/busquedas).
+      createFreelanceFeature({
+        skillFile: path.join(distRoot, FREELANCE_ROOM, 'skill', FREELANCE_SKILL_FILE),
       }),
       createUsageFeature({ command: () => runUsageCommand() }),
       herdr,

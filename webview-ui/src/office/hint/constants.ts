@@ -2,6 +2,7 @@
 export const HINT_LABELS = {
   agenda: 'Agenda: hoy y esta semana',
   directorio: 'Directorio',
+  freelance: 'Freelance: buscar trabajo',
   pomodoro: 'Pomodoro',
   jardinToday: 'Jardín: lo de hoy',
   jardinSupplies: 'Jardín: inventario',

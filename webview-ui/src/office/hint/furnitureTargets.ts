@@ -5,6 +5,7 @@ import { concertsStore } from '../../../../features/conciertos/webview/concertsS
 import { connectionsStore } from '../../../../features/conexiones/webview/connectionsStore.js';
 import { decksStore } from '../../../../features/decks/webview/decksStore.js';
 import { directorioStore } from '../../../../features/directorio/webview/directorioStore.js';
+import { freelanceStore } from '../../../../features/freelance/webview/freelanceStore.js';
 import { githubStore } from '../../../../features/github/webview/githubStore.js';
 import { JARDIN_PANEL_SECTION } from '../../../../features/jardin/webview/constants.js';
 import { jardinStore, plantOfFurniture } from '../../../../features/jardin/webview/jardinStore.js';
@@ -102,6 +103,10 @@ export function furnitureTargetAt(
   // Directorio room (features/directorio): the front desk.
   if (os.isDirectorioAt(worldX, worldY))
     return target(HINT_LABELS.directorio, () => directorioStore.open());
+
+  // Freelance room (features/freelance): the desk with the three screens.
+  if (os.isFreelanceAt(worldX, worldY))
+    return target(HINT_LABELS.freelance, () => freelanceStore.open());
 
   // Private packs (packs/registry.ts): their own furniture, with their own sign if they give one.
   if (packHover(worldX, worldY, os))

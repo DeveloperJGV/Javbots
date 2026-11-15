@@ -2,16 +2,25 @@ import { type ReactNode, useState } from 'react';
 
 import type { SearchLauncher, SearchRequest, SearchResult } from '../../../core/src/messages.js';
 import { Button } from '../../../webview-ui/src/components/ui/Button.js';
-import { ratingText, resultsInOrder, STATE_LABELS, telHref } from './searchText.js';
+import {
+  DEFAULT_MARK_LABELS,
+  type MarkLabels,
+  ratingText,
+  resultsInOrder,
+  STATE_LABELS,
+  telHref,
+} from './searchText.js';
 
 function ResultLine({
   result,
   kindLabel,
+  markLabels,
   onMark,
   actions,
 }: {
   result: SearchResult;
   kindLabel: (kind: string) => string;
+  markLabels: MarkLabels;
   onMark: (mark: 'contactado' | 'descartado' | 'ninguno') => void;
   actions?: ReactNode;
 }) {
@@ -36,7 +45,7 @@ function ResultLine({
             <span className="text-status-error"> · descartado por el agente</span>
           )}
           {result.mark === 'contactado' && (
-            <span className="text-status-success"> · contactado</span>
+            <span className="text-status-success"> · {markLabels.contacted}</span>
           )}
           {result.mark === 'agendado' && <span className="text-status-success"> · agendado</span>}
           {result.mark === 'descartado' && (
@@ -45,7 +54,17 @@ function ResultLine({
         </span>
         {rating && <span className="text-status-permission">{rating}</span>}
       </span>
+      {result.details && result.details.length > 0 && (
+        <span className="flex flex-wrap gap-x-12">
+          {result.details.map((d, i) => (
+            <span key={`${i}-${d.label}`}>
+              <span className="text-text-muted">{d.label}:</span> {d.value}
+            </span>
+          ))}
+        </span>
+      )}
       {result.why && <span>{result.why}</span>}
+      {result.note && <span className="text-status-permission">Nota: {result.note}</span>}
       <span className="flex flex-wrap gap-x-12 text-text-muted">
         {result.phone && (
           <a className="hover:underline" href={telHref(result.phone)}>
@@ -61,7 +80,7 @@ function ResultLine({
           variant={result.mark === 'contactado' ? 'active' : 'default'}
           onClick={() => onMark(result.mark === 'contactado' ? 'ninguno' : 'contactado')}
         >
-          Contacté
+          {markLabels.contact}
         </Button>
         <Button
           size="sm"
@@ -79,7 +98,7 @@ function ResultLine({
 /**
  * One request of a search room (features/busquedas): what was asked, how the agent is doing, the buttons to launch it
  * or copy its brief, and its results best first with the owner's marks. `actions` adds a room's own buttons per result
- * (the Directorio's "Agendar").
+ * (the Directorio's "Agendar"); `markLabels` renames the "contacted" mark (freelance: "Postulé").
  */
 export function SearchRequestCard({
   request,
@@ -90,6 +109,8 @@ export function SearchRequestCard({
   onMark,
   onDelete,
   actions,
+  markLabels = DEFAULT_MARK_LABELS,
+  emptyText = 'El agente no encontró a nadie que cumpla.',
 }: {
   request: SearchRequest;
   launcher: SearchLauncher;
@@ -99,6 +120,9 @@ export function SearchRequestCard({
   onMark: (resultId: string, mark: 'contactado' | 'descartado' | 'ninguno') => void;
   onDelete: () => void;
   actions?: (result: SearchResult) => ReactNode;
+  markLabels?: MarkLabels;
+  /** What a request with an empty results file says. */
+  emptyText?: string;
 }) {
   const [copied, setCopied] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -175,6 +199,7 @@ export function SearchRequestCard({
               key={r.id}
               result={r}
               kindLabel={kindLabel}
+              markLabels={markLabels}
               onMark={(m) => onMark(r.id, m)}
               actions={actions?.(r)}
             />
@@ -182,7 +207,7 @@ export function SearchRequestCard({
         </ul>
       )}
       {request.state === 'listo' && results.length === 0 && (
-        <span className="text-text-muted">El agente no encontró a nadie que cumpla.</span>
+        <span className="text-text-muted">{emptyText}</span>
       )}
     </section>
   );

@@ -7,11 +7,15 @@ import type {
   SearchRequest,
   SearchRequestState,
   SearchResult,
+  SearchResultDetail,
   SearchResultMark,
   SearchRoomStatus,
 } from '../../../core/src/messages.js';
 import {
   LOG_PREFIX,
+  MAX_DETAIL_LABEL_CHARS,
+  MAX_DETAIL_VALUE_CHARS,
+  MAX_DETAILS,
   MAX_FIELD_CHARS,
   MAX_REQUESTS,
   MAX_RESULTS,
@@ -104,6 +108,20 @@ export function safeLink(v: unknown): string | undefined {
   }
 }
 
+/** A result's own facts (`detalles: [{ etiqueta, valor }]`): short texts, at most MAX_DETAILS, odd ones dropped. */
+export function readDetails(raw: unknown): SearchResultDetail[] {
+  if (!Array.isArray(raw)) return [];
+  const out: SearchResultDetail[] = [];
+  for (const item of raw) {
+    if (out.length >= MAX_DETAILS) break;
+    const d = obj(item);
+    const label = text(d.etiqueta ?? d.label, MAX_DETAIL_LABEL_CHARS);
+    const value = text(d.valor ?? d.value, MAX_DETAIL_VALUE_CHARS);
+    if (label && value) out.push({ label, value });
+  }
+  return out;
+}
+
 /**
  * The agent's results file (resultados/<id>.json, Spanish keys as the skill says) → checked results, best first:
  * recommended before discarded, then by score, then by number of reviews. Anything odd is dropped, never trusted.
@@ -147,6 +165,10 @@ export function readResults(
     if (address) res.address = address;
     if (link) res.link = link;
     if (source) res.source = source;
+    const resultNote = text(e.nota, MAX_WHY_CHARS);
+    if (resultNote) res.note = resultNote;
+    const details = readDetails(e.detalles);
+    if (details.length) res.details = details;
     results.push(res);
   }
   results.sort(

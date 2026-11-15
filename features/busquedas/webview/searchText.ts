@@ -25,3 +25,12 @@ export function resultsInOrder(results: readonly SearchResult[]): SearchResult[]
 
 /** Phone → tel: link (digits and + only). */
 export const telHref = (phone: string): string => `tel:${phone.replace(/[^\d+]/g, '')}`;
+
+/** What the "contacted" mark says in a room: its button and the note on the result. */
+export interface MarkLabels {
+  contact: string;
+  contacted: string;
+}
+
+/** The Directorio's words (rooms can bring their own: freelance says "Postulé"). */
+export const DEFAULT_MARK_LABELS: MarkLabels = { contact: 'Contacté', contacted: 'contactado' };

@@ -15,6 +15,8 @@ import { DecksPanel } from '../../features/decks/webview/DecksPanel.js';
 import { useDecks } from '../../features/decks/webview/useDecks.js';
 import { DirectorioPanel } from '../../features/directorio/webview/DirectorioPanel.js';
 import { directorioStore } from '../../features/directorio/webview/directorioStore.js';
+import { FreelancePanel } from '../../features/freelance/webview/FreelancePanel.js';
+import { useFreelance } from '../../features/freelance/webview/freelanceStore.js';
 import { GithubPanel } from '../../features/github/webview/GithubPanel.js';
 import { useGithub } from '../../features/github/webview/useGithub.js';
 import { useHerdrTabs } from '../../features/herdr/webview/useHerdrTabs.js';
@@ -122,6 +124,7 @@ function App() {
   useColeccion(transport);
   usePerfil(transport);
   useSearchRoom(transport, directorioStore);
+  useFreelance(transport);
   // Optional feature (features/herdr): each character named after its herdr terminal tab
   useHerdrTabs(transport, getOfficeState());
   // Browser runtime (dev or static dist): dispatch mock messages after the
@@ -741,6 +744,8 @@ function App() {
         <PerfilPanel />
         {/* Optional feature (features/directorio): searches by an agent with criteria, from the room's furniture */}
         <DirectorioPanel transport={transport} />
+        {/* Optional feature (features/freelance): the job search of the freelance room, from its desk */}
+        <FreelancePanel transport={transport} />
         {/* Optional feature (features/conexiones): the outside services the office talks to, from the rack */}
         <ConnectionsPanel />
         {/* Optional feature (features/bodega): every piece of furniture not in the office, with thumbnails */}

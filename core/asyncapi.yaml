@@ -144,8 +144,10 @@ components:
         - $ref: '#/components/schemas/PomodoroStatus'
         # Personality screen of the freelance room (feature: features/perfil)
         - $ref: '#/components/schemas/PerfilStatus'
-        # Agent searches with criteria (features/busquedas; rooms: features/directorio)
+        # Agent searches with criteria (features/busquedas; rooms: features/directorio, features/freelance)
         - $ref: '#/components/schemas/SearchRoomStatus'
+        # Freelance room: the owner's offer (feature: features/freelance)
+        - $ref: '#/components/schemas/FreelanceStatus'
         # Outside connections board (feature: features/conexiones)
         - $ref: '#/components/schemas/ConnectionsStatus'
         # Price watch (feature: features/ofertas)
@@ -222,13 +224,15 @@ components:
         - $ref: '#/components/schemas/PausePomodoro'
         - $ref: '#/components/schemas/ResumePomodoro'
         - $ref: '#/components/schemas/StopPomodoro'
-        # Agent searches with criteria (features/busquedas; rooms: features/directorio)
+        # Agent searches with criteria (features/busquedas; rooms: features/directorio, features/freelance)
         - $ref: '#/components/schemas/CreateSearchRequest'
         - $ref: '#/components/schemas/LaunchSearchAgent'
         - $ref: '#/components/schemas/MarkSearchResult'
         - $ref: '#/components/schemas/DeleteSearchRequest'
         - $ref: '#/components/schemas/SaveSearchCriteria'
         - $ref: '#/components/schemas/ScheduleSearchResult'
+        # Freelance room: the owner's offer (feature: features/freelance)
+        - $ref: '#/components/schemas/SaveFreelanceOffer'
         # Price watch (feature: features/ofertas)
         - $ref: '#/components/schemas/SearchOfertas'
         - $ref: '#/components/schemas/SaveOfertasWatch'
@@ -2574,7 +2578,7 @@ components:
           type: string
         kind:
           type: string
-          description: The room's own classification (directorio - oficial, establecido, otro).
+          description: The room's own classification (directorio - oficial, establecido, otro; freelance - directo, plataforma, otro).
         rating:
           type: number
         reviews:
@@ -2598,6 +2602,26 @@ components:
           $ref: '#/components/schemas/SearchResultVerdict'
         mark:
           $ref: '#/components/schemas/SearchResultMark'
+        note:
+          type: string
+          description: The agent's note about this result (e.g. it could not be checked without signing in).
+        details:
+          type: array
+          description: >-
+            The room's own short facts about the result (freelance - pay,
+            published, client, mode), in the agent's order, at most 6.
+          items:
+            $ref: '#/components/schemas/SearchResultDetail'
+
+    SearchResultDetail:
+      type: object
+      additionalProperties: false
+      required: [label, value]
+      properties:
+        label:
+          type: string
+        value:
+          type: string
 
     SearchResultVerdict:
       description: The agent's verdict by the criteria.
@@ -2735,6 +2759,70 @@ components:
         time:
           type: string
           description: HH:MM (local); absent = all-day.
+
+    # ── Freelance room (feature: features/freelance) ───────────────
+    # A search room (features/busquedas) whose searches also carry what the
+    # owner offers. The offer and the model live in ~/.pixel-agents/freelance.json.
+
+    FreelanceStatus:
+      description: >-
+        What the owner offers (the factory example until he saves his own) and
+        the model the search agent starts with. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, offer, offerIsExample, model]
+      properties:
+        type:
+          const: freelanceStatus
+        offer:
+          $ref: '#/components/schemas/FreelanceOfferSpec'
+        offerIsExample:
+          type: boolean
+          description: The offer is still the factory example (the panel asks to fill it).
+        model:
+          type: string
+          description: Claude Code model for the search agent (freelance.json "modelo"); empty = the machine's default.
+
+    FreelanceOfferSpec:
+      type: object
+      additionalProperties: false
+      required: [title, services, technologies, rate, availability, languages, notWanted]
+      properties:
+        title:
+          type: string
+        services:
+          type: array
+          items:
+            type: string
+        technologies:
+          type: array
+          items:
+            type: string
+        rate:
+          type: string
+          description: Free text (e.g. "desde 25 USD/h" or "por proyecto").
+        availability:
+          type: string
+        languages:
+          type: array
+          items:
+            type: string
+        notWanted:
+          type: array
+          description: What the owner does not take.
+          items:
+            type: string
+
+    SaveFreelanceOffer:
+      description: Replace the owner's offer in freelance.json. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, offer]
+      properties:
+        type:
+          const: saveFreelanceOffer
+        offer:
+          $ref: '#/components/schemas/FreelanceOfferSpec'
 
     # ── Outside connections (feature: features/conexiones) ────────
 

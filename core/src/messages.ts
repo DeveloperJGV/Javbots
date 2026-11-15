@@ -55,6 +55,7 @@ export type ServerMessage =
   | PomodoroStatus
   | PerfilStatus
   | SearchRoomStatus
+  | FreelanceStatus
   | ConnectionsStatus
   | OfertasStatus
   | OfertasResults
@@ -126,6 +127,7 @@ export type ClientMessage =
   | DeleteSearchRequest
   | SaveSearchCriteria
   | ScheduleSearchResult
+  | SaveFreelanceOffer
   | SearchOfertas
   | SaveOfertasWatch
   | DeleteOfertasWatch
@@ -1013,11 +1015,18 @@ export interface SearchResult {
   score: number;
   verdict: SearchResultVerdict;
   mark?: SearchResultMark;
+  note?: string;
+  details?: SearchResultDetail[];
 }
 
 export type SearchResultVerdict = 'recomendado' | 'descartado';
 
 export type SearchResultMark = 'contactado' | 'descartado' | 'agendado';
+
+export interface SearchResultDetail {
+  label: string;
+  value: string;
+}
 
 export interface SearchCriteriaSet {
   id: string;
@@ -1028,6 +1037,23 @@ export interface SearchCriteriaSet {
 export interface SearchLauncher {
   available: boolean;
   detail?: string;
+}
+
+export interface FreelanceStatus {
+  type: 'freelanceStatus';
+  offer: FreelanceOfferSpec;
+  offerIsExample: boolean;
+  model: string;
+}
+
+export interface FreelanceOfferSpec {
+  title: string;
+  services: string[];
+  technologies: string[];
+  rate: string;
+  availability: string;
+  languages: string[];
+  notWanted: string[];
 }
 
 export interface ConnectionsStatus {
@@ -1528,10 +1554,10 @@ export interface InstallMusicExtension {
 
 export interface MusicControl {
   type: 'musicControl';
-  action: AnonymousSchema_844;
+  action: AnonymousSchema_862;
 }
 
-export type AnonymousSchema_844 = 'previous' | 'togglePlay' | 'next';
+export type AnonymousSchema_862 = 'previous' | 'togglePlay' | 'next';
 
 export interface DisconnectSpotify {
   type: 'disconnectSpotify';
@@ -1750,6 +1776,11 @@ export interface ScheduleSearchResult {
   title: string;
   date: string;
   time?: string;
+}
+
+export interface SaveFreelanceOffer {
+  type: 'saveFreelanceOffer';
+  offer: FreelanceOfferSpec;
 }
 
 export interface SearchOfertas {

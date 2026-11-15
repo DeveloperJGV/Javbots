@@ -12,6 +12,11 @@ import {
 } from '../../../../features/conexiones/webview/rackFurniture.js';
 import { isDecksFurniture } from '../../../../features/decks/webview/decksStore.js';
 import { isDirectorioFurniture } from '../../../../features/directorio/webview/directorioStore.js';
+import { applyFreelanceFurniture } from '../../../../features/freelance/webview/freelanceFurniture.js';
+import {
+  freelanceStore,
+  isFreelanceFurniture,
+} from '../../../../features/freelance/webview/freelanceStore.js';
 import {
   applyGithubFurniture,
   isCabinet,
@@ -1310,9 +1315,15 @@ export class OfficeState {
       perfilStore.get().profile,
       this.furnitureAnimTimer,
     );
+    // Optional feature: the freelance room's client map lights a pin per open lead (features/freelance)
+    const withFreelance = applyFreelanceFurniture(
+      withPerfil,
+      freelanceStore.get().status,
+      this.furnitureAnimTimer,
+    );
     // Playlist of the day (features/musica): the record press window blinks while a list is built or created
     const withPlaylist = applyPlaylistFurniture(
-      withPerfil,
+      withFreelance,
       playlistStore.get().status,
       this.furnitureAnimTimer,
     );
@@ -1519,6 +1530,13 @@ export class OfficeState {
   isDirectorioAt(worldX: number, worldY: number): boolean {
     return this.furniture.some(
       (f) => isDirectorioFurniture(f.type) && hitsPaintedPixel(f, worldX, worldY),
+    );
+  }
+
+  /** Whether a world point lands on the desk of the freelance room (features/freelance). */
+  isFreelanceAt(worldX: number, worldY: number): boolean {
+    return this.furniture.some(
+      (f) => isFreelanceFurniture(f.type) && hitsPaintedPixel(f, worldX, worldY),
     );
   }
 

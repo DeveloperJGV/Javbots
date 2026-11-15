@@ -13,6 +13,10 @@ export const MAX_RESULTS = 25;
 export const MAX_TEXT_CHARS = 500;
 export const MAX_FIELD_CHARS = 300;
 export const MAX_WHY_CHARS = 800;
+/** A result's own short facts (`detalles`: pay, published, client…), at most this many. */
+export const MAX_DETAILS = 6;
+export const MAX_DETAIL_LABEL_CHARS = 40;
+export const MAX_DETAIL_VALUE_CHARS = 160;
 /** A results file bigger than this is not read. */
 export const MAX_RESULTS_FILE_BYTES = 512 * 1024;
 
@@ -27,3 +31,5 @@ export const HERDR_START_MS = 60_000;
 export const HERDR_START_TIMEOUT_ARG = '45000';
 /** `herdr agent list` is asked at most this often to know if herdr is there. */
 export const HERDR_CHECK_MS = 30_000;
+/** A Claude Code model name or alias (sonnet, opus, claude-sonnet-4-5…): anything else is not passed to herdr. */
+export const MODEL_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;

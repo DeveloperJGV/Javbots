@@ -3,6 +3,13 @@
 Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
 (Pixel Agents) está en [CHANGELOG.md](CHANGELOG.md).
 
+## 15 de noviembre de 2026
+
+- **Freelance.** El escritorio del cuarto hacker abre un panel verde sobre negro: tu oferta, lo que buscas y un agente
+  de Claude Code que lee anuncios públicos y deja trabajos calificados con pago, fecha y cliente; marcas **Postulé** o
+  **Descartado**. El agente solo lee: no se registra ni manda propuestas. El mapa de clientes prende un punto por cada
+  trabajo pendiente.
+
 ## 14 de noviembre de 2026
 
 - **Colección de juegos.** Un estante junto a la tele del tiempo libre abre tu colección en repisas por consola, de

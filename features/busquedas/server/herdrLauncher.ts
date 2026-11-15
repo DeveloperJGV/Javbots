@@ -6,6 +6,8 @@ import {
   HERDR_QUICK_MS,
   HERDR_START_MS,
   HERDR_START_TIMEOUT_ARG,
+  LOG_PREFIX,
+  MODEL_RE,
 } from './constants.js';
 
 /** What a room needs to put an agent to work on a request. */
@@ -75,6 +77,25 @@ export function paneIdOf(stdout: string): string | null {
 
 const NOT_READY = /agent_not_ready|agent_blocked/;
 
+export interface HerdrLauncherOptions {
+  /**
+   * Claude Code model the agent starts with (`claude --model <it>`, through `herdr agent start … -- --model <it>`),
+   * read on every launch. Empty or undefined = the machine's default. A name that is not a plain model id is ignored.
+   */
+  model?: () => string | undefined;
+}
+
+/** The extra arguments herdr passes to Claude Code for `model` (none when it is empty or not a plain model id). */
+export function modelArgs(model: string | undefined): string[] {
+  const m = (model ?? '').trim();
+  if (!m) return [];
+  if (!MODEL_RE.test(m)) {
+    console.warn(`${LOG_PREFIX} Modelo ignorado (no es un nombre de modelo): ${m.slice(0, 40)}`);
+    return [];
+  }
+  return ['--', '--model', m];
+}
+
 /**
  * Agents in herdr (herdr.dev), the terminal the owner already uses: a new tab in the agent's folder, `herdr agent
  * start --kind claude` (Claude Code with its normal permissions: never --dangerously-skip-permissions), then the prompt
@@ -83,6 +104,7 @@ const NOT_READY = /agent_not_ready|agent_blocked/;
 export function createHerdrLauncher(
   exec: HerdrExec = createHerdrExec(),
   now = Date.now,
+  options: HerdrLauncherOptions = {},
 ): AgentLauncher {
   let checked: { at: number; available: boolean; detail?: string } | null = null;
 
@@ -136,6 +158,7 @@ export function createHerdrLauncher(
             pane,
             '--timeout',
             HERDR_START_TIMEOUT_ARG,
+            ...modelArgs(options.model?.()),
           ],
           HERDR_START_MS,
         );
