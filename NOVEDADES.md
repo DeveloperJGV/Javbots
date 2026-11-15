@@ -9,6 +9,9 @@ Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
   de Claude Code que lee anuncios públicos y deja trabajos calificados con pago, fecha y cliente; marcas **Postulé** o
   **Descartado**. El agente solo lee: no se registra ni manda propuestas. El mapa de clientes prende un punto por cada
   trabajo pendiente.
+- **Buscar abre a Claude aunque herdr no lo deje arrancar.** Si `herdr agent start` se niega (pasa en Windows con Git
+  Bash), la oficina escribe Claude en la pestaña nueva con el encargo y el modelo; si nada funciona, cierra esa
+  pestaña en vez de dejarla vacía. Vale para Freelance y para el Directorio.
 
 ## 14 de noviembre de 2026
 

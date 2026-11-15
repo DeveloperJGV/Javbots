@@ -4,7 +4,14 @@ import * as path from 'path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { cleanCriteria, createCriteriaStore } from '../../server/criteria.js';
-import { createHerdrLauncher, type HerdrExec, paneIdOf } from '../../server/herdrLauncher.js';
+import {
+  agentStatusOf,
+  createHerdrLauncher,
+  type HerdrExec,
+  paneIdOf,
+  paneRunCommand,
+  tabIdOf,
+} from '../../server/herdrLauncher.js';
 import { briefLine, createSearchRoom, readResults, safeLink } from '../../server/searchRoom.js';
 
 const KINDS = ['oficial', 'establecido', 'otro'] as const;
@@ -268,11 +275,179 @@ describe('herdr', () => {
     expect(got.ready).toBe(false);
   });
 
+  it('el camino normal no abre plan B ni cierra la pestaña', async () => {
+    const calls: string[][] = [];
+    const exec: HerdrExec = async (args) => {
+      calls.push(args);
+      if (args[0] === 'tab')
+        return JSON.stringify({
+          result: { tab: { tab_id: 'w1:t9' }, root_pane: { pane_id: 'w1:p9' } },
+        });
+      return '{}';
+    };
+    await createHerdrLauncher(exec).launch({ name: 'a', label: 'S', cwd: '.', prompt: 'p' });
+    expect(calls.map((c) => `${c[0]} ${c[1]}`)).toEqual([
+      'tab create',
+      'agent start',
+      'agent prompt',
+    ]);
+  });
+
   it('sin herdr no está disponible', async () => {
     const exec: HerdrExec = async () => {
       throw Object.assign(new Error('no'), { code: 'ENOENT' });
     };
     expect(await createHerdrLauncher(exec).check()).toMatchObject({ available: false });
     expect(paneIdOf('no json')).toBeNull();
+  });
+});
+
+describe('herdr: plan B cuando agent start no ve el shell libre', () => {
+  const BUSY =
+    '{"error":{"code":"agent_pane_busy","message":"agent target pane w1:p7 is not an available shell"}}';
+  const TAB = JSON.stringify({
+    result: { tab: { tab_id: 'w1:t7' }, root_pane: { pane_id: 'w1:p7' } },
+  });
+  const agentIs = (status: string) =>
+    JSON.stringify({ result: { agent: { pane_id: 'w1:p7', agent_status: status } } });
+
+  /** A herdr double: answers per subcommand; `wait` answers in order (an Error is thrown). */
+  function herdr(
+    waits: (string | Error)[] = [agentIs('working')],
+    extra: Record<string, string | Error> = {},
+  ) {
+    const calls: string[][] = [];
+    const exec: HerdrExec = async (args) => {
+      calls.push(args);
+      const key = `${args[0]} ${args[1]}`;
+      if (key in extra) {
+        const v = extra[key];
+        if (v instanceof Error) throw v;
+        return v;
+      }
+      if (key === 'tab create') return TAB;
+      if (key === 'agent start') throw new Error(BUSY);
+      if (key === 'agent wait') {
+        const next = waits.shift() ?? new Error('timeout');
+        if (next instanceof Error) throw next;
+        return next;
+      }
+      return '{}';
+    };
+    return { calls, exec };
+  }
+  const open = {
+    name: 'freelance-abc',
+    label: 'Freelance',
+    cwd: 'C:/Users/Ana María/.pixel-agents/freelance',
+    prompt:
+      'Lee el encargo en C:/Users/Ana María/.pixel-agents/freelance/pedidos/abc.md y síguelo paso a paso.',
+  };
+  const instant = { sleep: async () => {} };
+
+  it('escribe claude con el encargo en el mismo panel y espera a verlo trabajando', async () => {
+    const { calls, exec } = herdr();
+    const got = await createHerdrLauncher(exec, Date.now, instant).launch(open);
+    expect(got).toEqual({ agent: 'w1:p7', ready: true });
+    const run = calls.find((c) => c[0] === 'pane' && c[1] === 'run');
+    expect(run).toEqual(['pane', 'run', 'w1:p7', `claude '${open.prompt}'`]);
+    expect(calls.find((c) => c[1] === 'wait')).toEqual([
+      'agent',
+      'wait',
+      'w1:p7',
+      '--until',
+      'working',
+      '--until',
+      'blocked',
+      '--timeout',
+      expect.stringMatching(/^\d+$/),
+    ]);
+    expect(calls.some((c) => c[1] === 'close')).toBe(false);
+    expect(calls.flat().join(' ')).not.toContain('dangerously');
+  });
+
+  it('con modelo: claude --model X; un modelo raro no pasa', async () => {
+    const a = herdr();
+    await createHerdrLauncher(a.exec, Date.now, { ...instant, model: () => 'sonnet' }).launch(open);
+    expect(a.calls.find((c) => c[1] === 'run')?.[3]).toBe(`claude --model sonnet '${open.prompt}'`);
+    const b = herdr();
+    await createHerdrLauncher(b.exec, Date.now, { ...instant, model: () => "x'; rm -rf ~" }).launch(
+      open,
+    );
+    expect(b.calls.find((c) => c[1] === 'run')?.[3]).toBe(`claude '${open.prompt}'`);
+  });
+
+  it('paneRunCommand: comillas sencillas y renglones no se escriben en la terminal', () => {
+    expect(paneRunCommand('Lee C:\\x y\\a.md', undefined)).toBe("claude 'Lee C:\\x y\\a.md'");
+    expect(paneRunCommand('a $(rm -rf ~) `b` "c"', 'opus')).toBe(
+      `claude --model opus 'a $(rm -rf ~) \`b\` "c"'`,
+    );
+    expect(() => paneRunCommand("Lee O'Brien", undefined)).toThrow();
+    expect(() => paneRunCommand('uno\ndos', undefined)).toThrow();
+    expect(() => paneRunCommand('   ', undefined)).toThrow();
+  });
+
+  it('si Claude pregunta algo al arrancar, espera al dueño y no le repite el encargo', async () => {
+    const { calls, exec } = herdr([agentIs('blocked')], { 'agent get': agentIs('working') });
+    const launcher = createHerdrLauncher(exec, Date.now, instant);
+    const got = await launcher.launch(open);
+    expect(got).toMatchObject({ agent: 'w1:p7', ready: false });
+    expect(got.detail).toContain('confías');
+    // "Mandar encargo" after answering: Claude already works on it, so nothing is typed again.
+    calls.length = 0;
+    expect(await launcher.launch({ ...open, agent: 'w1:p7' })).toEqual({
+      agent: 'w1:p7',
+      ready: true,
+    });
+    expect(calls.map((c) => `${c[0]} ${c[1]}`)).toEqual(['agent get']);
+  });
+
+  it('reintenta agent wait mientras Claude todavía no aparece en el panel', async () => {
+    const { calls, exec } = herdr([new Error('agent_not_found'), agentIs('working')]);
+    const got = await createHerdrLauncher(exec, Date.now, instant).launch(open);
+    expect(got.ready).toBe(true);
+    expect(calls.filter((c) => c[1] === 'wait')).toHaveLength(2);
+  });
+
+  it('si nada funcionó, cierra solo la pestaña que abrió y dice por qué', async () => {
+    let t = 0;
+    const { calls, exec } = herdr([]); // every wait fails
+    const launcher = createHerdrLauncher(exec, () => t, {
+      sleep: async (ms) => {
+        t += ms * 30; // the clock runs out after a couple of tries
+      },
+    });
+    await expect(launcher.launch(open)).rejects.toThrow();
+    expect(calls.filter((c) => c[1] === 'close')).toEqual([['tab', 'close', 'w1:t7']]);
+
+    const failRun = herdr([], { 'pane run': new Error('pane gone') });
+    await expect(createHerdrLauncher(failRun.exec, Date.now, instant).launch(open)).rejects.toThrow(
+      'pane gone',
+    );
+    expect(failRun.calls.at(-1)).toEqual(['tab', 'close', 'w1:t7']);
+
+    // Another start error (not "busy") is not retried with pane run, but the tab is closed too.
+    const other = herdr([], { 'agent start': new Error('kaboom') });
+    await expect(createHerdrLauncher(other.exec, Date.now, instant).launch(open)).rejects.toThrow(
+      'kaboom',
+    );
+    expect(other.calls.some((c) => c[1] === 'run')).toBe(false);
+    expect(other.calls.at(-1)).toEqual(['tab', 'close', 'w1:t7']);
+  });
+
+  it('un encargo con comilla sencilla no se escribe: cierra la pestaña', async () => {
+    const { calls, exec } = herdr();
+    await expect(
+      createHerdrLauncher(exec, Date.now, instant).launch({ ...open, prompt: "Lee O'Brien" }),
+    ).rejects.toThrow('caracteres');
+    expect(calls.some((c) => c[1] === 'run')).toBe(false);
+    expect(calls.at(-1)).toEqual(['tab', 'close', 'w1:t7']);
+  });
+
+  it('tabIdOf y agentStatusOf leen lo que herdr devuelve', () => {
+    expect(tabIdOf(TAB)).toBe('w1:t7');
+    expect(tabIdOf('{}')).toBeNull();
+    expect(agentStatusOf(agentIs('blocked'))).toBe('blocked');
+    expect(agentStatusOf('nope')).toBeNull();
   });
 });

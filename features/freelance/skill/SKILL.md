@@ -42,18 +42,22 @@ las ligas que salgan en una búsqueda web normal, como no verificadas.
 Primero lo que se lee sin cuenta **y** trae pago y fecha. Esto es lo que se comprobó en noviembre de 2026; si algo ya
 no es así, anótalo en `nota`.
 
-1. **We Work Remotely** (`weworkremotely.com`): categorías de programación; se lee sin cuenta, casi siempre con
+1. **Get on Board** (`getonbrd.com/jobs/programming`, y su búsqueda por tecnología, por ejemplo
+   `getonbrd.com/jobs-Jetpack+Compose`): bolsa latinoamericana; se lee sin cuenta, casi siempre con rango en USD al
+   mes, y marca qué anuncios son remotos y para qué países. En la lista las fechas salen sin año: abre el anuncio para
+   ver la fecha completa. Es lo que más trae de móvil reciente. Tipo `directo` si publica la empresa.
+2. **We Work Remotely** (`weworkremotely.com`): categorías de programación; se lee sin cuenta, casi siempre con
    rango de pago y antigüedad (por ejemplo "9d"); tiene RSS por categoría
    (`https://weworkremotely.com/categories/remote-programming-jobs.rss`). Son empleos y contratos de empresas, no
-   proyectos chicos: sirve para largo plazo. Tipo `directo` (la empresa publica y se le contacta sin intermediario).
-2. **Remote OK** (`remoteok.com`, con su lista en `remoteok.com/api`): fecha exacta y liga a cada anuncio; el pago a
+   proyectos chicos: sirve para largo plazo. Su RSS puede ir atrasado: revisa la fecha de cada anuncio. Tipo `directo`
+   (la empresa publica y se le contacta sin intermediario).
+3. **Remote OK** (`remoteok.com`, con su lista en `remoteok.com/api`): fecha exacta y liga a cada anuncio; el pago a
    veces viene vacío (0). Si usas sus datos, menciona "Remote OK" como `fuente` y conserva su liga. Tipo `otro`
    (agregador de bolsas).
-3. **Remotive** (`remotive.com`, datos públicos en `remotive.com/api/remote-jobs?category=software-dev`): fecha y a
+4. **Remotive** (`remotive.com`, datos públicos en `remotive.com/api/remote-jobs?category=software-dev`): fecha y a
    veces pago. Sus datos salen con 24 horas de retraso, y piden no consultar más de unas 4 veces al día: una consulta
-   por búsqueda basta. Menciona "Remotive" en `fuente`. Tipo `otro`.
-4. **Get on Board** (`getonbrd.com/jobs/programming`): bolsa latinoamericana; se lee sin cuenta, muestra fecha y casi
-   siempre rango en USD al mes, y marca qué anuncios son remotos para Latinoamérica. Tipo `directo` si es la empresa.
+   por búsqueda basta. Su parámetro `search=` filtra mal: baja la categoría y busca tú la tecnología en lo que
+   devuelve. Menciona "Remotive" en `fuente`. Tipo `otro`.
 5. **Freelancer.com** (por ejemplo `freelancer.com/jobs/mobile-phone/`): se lee sin cuenta, muestra presupuesto y
    número de ofertas, pero **no la fecha** (solo "quedan N días"). Tipo `plataforma`. Se llena de anuncios chicos y
    de mucha competencia: pide pago razonable y pocas ofertas.
@@ -80,6 +84,11 @@ Además, una búsqueda web normal ("contratar desarrollador Android freelance", 
   "automatización") y el tipo de trabajo ("contract", "por proyecto", "freelance"). Prueba en inglés **y** en español.
 - Usa las categorías de programación de cada sitio antes que la búsqueda libre, y ordena por lo más reciente.
 - Del pedido saca el filtro: si dice "precio fijo", busca proyectos; si dice "largo plazo", contratos.
+- Estas bolsas traen sobre todo empleos y contratos, y pocos proyectos sueltos. Si el pedido o los criterios piden
+  proyectos por encargo y no hay, incluye los contratos que encajen con la oferta, dilo en `porque` ("es contrato de
+  tiempo completo, no proyecto") y en la `nota` general; no los presentes como proyectos.
+- Muchos anuncios aceptan solo ciertos países o zonas horarias. Si la oferta dice desde dónde trabaja quien busca,
+  descarta los que no lo aceptan; si no lo dice, anota el requisito en `detalles` (Modalidad) para que lo revise.
 - Mejor pocos sitios bien leídos que todos a medias. Abre el anuncio de verdad antes de calificarlo: un resumen de
   lista no basta para saber pago, fecha o alcance.
 

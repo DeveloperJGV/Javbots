@@ -78,3 +78,18 @@ que el agente reescriba el archivo.
   guardada sigue siendo `contactado`.
 - `createHerdrLauncher(exec, now, { model })`: el modelo de Claude Code con que arranca el agente
   (`herdr agent start … -- --model <modelo>`); solo nombres simples. Sin `model`, el de la máquina (el Directorio).
+
+## Si `herdr agent start` no puede (Windows con Git Bash)
+
+En algunas computadoras herdr no reconoce el shell de la pestaña nueva como libre y `agent start` responde
+`agent_pane_busy`. Entonces el lanzador escribe Claude en esa misma pestaña:
+
+1. `herdr pane run <panel> "claude [--model <modelo>] '<la línea del encargo>'"` (el encargo va entre comillas
+   sencillas; si trae una comilla sencilla o un salto de renglón, no se escribe y se avisa).
+2. `herdr agent wait <panel> --until working --until blocked --timeout <ms>` (reintenta hasta 60 s mientras Claude
+   arranca).
+3. `working`: está buscando. `blocked`: Claude pregunta algo (por ejemplo, si confías en la carpeta); el encargo ya
+   va en su línea, así que al contestarle sigue solo, y "Mandar encargo" no se lo repite mientras trabaja.
+
+Ese agente se conoce por su panel (`w1:p12`). Si nada funcionó, el lanzador cierra la pestaña que abrió en ese
+intento (`herdr tab close`) y el panel muestra el error con "Copiar encargo".

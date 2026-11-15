@@ -31,5 +31,12 @@ export const HERDR_START_MS = 60_000;
 export const HERDR_START_TIMEOUT_ARG = '45000';
 /** `herdr agent list` is asked at most this often to know if herdr is there. */
 export const HERDR_CHECK_MS = 30_000;
+/**
+ * Fallback when `herdr agent start` refuses the new tab's shell (`agent_pane_busy`, seen on Windows + Git Bash): Claude
+ * is typed into the pane with `herdr pane run`, then this long is waited for herdr to see it working or asking.
+ */
+export const HERDR_RUN_WAIT_MS = 60_000;
+/** Pause between `herdr agent wait` tries while Claude is still starting (herdr has no agent in the pane yet). */
+export const HERDR_RUN_RETRY_MS = 1_000;
 /** A Claude Code model name or alias (sonnet, opus, claude-sonnet-4-5…): anything else is not passed to herdr. */
 export const MODEL_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
