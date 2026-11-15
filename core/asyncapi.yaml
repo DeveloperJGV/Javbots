@@ -158,6 +158,9 @@ components:
         - $ref: '#/components/schemas/DecksSearchResults'
         - $ref: '#/components/schemas/DecksCardInfo'
         - $ref: '#/components/schemas/DecksImportResult'
+        # Game collection (feature: features/coleccion)
+        - $ref: '#/components/schemas/ColeccionStatus'
+        - $ref: '#/components/schemas/ColeccionResult'
       discriminator: type
 
     ClientMessage:
@@ -244,6 +247,10 @@ components:
         - $ref: '#/components/schemas/DecksSave'
         - $ref: '#/components/schemas/DecksDelete'
         - $ref: '#/components/schemas/DecksImport'
+        # Game collection (feature: features/coleccion)
+        - $ref: '#/components/schemas/ColeccionOpen'
+        - $ref: '#/components/schemas/ColeccionSave'
+        - $ref: '#/components/schemas/ColeccionDelete'
       discriminator: type
 
     # ── Server message variants ────────────────────────────────────
@@ -3724,6 +3731,141 @@ components:
         requestId:
           type: string
         text:
+          type: string
+
+    # ── Game collection (feature: features/coleccion) ──────────────
+
+    ColeccionStatus:
+      description: >-
+        Every game of the collection and every "se busca" gap, the file they live in and what could not be read.
+        Sent on webviewReady, on coleccionOpen and after every change. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, games, file, problems]
+      properties:
+        type:
+          const: coleccionStatus
+        games:
+          type: array
+          items:
+            $ref: '#/components/schemas/ColeccionGame'
+        file:
+          type: string
+        problems:
+          type: array
+          items:
+            type: string
+
+    ColeccionResult:
+      description: The answer to coleccionSave or coleccionDelete (id = the game saved or deleted).
+      type: object
+      additionalProperties: false
+      required: [type, requestId, ok]
+      properties:
+        type:
+          const: coleccionResult
+        requestId:
+          type: string
+        ok:
+          type: boolean
+        id:
+          type: string
+        error:
+          type: string
+
+    ColeccionGame:
+      description: >-
+        One game, or a gap on its shelf (wanted = true, with the price seen). Empty strings and 0 mean "not said".
+        id is empty for a game never saved. region is ntsc-u, pal, ntsc-j or otra; condition completo, suelto or
+        sellado; progress sin-jugar, a-medias, terminado or de-siempre; length rato, 1h or tarde. externalId,
+        barcode and cover are kept for a later stage and unused for now.
+      type: object
+      additionalProperties: false
+      required:
+        [id, title, platform, wanted, region, condition, progress, players, coop, length, series, owner, notes,
+         price, seenAt, addedAt, lastPlayed, updatedAt]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        platform:
+          type: string
+        wanted:
+          type: boolean
+        region:
+          type: string
+        condition:
+          type: string
+        progress:
+          type: string
+        players:
+          type: integer
+        coop:
+          type: boolean
+        length:
+          type: string
+        series:
+          type: string
+        owner:
+          type: string
+        notes:
+          type: string
+        price:
+          type: string
+        seenAt:
+          type: string
+        addedAt:
+          type: string
+          description: YYYY-MM-DD.
+        lastPlayed:
+          type: string
+          description: YYYY-MM-DD, or empty.
+        updatedAt:
+          type: string
+          description: ISO time of the last save (empty when never saved).
+        externalId:
+          type: string
+        barcode:
+          type: string
+        cover:
+          type: string
+
+    ColeccionOpen:
+      description: The collection panel opened; answered with coleccionStatus. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: coleccionOpen
+
+    ColeccionSave:
+      description: Write a game (id "" = a new one); answered with coleccionResult. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, requestId, game]
+      properties:
+        type:
+          const: coleccionSave
+        requestId:
+          type: string
+        game:
+          $ref: '#/components/schemas/ColeccionGame'
+
+    ColeccionDelete:
+      description: >-
+        Take a game out of the collection (it stays in the file's trash list); answered with coleccionResult.
+        Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, requestId, id]
+      properties:
+        type:
+          const: coleccionDelete
+        requestId:
+          type: string
+        id:
           type: string
 
     GithubPullRequest:

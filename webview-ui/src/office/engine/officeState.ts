@@ -3,6 +3,7 @@ import { applyAgendaFurniture } from '../../../../features/agenda/webview/agenda
 import { agendaStore, isAgendaFurniture } from '../../../../features/agenda/webview/agendaStore.js';
 import { BODEGA_EMPTY_TYPE, BODEGA_TYPE } from '../../../../features/bodega/webview/constants.js';
 import { baseType as bodegaBaseType } from '../../../../features/bodega/webview/storedItems.js';
+import { isColeccionFurniture } from '../../../../features/coleccion/webview/coleccionStore.js';
 import { isConcertTickets } from '../../../../features/conciertos/webview/concertsStore.js';
 import { connectionsStore } from '../../../../features/conexiones/webview/connectionsStore.js';
 import {
@@ -1504,6 +1505,13 @@ export class OfficeState {
   isDecksAt(worldX: number, worldY: number): boolean {
     return this.furniture.some(
       (f) => isDecksFurniture(f.type) && hitsPaintedPixel(f, worldX, worldY),
+    );
+  }
+
+  /** Whether a world point lands on the game collection shelf (features/coleccion). */
+  isColeccionAt(worldX: number, worldY: number): boolean {
+    return this.furniture.some(
+      (f) => isColeccionFurniture(f.type) && hitsPaintedPixel(f, worldX, worldY),
     );
   }
 

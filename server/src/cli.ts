@@ -13,6 +13,7 @@ import * as path from 'path';
 import { createAgendaFeature } from '../../features/agenda/server/agendaFeature.js';
 import { AGENDA_FLOOR_LAYOUT_FILE } from '../../features/agenda/server/constants.js';
 import { createHerdrLauncher } from '../../features/busquedas/server/herdrLauncher.js';
+import { createColeccionFeature } from '../../features/coleccion/server/coleccionFeature.js';
 import { createConcertsFeature } from '../../features/conciertos/server/concertsFeature.js';
 import { createConnectionsFeature } from '../../features/conexiones/server/connectionsFeature.js';
 import { createDecksFeature } from '../../features/decks/server/decksFeature.js';
@@ -359,6 +360,8 @@ async function main(): Promise<void> {
       // Optional feature: Yu-Gi-Oh! deck boxes, one file per deck, card data from YGOPRODeck kept locally
       // (features/decks).
       createDecksFeature({ officeToken: () => currentConfig?.token ?? null }),
+      // Optional feature: the game collection, shelves by console filled by hand (features/coleccion).
+      createColeccionFeature(),
       // Optional feature: the owner's personality screen in the freelance room, from a private file (features/perfil).
       createPerfilFeature(),
     ];

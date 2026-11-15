@@ -63,7 +63,9 @@ export type ServerMessage =
   | DecksStatus
   | DecksSearchResults
   | DecksCardInfo
-  | DecksImportResult;
+  | DecksImportResult
+  | ColeccionStatus
+  | ColeccionResult;
 
 export type ClientMessage =
   | WebviewReady
@@ -139,7 +141,10 @@ export type ClientMessage =
   | DecksCards
   | DecksSave
   | DecksDelete
-  | DecksImport;
+  | DecksImport
+  | ColeccionOpen
+  | ColeccionSave
+  | ColeccionDelete;
 
 export interface ProviderCapabilities {
   type: 'providerCapabilities';
@@ -1336,6 +1341,45 @@ export interface DecksImportResult {
   problems: string[];
 }
 
+export interface ColeccionStatus {
+  type: 'coleccionStatus';
+  games: ColeccionGame[];
+  file: string;
+  problems: string[];
+}
+
+export interface ColeccionGame {
+  id: string;
+  title: string;
+  platform: string;
+  wanted: boolean;
+  region: string;
+  condition: string;
+  progress: string;
+  players: number;
+  coop: boolean;
+  length: string;
+  series: string;
+  owner: string;
+  notes: string;
+  price: string;
+  seenAt: string;
+  addedAt: string;
+  lastPlayed: string;
+  updatedAt: string;
+  externalId?: string;
+  barcode?: string;
+  cover?: string;
+}
+
+export interface ColeccionResult {
+  type: 'coleccionResult';
+  requestId: string;
+  ok: boolean;
+  id?: string;
+  error?: string;
+}
+
 export interface WebviewReady {
   type: 'webviewReady';
   office?: string;
@@ -1484,10 +1528,10 @@ export interface InstallMusicExtension {
 
 export interface MusicControl {
   type: 'musicControl';
-  action: AnonymousSchema_813;
+  action: AnonymousSchema_844;
 }
 
-export type AnonymousSchema_813 = 'previous' | 'togglePlay' | 'next';
+export type AnonymousSchema_844 = 'previous' | 'togglePlay' | 'next';
 
 export interface DisconnectSpotify {
   type: 'disconnectSpotify';
@@ -1804,4 +1848,20 @@ export interface DecksImport {
   type: 'decksImport';
   requestId: string;
   text: string;
+}
+
+export interface ColeccionOpen {
+  type: 'coleccionOpen';
+}
+
+export interface ColeccionSave {
+  type: 'coleccionSave';
+  requestId: string;
+  game: ColeccionGame;
+}
+
+export interface ColeccionDelete {
+  type: 'coleccionDelete';
+  requestId: string;
+  id: string;
 }

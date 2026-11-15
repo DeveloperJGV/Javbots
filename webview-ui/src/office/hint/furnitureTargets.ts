@@ -1,5 +1,6 @@
 import { agendaStore } from '../../../../features/agenda/webview/agendaStore.js';
 import { bodegaStore } from '../../../../features/bodega/webview/bodegaStore.js';
+import { coleccionStore } from '../../../../features/coleccion/webview/coleccionStore.js';
 import { concertsStore } from '../../../../features/conciertos/webview/concertsStore.js';
 import { connectionsStore } from '../../../../features/conexiones/webview/connectionsStore.js';
 import { decksStore } from '../../../../features/decks/webview/decksStore.js';
@@ -93,6 +94,10 @@ export function furnitureTargetAt(
 
   // Deck boxes shelf (features/decks).
   if (os.isDecksAt(worldX, worldY)) return target(HINT_LABELS.decks, () => decksStore.open());
+
+  // Game collection shelf (features/coleccion), next to the free-time TV.
+  if (os.isColeccionAt(worldX, worldY))
+    return target(HINT_LABELS.coleccion, () => coleccionStore.open());
 
   // Directorio room (features/directorio): the front desk.
   if (os.isDirectorioAt(worldX, worldY))

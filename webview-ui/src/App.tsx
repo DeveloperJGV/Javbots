@@ -5,6 +5,8 @@ import { useAgenda } from '../../features/agenda/webview/useAgenda.js';
 import { BodegaPanel } from '../../features/bodega/webview/BodegaPanel.js';
 import { bodegaStore } from '../../features/bodega/webview/bodegaStore.js';
 import { useSearchRoom } from '../../features/busquedas/webview/searchRoomStore.js';
+import { ColeccionPanel } from '../../features/coleccion/webview/ColeccionPanel.js';
+import { useColeccion } from '../../features/coleccion/webview/useColeccion.js';
 import { ConcertsPanel } from '../../features/conciertos/webview/ConcertsPanel.js';
 import { useConcerts } from '../../features/conciertos/webview/useConcerts.js';
 import { ConnectionsPanel } from '../../features/conexiones/webview/ConnectionsPanel.js';
@@ -116,6 +118,8 @@ function App() {
   useOfertas(transport);
   // Optional feature (features/decks): the Yu-Gi-Oh! deck boxes, from the shelf (or the page's #decks hash)
   useDecks(transport);
+  // Optional feature (features/coleccion): the game collection, from its furniture (or the page's #coleccion hash)
+  useColeccion(transport);
   usePerfil(transport);
   useSearchRoom(transport, directorioStore);
   // Optional feature (features/herdr): each character named after its herdr terminal tab
@@ -732,6 +736,8 @@ function App() {
         <OfertasPanel transport={transport} />
         {/* Optional feature (features/decks): the deck boxes, from the shelf (or the page's #decks hash) */}
         <DecksPanel transport={transport} />
+        {/* Optional feature (features/coleccion): the game shelves, from their furniture (or #coleccion) */}
+        <ColeccionPanel transport={transport} />
         <PerfilPanel />
         {/* Optional feature (features/directorio): searches by an agent with criteria, from the room's furniture */}
         <DirectorioPanel transport={transport} />

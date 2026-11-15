@@ -17401,6 +17401,12 @@
       "type": "DECKS_SHELF",
       "col": 27,
       "row": 17
+    },
+    {
+      "uid": "coleccion-estante",
+      "type": "COLECCION_SHELF",
+      "col": 29,
+      "row": 24
     }
   ],
   "pets": [],

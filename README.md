@@ -25,15 +25,14 @@ cambiamos el idioma, el arte, los cuartos y le agregamos cosas nuevas. La docume
 
 ## Novedades
 
+- **14 de noviembre de 2026**: un estante junto a la tele guarda tu **colección de juegos** en repisas por consola,
+  de NES a Series X: se llena a mano, cada juego se abre como estuche, los huecos "se busca" llevan su precio y
+  **"¿Qué jugamos hoy?"** propone tres.
 - **13 de noviembre de 2026**: la playlist también se pide **con tus palabras** ("rock en español de los 90 para
   manejar de noche") y la oficina la busca y la arma; **Mis listas** junta las que ya hizo para tocarlas, modificarlas,
   mejorarlas o borrarlas; el dueño de la oficina **hace gestos** (saluda, festeja, baila); una repisa guarda tus **decks de
   Yu-Gi-Oh!** como cajas que se abren para ver su lista; Ofertas ya dice si algo es **buen precio** y por qué; y cada
   mueble que abre algo lo dice **al pasar el mouse**.
-- **12 de noviembre de 2026**: la Agenda arma tu **plan del día** (tus tareas en tus huecos libres, en ratos de 30
-  minutos, con resumen de la mañana), la oficina busca y vigila precios (**Ofertas**: varias tiendas a la vez, historial y
-  aviso cuando llega a tu precio), arma la **playlist del día** con botones desde la prensa de vinilos, y el **dueño
-  de la oficina** puede tener su propio personaje, que cambia de piso contigo.
 
 Todo lo nuevo, por fecha, en [NOVEDADES.md](NOVEDADES.md).
 

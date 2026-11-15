@@ -3,6 +3,13 @@
 Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
 (Pixel Agents) está en [CHANGELOG.md](CHANGELOG.md).
 
+## 14 de noviembre de 2026
+
+- **Colección de juegos.** Un estante junto a la tele del tiempo libre abre tu colección en repisas por consola, de
+  NES a Series X, con cajas y cartuchos dibujados por código. Se llena a mano (rápido para meter muchos seguidos),
+  cada juego se abre como estuche con su ficha, los huecos **"se busca"** llevan el precio que viste, el buscador
+  ilumina una serie en todas las repisas y **"¿Qué jugamos hoy?"** propone tres según quiénes juegan y cuánto tiempo hay.
+
 ## 13 de noviembre de 2026
 
 - **Playlist por descripción.** En la prensa de vinilos ahora lo primero es "Dime qué quieres": escribes algo como

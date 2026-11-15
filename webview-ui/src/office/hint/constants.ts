@@ -12,6 +12,7 @@ export const HINT_LABELS = {
   playlistBin: 'Playlist: esta no',
   ofertas: 'Ofertas',
   decks: 'Decks',
+  coleccion: 'Colección de juegos',
   bodega: 'Bodega',
   concerts: 'Boletos de conciertos',
   perfil: 'Perfil',
