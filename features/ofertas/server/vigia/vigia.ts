@@ -16,6 +16,7 @@ import {
   ERROR_BACKOFF_CAP_MS,
   HISTORY_CAP,
   LOG_PREFIX,
+  NAVEGADOR_MIN_INTERVAL_MS,
   OTHERS_CAP,
   SCHEDULE_JITTER,
   SEEN_DEALS_CAP,
@@ -40,6 +41,7 @@ import {
 import type {
   Alert,
   AssistantFacts,
+  BrowserTurn,
   CommunityDeal,
   Offer,
   OfferGroup,
@@ -89,6 +91,10 @@ interface SourceRuntime {
 interface Asked {
   status: SourceStatus;
   answer?: SourceAnswer;
+  /** It was read (or tried) with the browser. */
+  viaBrowser?: boolean;
+  /** The office cut the read (the browser closed): no answer, and no result to keep. */
+  interrupted?: boolean;
 }
 
 /** One source in a check of a watch: its status, and its answer with the time it was given. */
@@ -100,8 +106,28 @@ interface SourceAsked extends Asked {
   reused?: boolean;
 }
 
+/** The last automatic answer of a source for one watch, and how it was read. */
+interface LastAnswer {
+  at: number;
+  answer: SourceAnswer;
+  viaBrowser?: boolean;
+}
+
 const isBlocked = (err: unknown) => err instanceof Error && err.name === 'SourceBlocked';
 const isNoKey = (err: unknown) => err instanceof Error && err.name === 'SourceNoKey';
+/** Its message is already the one the person reads ("No encontré Edge ni Chrome en esta máquina"). */
+const isReadError = (err: unknown) => err instanceof Error && err.name === 'SourceReadError';
+const isInterrupted = (err: unknown) => err instanceof Error && err.name === 'SourceInterrupted';
+
+/**
+ * This source is read with the browser now: it can be, the switch is on and the person marked it. The one rule for
+ * both asking (robots stores) and reading.
+ */
+export function readsWithBrowser(s: Source, settings: Settings): boolean {
+  return (
+    s.browser !== undefined && settings.navegador.on && settings.navegador.sources.includes(s.id)
+  );
+}
 
 function withTimeout<T>(run: (signal: AbortSignal) => Promise<T>, ms: number): Promise<T> {
   const ctrl = new AbortController();
@@ -134,14 +160,35 @@ export function createVigia(opts: VigiaOptions): Vigia {
   let running: Promise<void> | undefined;
   let timer: ReturnType<typeof setInterval> | undefined;
   const listeners = new Set<() => void>();
-  const runtime = new Map<string, SourceRuntime>(
-    sources.map((s) => [s.id, { state: 'idle', failures: 0 }]),
-  );
+  /**
+   * What the watch remembers of each source, apart for each way of reading it (plain request or browser): a pause
+   * earned one way is never cleared by switching to the other and back.
+   */
+  const runtime = new Map<string, SourceRuntime>();
+  /** stop() was called: a check still running does not save what it got (the browser closing is not an answer). */
+  let stopped = false;
   /** watch id → source id → last automatic answer (minIntervalMs is kept per watch and source). */
-  const lastAsk = new Map<string, Map<string, { at: number; answer: SourceAnswer }>>();
+  const lastAsk = new Map<string, Map<string, LastAnswer>>();
 
   const iso = (ms: number) => new Date(ms).toISOString();
-  const rt = (id: string) => runtime.get(id)!;
+  function rt(s: Source, browser: boolean = viaBrowser(s)): SourceRuntime {
+    const key = browser ? `${s.id}|navegador` : s.id;
+    let r = runtime.get(key);
+    if (!r) {
+      r = { state: 'idle', failures: 0 };
+      runtime.set(key, r);
+    }
+    return r;
+  }
+
+  /** Every browser queue of the sources: held for a whole batch so one browser serves it. */
+  function holdBrowsers(): () => void {
+    const queues = [...new Set(sources.flatMap((s) => (s.browser ? [s.browser] : [])))];
+    const releases = queues.map((q) => q.hold());
+    return () => {
+      for (const release of releases) release();
+    };
+  }
 
   function emit(): void {
     for (const l of [...listeners]) {
@@ -175,11 +222,19 @@ export function createVigia(opts: VigiaOptions): Vigia {
     return known ?? group;
   }
 
-  /** Asked at all: not turned off, and not a store that only gets its link (linkOnly). */
-  const enabled = (s: Source) => !s.linkOnly && !settings.disabledSources.includes(s.id);
+  const viaBrowser = (s: Source) => readsWithBrowser(s, settings);
+  /**
+   * Asked at all: not turned off, and not a store that only gets its link (linkOnly) unless the person turned it on
+   * with the browser.
+   */
+  const enabled = (s: Source) =>
+    (!s.linkOnly || viaBrowser(s)) && !settings.disabledSources.includes(s.id);
+  /** Least time between two automatic answers of this source for one watch (longer when read with the browser). */
+  const minIntervalOf = (s: Source): number | undefined =>
+    viaBrowser(s) ? Math.max(s.minIntervalMs ?? 0, NAVEGADOR_MIN_INTERVAL_MS) : s.minIntervalMs;
 
   function statusOf(s: Source): SourceStatus {
-    const r = rt(s.id);
+    const r = rt(s);
     const on = enabled(s);
     let ready = true;
     try {
@@ -198,7 +253,12 @@ export function createVigia(opts: VigiaOptions): Vigia {
     if (s.linkOnly) {
       status.linkOnly = true;
     }
-    const detail = !on ? (s.linkOnly ?? TEXT.off) : !ready ? TEXT.noKey : r.detail;
+    if (s.browser) {
+      status.browser = true;
+      if (viaBrowser(s)) status.viaBrowser = true;
+    }
+    const offDetail = s.linkOnly && !viaBrowser(s) ? s.linkOnly : TEXT.off;
+    const detail = !on ? offDetail : !ready ? TEXT.noKey : r.detail;
     if (detail) {
       status.detail = detail;
     }
@@ -220,29 +280,60 @@ export function createVigia(opts: VigiaOptions): Vigia {
     return r.nextTryAt;
   }
 
-  /** Ask one source, keeping its state. Never rejects. */
+  /** The source is backing off: its status says until when (nothing is asked). */
+  function pausedStatus(s: Source, r: SourceRuntime, t: number): SourceStatus | undefined {
+    if (r.nextTryAt === undefined || r.nextTryAt <= t) return undefined;
+    const why = r.state === 'blocked' ? TEXT.pausedBlocked : TEXT.pausedError;
+    r.detail = `En pausa hasta ${untilText(r.nextTryAt, t)} (${why})`;
+    r.count = 0;
+    return statusOf(s);
+  }
+
+  /**
+   * Ask one source, keeping its state. Never rejects. Read with the browser, it first waits for its turn in the
+   * browser's queue: that wait does not count against the time limit, and after it everything is looked at again
+   * (it may have been switched off, or have blocked another search while this one waited).
+   */
   async function ask(s: Source, query: string): Promise<Asked> {
-    const r = rt(s.id);
     const status = statusOf(s);
     if (status.state === 'off' || status.state === 'nokey') {
       return { status };
     }
-    const t = now();
-    if (r.nextTryAt !== undefined && r.nextTryAt > t) {
-      const why = r.state === 'blocked' ? TEXT.pausedBlocked : TEXT.pausedError;
-      r.detail = `En pausa hasta ${untilText(r.nextTryAt, t)} (${why})`;
-      r.count = 0;
-      return { status: statusOf(s) };
-    }
+    let browser = viaBrowser(s);
+    // The state of the way it is read: an answer that comes after a switch goes to the way it was read
+    let r = rt(s, browser);
+    const paused = pausedStatus(s, r, now());
+    if (paused) return { status: paused, viaBrowser: browser };
+    let turn: BrowserTurn | undefined;
     try {
-      const answer = await withTimeout((signal) => s.search(query, signal), SOURCE_TIMEOUT_MS);
+      if (browser && s.browser) {
+        turn = await s.browser.turn();
+        const again = statusOf(s);
+        if (again.state === 'off' || again.state === 'nokey') return { status: again };
+        browser = viaBrowser(s);
+        r = rt(s, browser);
+        const pausedNow = pausedStatus(s, r, now());
+        if (pausedNow) return { status: pausedNow, viaBrowser: browser };
+        if (!browser) {
+          turn.release();
+          turn = undefined;
+        }
+      }
+      const how = { browser };
+      const answer = await withTimeout(
+        (signal) => s.search(query, signal, how),
+        turn?.timeoutMs ?? SOURCE_TIMEOUT_MS,
+      );
       const offers = Array.isArray(answer?.offers) ? answer.offers : [];
       const deals = Array.isArray(answer?.deals) ? answer.deals : [];
       Object.assign(r, { state: 'ok', failures: 0, nextTryAt: undefined, detail: undefined });
       r.count = offers.length || deals.length;
       r.lastOkAt = iso(now());
-      return { status: statusOf(s), answer: { offers, deals } };
+      return { status: statusOf(s), answer: { offers, deals }, viaBrowser: browser };
     } catch (err) {
+      // Cut by the office (closing, the browser's life limit): not the store's fault, nothing changes
+      if (isInterrupted(err))
+        return { status: statusOf(s), viaBrowser: browser, interrupted: true };
       const at = now();
       r.count = 0;
       if (isNoKey(err)) {
@@ -255,13 +346,16 @@ export function createVigia(opts: VigiaOptions): Vigia {
         });
       } else {
         const until = backoff(r, false, at);
+        const said = isReadError(err) ? (err as Error).message : TEXT.noAnswer;
         Object.assign(r, {
           state: 'error',
-          detail: `${TEXT.noAnswer}; reintento después de ${untilText(until, at)}`,
+          detail: `${said}; reintento después de ${untilText(until, at)}`,
         });
         console.warn(`${LOG_PREFIX} ${s.name} falló:`, err instanceof Error ? err.message : err);
       }
-      return { status: statusOf(s) };
+      return { status: statusOf(s), viaBrowser: browser };
+    } finally {
+      turn?.release();
     }
   }
 
@@ -309,7 +403,13 @@ export function createVigia(opts: VigiaOptions): Vigia {
 
   async function search(query: string): Promise<SearchOutcome> {
     const q = query.trim();
-    const settled = await Promise.allSettled(sources.map((s) => ask(s, q)));
+    const release = holdBrowsers();
+    let settled: PromiseSettledResult<Asked>[];
+    try {
+      settled = await Promise.allSettled(sources.map((s) => ask(s, q)));
+    } finally {
+      release();
+    }
     const asked = settled.map((r, i) =>
       r.status === 'fulfilled' ? r.value : { status: statusOf(sources[i]!) },
     );
@@ -383,17 +483,20 @@ export function createVigia(opts: VigiaOptions): Vigia {
       } catch {
         // no link for this one
       }
+      if (a.viaBrowser) check.viaBrowser = true;
       if (!a.answer) {
         const state = a.status.state;
-        check.result = s.linkOnly
-          ? 'link'
-          : state === 'off'
-            ? 'off'
-            : state === 'nokey'
-              ? 'nokey'
-              : state === 'blocked'
-                ? 'blocked'
-                : 'error';
+        // A robots store the person turned on with the browser is a store like the others (it can block)
+        check.result =
+          s.linkOnly && !a.status.enabled
+            ? 'link'
+            : state === 'off'
+              ? 'off'
+              : state === 'nokey'
+                ? 'nokey'
+                : state === 'blocked'
+                  ? 'blocked'
+                  : 'error';
         if (a.status.detail) check.detail = a.status.detail;
         check.at = iso(t);
         return check;
@@ -447,7 +550,7 @@ export function createVigia(opts: VigiaOptions): Vigia {
       return;
     }
     const startedAt = now();
-    const cache = lastAsk.get(id) ?? new Map<string, { at: number; answer: SourceAnswer }>();
+    const cache = lastAsk.get(id) ?? new Map<string, LastAnswer>();
     lastAsk.set(id, cache);
     const answers = await Promise.allSettled(
       sources.map(async (s): Promise<SourceAsked> => {
@@ -456,16 +559,33 @@ export function createVigia(opts: VigiaOptions): Vigia {
         if (status.state === 'off' || status.state === 'nokey') {
           return { source: s, status };
         }
-        if (prevAsk && s.minIntervalMs && startedAt - prevAsk.at < s.minIntervalMs) {
-          return { source: s, status, answer: prevAsk.answer, at: prevAsk.at, reused: true };
+        const minInterval = minIntervalOf(s);
+        if (prevAsk && minInterval && startedAt - prevAsk.at < minInterval) {
+          return {
+            source: s,
+            status,
+            answer: prevAsk.answer,
+            at: prevAsk.at,
+            reused: true,
+            viaBrowser: prevAsk.viaBrowser,
+          };
         }
         const got = await ask(s, before.query);
         if (got.answer) {
-          cache.set(s.id, { at: startedAt, answer: got.answer });
+          cache.set(s.id, { at: startedAt, answer: got.answer, viaBrowser: got.viaBrowser });
         }
-        return { source: s, status: got.status, answer: got.answer, at: now() };
+        return {
+          source: s,
+          status: got.status,
+          answer: got.answer,
+          at: now(),
+          viaBrowser: got.viaBrowser,
+          interrupted: got.interrupted,
+        };
       }),
     );
+    // The office is closing: what this check got is not saved (an interrupted store is not a result)
+    if (stopped) return;
     const prev = watches.find((w) => w.id === id);
     if (!prev || prev.query !== before.query) {
       return; // deleted or changed while it was checking
@@ -474,10 +594,17 @@ export function createVigia(opts: VigiaOptions): Vigia {
       a.status === 'fulfilled' ? a.value : { source: sources[i]!, status: statusOf(sources[i]!) },
     );
     const got = asked.flatMap((a) => (a.answer ? [a.answer] : []));
+    // Nothing but interruptions: the watch stays as it was and due (the next tick checks it again)
+    if (got.length === 0 && asked.some((a) => a.interrupted)) return;
     const t = now();
     const at = iso(t);
     const next: Watch = { ...prev, checkedAt: at, nextCheckAt: iso(nextCheckMs(t)) };
-    next.stores = storeChecks(asked, prev, t);
+    // An interrupted store keeps what it said last time (or says nothing): the cut is not its answer
+    next.stores = storeChecks(asked, prev, t).flatMap((c) => {
+      if (!asked.some((a) => a.interrupted && a.source.id === c.id)) return [c];
+      const last = prev.stores?.find((p) => p.id === c.id);
+      return last ? [last] : [];
+    });
     const offers = got
       .flatMap((a) => a.offers)
       .filter((o) => Number.isFinite(o.price) && o.price > 0 && isRelevant(o.title, prev))
@@ -574,6 +701,8 @@ export function createVigia(opts: VigiaOptions): Vigia {
     }
     checking = true;
     emit();
+    // One browser for the whole round, not one per watch
+    const release = holdBrowsers();
     try {
       for (const id of ids) {
         try {
@@ -583,6 +712,7 @@ export function createVigia(opts: VigiaOptions): Vigia {
         }
       }
     } finally {
+      release();
       checking = false;
       emit();
     }
@@ -800,6 +930,7 @@ export function createVigia(opts: VigiaOptions): Vigia {
     },
 
     start(): void {
+      stopped = false;
       if (opts.timers === false || timer) {
         return;
       }
@@ -811,6 +942,7 @@ export function createVigia(opts: VigiaOptions): Vigia {
     },
 
     stop(): void {
+      stopped = true;
       if (timer) {
         clearInterval(timer);
         timer = undefined;

@@ -23,6 +23,7 @@ import {
   SELLER_RESELLER_TITLE,
   SELLER_STORE_TITLE,
   SELLER_UNKNOWN_TITLE,
+  VIA_BROWSER_TEXT,
 } from './constants.js';
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -123,7 +124,8 @@ export type ChipTone = 'ok' | 'bad' | 'muted';
 
 /** What a source's chip says after a search: "✓ 12", "no contestó", "bloqueó", "falta llave", "apagada". */
 export function sourceChip(source: OfertasSource): { text: string; tone: ChipTone } {
-  if (source.linkOnly) return { text: '↗ ábrela tú', tone: 'muted' };
+  // A robots store the person turned on with the browser is read: its chip says what it said
+  if (source.linkOnly && !source.viaBrowser) return { text: '↗ ábrela tú', tone: 'muted' };
   switch (source.state) {
     case 'ok':
       return { text: `✓ ${source.count ?? 0}`, tone: 'ok' };
@@ -401,8 +403,16 @@ export function storeMark(result: OfertasStoreResult): {
 
 const results = (n: number) => (n === 1 ? '1 resultado' : `${n} resultados`);
 
-/** The whole sentence of one store: "Contestó 24 resultados; ninguno coincide con «…»". */
+/**
+ * The whole sentence of one store: "Contestó 24 resultados; ninguno coincide con «…»", and "· con el navegador" when
+ * it was read (or tried) with the browser. The same sentence goes in the row, its tooltip and its aria-label.
+ */
 export function storeSentence(c: OfertasStoreCheck, query: string): string {
+  const said = storeSaid(c, query);
+  return c.viaBrowser && c.result !== 'link' ? `${said} · ${VIA_BROWSER_TEXT}` : said;
+}
+
+function storeSaid(c: OfertasStoreCheck, query: string): string {
   switch (c.result) {
     case 'found': {
       const price = c.price !== undefined ? ` desde ${money(c.price)}` : '';

@@ -1212,6 +1212,7 @@ export interface OfertasStoreCheck {
   closest?: string;
   detail?: string;
   url?: string;
+  viaBrowser?: boolean;
 }
 
 export type OfertasStoreResult = 'found' | 'none' | 'error' | 'blocked' | 'off' | 'nokey' | 'link';
@@ -1237,6 +1238,8 @@ export interface OfertasSource {
   fragile: boolean;
   enabled: boolean;
   linkOnly?: boolean;
+  browser?: boolean;
+  viaBrowser?: boolean;
   detail?: string;
   count?: number;
   lastOkAt?: string;
@@ -1250,6 +1253,12 @@ export interface OfertasSettings {
   dropPercent: number;
   disabledSources: string[];
   groupOrder?: string[];
+  navegador?: OfertasBrowserSettings;
+}
+
+export interface OfertasBrowserSettings {
+  on: boolean;
+  sources: string[];
 }
 
 export interface OfertasResults {
@@ -1666,10 +1675,10 @@ export interface InstallMusicExtension {
 
 export interface MusicControl {
   type: 'musicControl';
-  action: AnonymousSchema_919;
+  action: AnonymousSchema_925;
 }
 
-export type AnonymousSchema_919 = 'previous' | 'togglePlay' | 'next';
+export type AnonymousSchema_925 = 'previous' | 'togglePlay' | 'next';
 
 export interface DisconnectSpotify {
   type: 'disconnectSpotify';
@@ -1935,6 +1944,7 @@ export interface SetOfertasSettings {
   dropPercent?: number;
   disabledSources?: string[];
   groupOrder?: string[];
+  navegador?: OfertasBrowserSettings;
 }
 
 export interface MarkOfertasAlertsSeen {

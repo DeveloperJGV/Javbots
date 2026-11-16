@@ -9,6 +9,7 @@
  */
 import { HELP_TEXT, parseArgs } from './consolaArgs.js';
 import { LOG_PREFIX } from './constants.js';
+import { createLector } from './navegador/lector.js';
 import { consoleNotifier, ntfyNotifier } from './notifiers.js';
 import { clock, money } from './rules.js';
 import { createSources, storeLinks } from './sources/index.js';
@@ -71,21 +72,31 @@ async function main(): Promise<void> {
   if (push) {
     notifiers.push(push);
   }
+  // The browser reader (only used when "Leer con el navegador" is on): closed before leaving
+  const lector = createLector({ home });
   const vigia = createVigia({
     home,
-    sources: createSources({ keys: () => readKeys(home) }),
+    sources: createSources({ keys: () => readKeys(home), navegador: lector }),
     links: storeLinks,
     notifiers,
     timers: !args.once && !args.search,
   });
 
   if (args.search) {
-    printSearch(await vigia.search(args.search));
+    try {
+      printSearch(await vigia.search(args.search));
+    } finally {
+      await lector.close();
+    }
     return;
   }
   if (args.once) {
-    await vigia.check();
-    printRound(vigia);
+    try {
+      await vigia.check();
+      printRound(vigia);
+    } finally {
+      await lector.close();
+    }
     return;
   }
 
@@ -107,6 +118,7 @@ async function main(): Promise<void> {
   const quit = () => {
     vigia.stop();
     clearInterval(keepAlive);
+    void lector.close();
     out(`${LOG_PREFIX} ${clock(Date.now())}  Vigía detenido`);
   };
   process.once('SIGINT', quit);

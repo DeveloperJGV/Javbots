@@ -4,6 +4,10 @@ import { Checkbox } from '../../../webview-ui/src/components/ui/Checkbox.js';
 import {
   ASISTENTE_MODELS,
   ASISTENTE_SETTINGS_NOTE,
+  BROWSER_NOTE,
+  BROWSER_ROBOTS_NOTE,
+  BROWSER_STORE_OFF_NOTE,
+  BROWSER_SWITCH_LABEL,
   DROP_PERCENT_OPTIONS,
   EVERY_MINUTES_OPTIONS,
   KEY_STEPS,
@@ -116,6 +120,71 @@ function AsistenteAjustes({ estado, send }: { estado?: OfertasAsistenteEstado; s
   );
 }
 
+/**
+ * "Leer con el navegador": the general switch and one per store that can be read that way. A store whose robots.txt
+ * does not allow it says so in its own line, on or off; marking it also takes it out of the switched-off list (it
+ * has no other place to be turned on). A store switched off in "Tiendas" stays off: its line says so.
+ */
+function NavegadorAjustes({ status, send }: { status: OfertasStatus; send: Send }) {
+  const { settings } = status;
+  const nav = settings.navegador ?? { on: false, sources: [] };
+  const stores = status.sources.filter((s) => s.browser);
+  if (stores.length === 0) return null;
+  const setNav = (on: boolean, sources: string[], extra: Record<string, unknown> = {}) =>
+    send({ type: 'setOfertasSettings', navegador: { on, sources }, ...extra });
+  const toggleStore = (id: string, robots: boolean) => {
+    const marked = nav.sources.includes(id);
+    const sources = marked ? nav.sources.filter((x) => x !== id) : [...nav.sources, id];
+    const extra =
+      !marked && robots && settings.disabledSources.includes(id)
+        ? { disabledSources: settings.disabledSources.filter((x) => x !== id) }
+        : {};
+    setNav(nav.on, sources, extra);
+  };
+  return (
+    <section className="flex flex-col gap-2">
+      <div className={sectionTitle}>Leer con el navegador</div>
+      <Checkbox
+        className="px-0!"
+        label={BROWSER_SWITCH_LABEL}
+        checked={nav.on}
+        onChange={() => setNav(!nav.on, nav.sources)}
+      />
+      <span className="text-xs text-text-muted pb-4">{BROWSER_NOTE}</span>
+      {nav.on && (
+        <ul className="flex flex-col" aria-label="Tiendas que se leen con el navegador">
+          {stores.map((s) => {
+            const marked = nav.sources.includes(s.id);
+            const robots = !!s.linkOnly;
+            const offAbove = marked && !robots && settings.disabledSources.includes(s.id);
+            return (
+              <li key={s.id} className="flex flex-col">
+                <Checkbox
+                  className="px-0!"
+                  label={robots ? `${s.name} · ${BROWSER_ROBOTS_NOTE}` : s.name}
+                  checked={marked}
+                  onChange={() => toggleStore(s.id, robots)}
+                />
+                {offAbove && (
+                  <span className="text-xs text-status-permission -mt-4 pb-2">
+                    {BROWSER_STORE_OFF_NOTE}
+                  </span>
+                )}
+                {marked && s.viaBrowser && s.state !== 'idle' && s.state !== 'off' && (
+                  <span className="text-xs text-text-muted -mt-4 pb-2">
+                    {SOURCE_STATE_LABEL[s.state]}
+                    {s.detail ? ` · ${s.detail}` : ''}
+                  </span>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 /** Which stores to ask, how often to check, the sale mode and when a drop is worth an alert. */
 export function OfertasAjustes({
   status,
@@ -168,7 +237,9 @@ export function OfertasAjustes({
         </ul>
         {status.sources.some((s) => s.linkOnly) && (
           <div className="flex flex-col gap-2 pt-4">
-            <span className="text-text-muted">Solo con liga (no se pueden prender)</span>
+            <span className="text-text-muted">
+              Solo con liga (se pueden leer con el navegador, abajo)
+            </span>
             <ul className="flex flex-col gap-1">
               {status.sources
                 .filter((s) => s.linkOnly)
@@ -176,13 +247,19 @@ export function OfertasAjustes({
                   <li key={s.id} className="text-xs">
                     {/* No arrow: this is not a link (the link to each search is in the watch's row) */}
                     <span className="text-text">{s.name}</span>
-                    <span className="text-text-muted"> · {s.detail}</span>
+                    <span className="text-text-muted">
+                      {' '}
+                      ·{' '}
+                      {s.viaBrowser ? `se lee con el navegador; ${BROWSER_ROBOTS_NOTE}` : s.detail}
+                    </span>
                   </li>
                 ))}
             </ul>
           </div>
         )}
       </section>
+
+      <NavegadorAjustes status={status} send={send} />
 
       <section className="flex flex-col gap-4">
         <div className={sectionTitle}>Cada cuánto revisa</div>

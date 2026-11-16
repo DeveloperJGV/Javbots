@@ -122,8 +122,10 @@ solo lectura, sin cuenta y sin datos de la persona.
 
 **`robots.txt`:** se leyó a mano el 16 nov 2026 (la regla `User-agent: *` contra la URL exacta que usa cada fuente)
 en Amazon, Costco, Office Depot, El Palacio de Hierro, Walmart, Promodescuentos, Cyberpuerta, Sam's Club y Liverpool.
-Si no permite leer su búsqueda con programas, la fuente se queda "solo con liga" (`ROBOTS_LINK_ONLY` en `sources/index.ts`): nunca se
-consulta, no se puede prender, y el panel da su búsqueda para abrirla a mano. **No se pudo leer** el de Elektra ni
+Si no permite leer su búsqueda con programas, la fuente se queda "solo con liga" (`ROBOTS_LINK_ONLY` en `sources/index.ts`): de
+fábrica nunca se consulta y el panel da su búsqueda para abrirla a mano. La persona puede prender una de esas tiendas,
+una por una y **solo con el navegador** (ver abajo); nunca se lee con una petición normal, y su estado sigue diciendo
+que su `robots.txt` no lo permite. **No se pudo leer** el de Elektra ni
 el de Coppel (contestan HTTP 403 hasta a esa página). Mercado Libre se lee por su API oficial con llave, no por su
 página. El programa **no** lee el `robots.txt` por su cuenta: si una tienda lo cambia, hay que revisarlo otra vez.
 Office Depot pide 5 s entre páginas; no se comprobó que el vigía siempre deje ese tiempo.
@@ -156,6 +158,57 @@ sin ejecutarla: queda con liga hasta comprobarlo.
 un accesorio lo dice antes del producto ("Cable compatible con …"), o vuelve a nombrar lo buscado después ("Cargador
 iPhone 15 compatible con iPhone 15 Pro"), y ese sí se descarta.
 
+### Leer con el navegador (opcional, apagado de fábrica)
+
+Algunas tiendas rechazan la petición del servidor (Amazon, El Palacio de Hierro, Elektra) pero sí le contestan al
+navegador. En **Ajustes → Leer con el navegador** (un interruptor general y uno por tienda; en `ofertas.json` queda como
+`ajustes.navegador`) el vigía abre la búsqueda de esas tiendas en **Edge** (o Chrome si no hay Edge) **sin ventana**,
+lee la página ya pintada y se la pasa a los mismos lectores de siempre. De fábrica está apagado; al prenderlo vienen
+marcadas Amazon, El Palacio de Hierro y Elektra. Solo cambia **cómo** se lee una tienda: una tienda apagada en
+"Tiendas" sigue apagada, y su renglón lo dice (Amazon viene apagada de fábrica: hay que prenderla en las dos partes).
+Walmart, Promodescuentos y Cyberpuerta vienen sin marcar y su renglón dice que su `robots.txt` no permite leer su
+búsqueda con programas; si la persona las marca, se leen solo con el navegador. Mercado Libre no se ofrece (va por su
+API). «Dónde buscó» dice «con el navegador» en cada tienda leída así.
+
+- **Como una persona:** una página a la vez en toda la oficina, una pausa al azar de 20 a 40 s entre páginas, 30 s
+  como máximo por página, y cada tienda leída así se consulta a lo más cada 3 h por búsqueda guardada (Amazon, 6 h).
+  Un solo navegador por tanda (una ronda de revisiones o una búsqueda en vivo): se abre con la primera página y se
+  cierra al terminar la tanda. Pasados 10 min se cierra al soltar el turno en curso (el siguiente abre otro); a los
+  15 min se cierra pase lo que pase, y esa página cuenta como interrumpida, no como falla de la tienda. Al apagar la
+  oficina, una tienda cortada a media lectura conserva su último resultado. El tiempo en la fila no cuenta contra el
+  tope de la tienda. Una búsqueda en vivo con tres tiendas así tarda de 1 a
+  2 minutos.
+- **Honesto con los bloqueos:** HTTP 403/429/503, un captcha o muro de "verifica que eres humano", o una página de
+  inicio de sesión cuentan como "bloqueó la consulta", con la pausa de siempre. No se resuelve, no se espera a que pase
+  ni se rodea. Cada manera de leer una tienda (petición normal o navegador) guarda su propia pausa: apagar y prender el
+  navegador no la borra.
+- **Su propio perfil:** una carpeta nueva en `~/.pixel-agents/ofertas-navegador/`, sin las sesiones ni las cookies de
+  la persona, que se borra al cerrar (y los restos de más de 2 h, solo dentro de esa carpeta). Edge, por su cuenta,
+  inicia sesión en un perfil nuevo con la cuenta de Windows o de Microsoft de la persona; se arranca con
+  `--disable-features=msImplicitSignin` para que no lo haga (comprobado: sin la bandera el perfil queda con su cuenta;
+  con ella, sin ninguna). La bandera no está documentada, así que hay un candado que no confía en ella: al abrir el
+  navegador y después de cada página, el lector revisa `Default/Preferences` de su perfil; si trae una cuenta (o existe
+  y no se puede leer), no entrega la página, cierra y borra el perfil, y la tienda dice «Edge abrió con una cuenta
+  iniciada; no se leyó nada por seguridad».
+- **Seguridad:** se arranca sin shell, con `--headless=new`, sin extensiones, sin sincronización ni primer arranque. Se
+  habla con él por su propia tubería (`--remote-debugging-pipe`), sin puerto: ningún otro programa de la máquina se
+  puede conectar. No cambia el User-Agent ni esconde que es automático, no usa proxys. El documento principal solo
+  puede estar en los anfitriones de esa tienda, con https y sin puerto (`NAVEGADOR_HOSTS` en `constants.ts`; Costco
+  no está: su búsqueda en JSON no se comprobó con el navegador): toda petición del marco principal se detiene antes de
+  salir y una a otro anfitrión (también una redirección) se corta. En la página solo se evalúa una expresión fija que
+  lee su HTML, hasta 5 MB; las descargas están negadas y cualquier pestaña o ventana que abra la página se cierra. Se
+  cierra con `Browser.close` y, si no, se mata el árbol de su propio proceso (por PID, nunca por nombre); las
+  herramientas de Windows se llaman por su ruta completa.
+- Sin Edge ni Chrome, la tienda dice "No encontré Edge ni Chrome en esta máquina" y lo demás sigue. El primer arranque
+  de Edge para un usuario de Windows que nunca lo abrió no contesta: se mata y se arranca otra vez (unos 15 s más).
+- El navegador no debe quedar vivo cuando la oficina se apaga. En Windows se vio que muere solo al cerrar la ventana de
+  la consola y también al matar Node a la fuerza. Aun así hay dos redes de seguridad: al salir Node (y al cerrar su
+  consola, que manda SIGHUP) se mata el árbol del navegador en el momento; y antes de abrir el primer navegador, la
+  oficina busca por la carpeta de su perfil los que quedaron de un programa que ya no existe y los mata por su PID,
+  después de comprobar que ese PID sigue siendo el mismo proceso (nunca por nombre: el Edge de la persona no se toca; el
+  de otra oficina o consola viva con la misma carpeta, tampoco).
+  El perfil de un navegador que no se cerró bien se borra después de 2 h.
+
 ### Llave de Mercado Libre (opcional)
 
 1. Entra a <https://developers.mercadolibre.com.mx/devcenter> con una cuenta de Mercado Libre y crea una aplicación
@@ -176,6 +229,7 @@ features/ofertas/
   server/vigia/        El núcleo ("vigía"): Node puro, no sabe nada de la oficina
     types.ts           El contrato: Offer, Source, Watch, Alert, Notifier, Vigia
     sources/           Una fuente por archivo; cada una falla sola
+    navegador/         Leer con el navegador: buscarlo, arrancarlo, CDP mínimo, una página, la fila
     relevance.ts       Qué resultado sí es el producto
     grouping.ts        El mismo producto entre tiendas
     rules.ts           Tendencia, "antes" inflado y cuándo avisar
@@ -255,5 +309,7 @@ caja fuerte. No lo duplica si ya está, y se niega a tocar la carpeta real de la
 
 ```bash
 npm run test:server -- ofertas     # fuentes (con muestras), relevancia, agrupado, reglas, reloj del vigía, feature
+                                   # y el navegador con un navegador de mentira (sin red)
+OFERTAS_NAVEGADOR_REAL=1 npm run test:server -- ofertasNavegadorReal   # Edge/Chrome de verdad contra 127.0.0.1
 npm run test:webview               # textos del panel, store y mueble
 ```

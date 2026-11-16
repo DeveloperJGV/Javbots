@@ -49,6 +49,7 @@ function fakeVigia(): FakeVigia {
       dropPercent: 10,
       disabledSources: [],
       groupOrder: [],
+      navegador: { on: false, sources: [] },
     },
     checking: false,
   };

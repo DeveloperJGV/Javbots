@@ -24,6 +24,8 @@ import {
   GROUP_ORDER_CAP,
   HISTORY_CAP,
   LOG_PREFIX,
+  NAVEGADOR_DEFAULT_SOURCES,
+  NAVEGADOR_HOSTS,
   NTFY_TOPIC_PATTERN,
   OFERTAS_DIR,
   OFERTAS_FILE,
@@ -39,6 +41,7 @@ import { normalize } from './relevance.js';
 import type {
   Alert,
   AlertKind,
+  BrowserSettings,
   Installments,
   ManualReference,
   OfertasKeys,
@@ -89,7 +92,20 @@ export function defaultSettings(): Settings {
     dropPercent: DEFAULT_DROP_PERCENT,
     disabledSources: [...DEFAULT_DISABLED_SOURCES],
     groupOrder: [],
+    navegador: { on: false, sources: [...NAVEGADOR_DEFAULT_SOURCES] },
   };
+}
+
+/**
+ * "Leer con el navegador": off unless it says exactly true; only stores that can be read that way, no repeats. A file
+ * that never chose the stores gets the factory ones (Amazon, El Palacio de Hierro, Elektra).
+ */
+export function parseBrowserSettings(raw: unknown): BrowserSettings {
+  const r = rec(raw);
+  const sources = Array.isArray(r.sources)
+    ? wordList(r.sources).filter((id) => Object.hasOwn(NAVEGADOR_HOSTS, id))
+    : [...NAVEGADOR_DEFAULT_SOURCES];
+  return { on: r.on === true, sources };
 }
 
 /** A group name: one line, spaces collapsed, capped; undefined when empty or not text. */
@@ -120,7 +136,8 @@ export function wordList(v: unknown): string[] {
     return [];
   }
   const out: string[] = [];
-  for (const w of v) {
+  // Cut first: a damaged or hostile list is never walked whole
+  for (const w of v.slice(0, WORD_LIST_CAP)) {
     const t = typeof w === 'string' ? w.trim() : '';
     if (t && !out.includes(t)) {
       out.push(t);
@@ -150,6 +167,7 @@ export function parseSettings(raw: unknown): Settings {
       ? wordList(r.disabledSources)
       : [...DEFAULT_DISABLED_SOURCES],
     groupOrder: groupList(r.groupOrder),
+    navegador: parseBrowserSettings(r.navegador),
   };
 }
 
@@ -190,6 +208,7 @@ export function parseStoreCheck(raw: unknown): StoreCheck | undefined {
   if (detail) out.detail = detail.slice(0, STORE_TEXT_MAX);
   const url = str(r.url);
   if (url && /^https?:\/\//.test(url)) out.url = url;
+  if (r.viaBrowser === true) out.viaBrowser = true;
   return out;
 }
 

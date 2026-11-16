@@ -278,5 +278,33 @@ describe('ofertas panel: "dónde buscó"', () => {
       linkOnly: true,
     };
     expect(sourceChip(s).text).toBe('↗ ábrela tú');
+    // Turned on with the browser, it is read: its chip says what it answered
+    expect(sourceChip({ ...s, state: 'ok', enabled: true, viaBrowser: true, count: 7 })).toEqual({
+      text: '✓ 7',
+      tone: 'ok',
+    });
+  });
+
+  it('a store read with the browser says so in its sentence (the row, its tooltip and its aria-label)', () => {
+    expect(
+      storeSentence(
+        {
+          id: 'a',
+          name: 'A',
+          result: 'found',
+          price: 3600,
+          returned: 20,
+          discarded: 19,
+          viaBrowser: true,
+        },
+        'q',
+      ),
+    ).toBe('Lo tiene desde $3,600 (1 de 20 resultados) · con el navegador');
+    expect(
+      storeSentence(
+        { id: 'a', name: 'A', result: 'blocked', detail: 'Bloqueó la consulta', viaBrowser: true },
+        'q',
+      ),
+    ).toBe('Bloqueó la consulta · con el navegador');
   });
 });

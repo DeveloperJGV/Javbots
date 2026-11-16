@@ -8,7 +8,7 @@ import * as path from 'path';
 import { describe, expect, it } from 'vitest';
 
 import { parsePrice } from '../../server/vigia/sources/http.js';
-import { createSources, storeLinks } from '../../server/vigia/sources/index.js';
+import { createSources, readers, storeLinks } from '../../server/vigia/sources/index.js';
 import type { OfertasKeys, Source, SourceOptions } from '../../server/vigia/types.js';
 import { SourceBlocked } from '../../server/vigia/types.js';
 
@@ -45,8 +45,9 @@ const ok =
   () =>
     new Response(body, { status });
 
+/** The bare reader (robots stores included: their reading is tested even if the watch never asks them by fetch). */
 function source(id: string, opts: SourceOptions): Source {
-  const found = createSources(opts).find((s) => s.id === id);
+  const found = readers(opts).find((s) => s.id === id);
   if (!found) throw new Error(`no source ${id}`);
   return found;
 }

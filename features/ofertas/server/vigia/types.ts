@@ -67,6 +67,28 @@ export class SourceBlocked extends Error {
   }
 }
 
+/**
+ * The source failed and its message is already the one a person should read ("No encontré Edge ni Chrome en esta
+ * máquina", "La tienda mandó a otro sitio"). It counts as an error (not a block) and is shown as it is.
+ */
+export class SourceReadError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SourceReadError';
+  }
+}
+
+/**
+ * The read was cut by the office, not by the store: the browser closed (the office shutting down, its life limit, a
+ * crash). Not a failure of the store: no back-off and its last result stays.
+ */
+export class SourceInterrupted extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SourceInterrupted';
+  }
+}
+
 /** The source needs a key that is not set. */
 export class SourceNoKey extends Error {
   constructor(message = 'no key') {
@@ -81,6 +103,42 @@ export class SourceNoKey extends Error {
  */
 export type SourceState = 'ok' | 'error' | 'blocked' | 'nokey' | 'off' | 'idle';
 
+/** A turn in the browser's queue: one page at a time in the whole office, with a pause between pages. */
+export interface BrowserTurn {
+  /** Longest the search may take now that its turn came (the time waiting in the queue does not count). */
+  readonly timeoutMs: number;
+  /** Frees the turn. Idempotent. When nobody else is waiting, the browser closes. */
+  release(): void;
+}
+
+/** The queue of the browser that reads stores "like a person" (navegador/). */
+export interface BrowserQueue {
+  /** Waits for the turn (and the pause since the last page) and opens the browser. Rejects with SourceReadError. */
+  turn(): Promise<BrowserTurn>;
+  /**
+   * Keeps the browser open between turns while a batch lasts (a round of checks, a live search): one browser per
+   * batch, not one per search. Returns the release (idempotent). Opens nothing by itself.
+   */
+  hold(): () => void;
+}
+
+/** The browser reader: its queue, plus a fetch per source that only opens that source's own hosts. */
+export interface BrowserReader extends BrowserQueue {
+  /**
+   * Same shape as fetch: the HTTP status of the main document and, as body, the page already drawn (or the raw
+   * answer when it is not HTML). Only GET; headers are ignored (never another User-Agent).
+   */
+  fetchFor(hosts: readonly string[]): typeof fetch;
+  /** Closes the browser (if open), deletes its profile and rejects whoever waits. */
+  close(): Promise<void>;
+}
+
+/** How a search is read this time (the watch decides it from the settings on every call). */
+export interface SearchHow {
+  /** Through the browser (Source.browser must exist). */
+  browser?: boolean;
+}
+
 /** One place to search. Each one fails alone: search() may throw, the watch catches it per source. */
 export interface Source {
   readonly id: string;
@@ -94,14 +152,17 @@ export interface Source {
   /** false = it needs a key that is not set: state "nokey", search() is never called. */
   ready(): boolean;
   /** Throws SourceBlocked when the store refuses, any other Error when it fails. Never retries by itself. */
-  search(query: string, signal?: AbortSignal): Promise<SourceAnswer>;
+  search(query: string, signal?: AbortSignal, how?: SearchHow): Promise<SourceAnswer>;
   /** The page a person opens to see this search in the store. */
   searchUrl(query: string): string;
   /**
-   * Set when the store does not allow reading its search with a program (its robots.txt): search() is never called,
-   * the person gets the link to open it. The text says why, in Spanish.
+   * Set when the store's robots.txt does not allow reading its search with a program: by default search() is never
+   * called and the person gets the link to open it. The person may turn it on for this store, and then it is read
+   * only with the browser, never with fetch. The text says why, in Spanish.
    */
   readonly linkOnly?: string;
+  /** It can be read with the browser (the settings decide, per call). Absent = never (Mercado Libre: its API). */
+  readonly browser?: BrowserQueue;
 }
 
 /**
@@ -133,6 +194,8 @@ export interface StoreCheck {
   detail?: string;
   /** This search in the store, for a person to open. */
   url?: string;
+  /** It was read (or tried) with the browser, not with a plain request. */
+  viaBrowser?: boolean;
 }
 
 /** A store that is not read automatically: just the link to its own search. */
@@ -151,6 +214,11 @@ export interface SourceOptions {
   fetch?: typeof fetch;
   /** Read again on every search: the keys are pasted by hand while it runs. */
   keys?: () => OfertasKeys;
+  /**
+   * The browser reader. Without it no source can be read with the browser. Built by the caller with the watch's
+   * own home (navegador/lector.ts).
+   */
+  navegador?: BrowserReader;
 }
 
 // ── The watch ────────────────────────────────────────────────────────────────
@@ -280,6 +348,19 @@ export interface Settings {
   disabledSources: string[];
   /** The order the person gave the groups (names); groups not listed go after them, alphabetically. */
   groupOrder: string[];
+  /** "Leer con el navegador". Off by factory. */
+  navegador: BrowserSettings;
+}
+
+/**
+ * Read some stores with the browser of the machine (Edge, or Chrome), without a window and with a profile of its
+ * own. `on` = the general switch; `sources` = the stores read that way while it is on. It only changes HOW a store is
+ * read: a store switched off (disabledSources) stays off. The stores whose robots.txt does not allow it are read only
+ * when they are in this list (and only with the browser).
+ */
+export interface BrowserSettings {
+  on: boolean;
+  sources: string[];
 }
 
 export interface SourceStatus {
@@ -288,8 +369,15 @@ export interface SourceStatus {
   state: SourceState;
   fragile: boolean;
   enabled: boolean;
-  /** Never asked: the store does not allow it (Source.linkOnly). It cannot be turned on. */
+  /**
+   * Its robots.txt does not allow reading its search with programs (Source.linkOnly): only its link, unless the
+   * person turns it on with the browser (then viaBrowser is true and the panel still says robots.txt does not allow it).
+   */
   linkOnly?: boolean;
+  /** It can be read with the browser (a per-store choice in Settings). */
+  browser?: boolean;
+  /** It is read with the browser now. */
+  viaBrowser?: boolean;
   access: string;
   /** In Spanish: "Bloqueó la consulta; reintento después de las 21:40". */
   detail?: string;

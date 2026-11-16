@@ -88,6 +88,7 @@ function fakeVigia(): FakeVigia {
       dropPercent: 10,
       disabledSources: [],
       groupOrder: [],
+      navegador: { on: false, sources: [] },
     },
     checking: false,
   };
@@ -338,6 +339,39 @@ describe('ofertas (server feature)', () => {
       stores: [{ result: 'none', returned: 24 }, { result: 'link' }],
     });
     expect(s.settings.groupOrder).toEqual(['Bocinas']);
+  });
+
+  it('"Leer con el navegador": the settings travel both ways; a switch sent alone is ignored', () => {
+    const c = client(true);
+    const feature = createOfertasFeature({ vigia, notify: () => undefined, timers: false });
+    feature.connect!(c);
+    feature.handleClientMessage!(
+      {
+        type: 'setOfertasSettings',
+        navegador: { on: true, sources: ['amazon', 'mercadolibre', 'walmart', 'amazon'] },
+      },
+      c,
+    );
+    feature.handleClientMessage!({ type: 'setOfertasSettings', navegador: { on: false } }, c);
+    feature.handleClientMessage!({ type: 'setOfertasSettings', navegador: 'si' }, c);
+    expect(vigia.settings).toEqual([{ navegador: { on: true, sources: ['amazon', 'walmart'] } }]);
+    feature.dispose!();
+
+    const state = vigia.state();
+    const s = toStatus({
+      ...state,
+      sources: [{ ...state.sources[0]!, browser: true, viaBrowser: true, linkOnly: true }],
+      watches: [
+        {
+          ...state.watches[0]!,
+          stores: [{ id: 'a', name: 'A', result: 'found', price: 10, viaBrowser: true }],
+        },
+      ],
+      settings: { ...state.settings, navegador: { on: true, sources: ['amazon'] } },
+    });
+    expect(s.settings.navegador).toEqual({ on: true, sources: ['amazon'] });
+    expect(s.sources[0]).toMatchObject({ browser: true, viaBrowser: true, linkOnly: true });
+    expect(s.watches[0]!.stores![0]).toMatchObject({ viaBrowser: true });
   });
 
   it('toStatus copies only the protocol fields', () => {

@@ -174,6 +174,18 @@ export const OPT_IN_SOURCES: readonly string[] = ['amazon'];
 export const OPT_IN_SOURCE_NOTE =
   'Su sitio no permite lectura automática. Si la prendes, la oficina la consulta pocas veces al día.';
 
+// ── "Leer con el navegador" ──────────────────────────────────────────────────
+/** Said of a store read with the browser ("Lo tiene desde $1,299 · con el navegador"). */
+export const VIA_BROWSER_TEXT = 'con el navegador';
+export const BROWSER_SWITCH_LABEL = 'Leer con el navegador';
+/** What the switch does, in one paragraph under it. */
+export const BROWSER_NOTE =
+  'Abre Edge (o Chrome) sin ventana, con un perfil aparte que no tiene tus sesiones ni cookies, una página a la vez y espaciada, y lee la página como la verías tú. Las condiciones de uso de algunas tiendas no permiten leerlas con programas.';
+/** In the line of a store whose robots.txt does not allow it (server/vigia/constants.ts → robotsLinkOnly). */
+export const BROWSER_ROBOTS_NOTE = 'su robots.txt no permite leer su búsqueda con programas';
+/** A store marked here but switched off in "Tiendas": marking it does not turn it on. */
+export const BROWSER_STORE_OFF_NOTE = 'apagada en Tiendas: márcala arriba para que se consulte';
+
 // ── "¿Es oferta de verdad?" ──────────────────────────────────────────────────
 /** Price history of an Amazon product on Keepa (11 = Amazon México). Only a link: Keepa is never called. */
 export const KEEPA_PRODUCT_URL = 'https://keepa.com/#!product/11-';

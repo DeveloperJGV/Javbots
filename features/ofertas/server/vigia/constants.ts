@@ -125,6 +125,73 @@ export const BLOCKED_BACKOFF_CAP_MS = 24 * HOUR;
 /** A source that does not answer in this time counts as failed. */
 export const SOURCE_TIMEOUT_MS = 25_000;
 
+// ── Reading with the browser ("Leer con el navegador", navegador/) ────────────
+/** <home>/.pixel-agents/ofertas-navegador/<perfil-al-azar>: the browser's own profile, deleted on close. */
+export const NAVEGADOR_DIR = 'ofertas-navegador';
+export const NAVEGADOR_PROFILE_PREFIX = 'perfil-';
+/** Inside each profile: the PID of the Node process that started that browser (to tell an orphan from a live one). */
+export const NAVEGADOR_OWNER_FILE = 'pixel-agents-dueno.pid';
+/** Listing the processes to find orphans of the reader (PowerShell on Windows can be slow to start). */
+export const NAVEGADOR_LIST_TIMEOUT_MS = 10_000;
+/**
+ * The stores that can be read with the browser, and the only hosts their main document may be on (https, no port; a
+ * redirect to any other host is cut). Not here: Mercado Libre (its API with a key) and Costco (its JSON search was
+ * never checked through the browser, which asks for HTML first and may get XML).
+ */
+export const NAVEGADOR_HOSTS: Readonly<Record<string, readonly string[]>> = {
+  elektra: ['www.elektra.mx'],
+  cyberpuerta: ['www.cyberpuerta.mx'],
+  palacio: ['www.elpalaciodehierro.com'],
+  officedepot: ['www.officedepot.com.mx'],
+  walmart: ['www.walmart.com.mx'],
+  amazon: ['www.amazon.com.mx'],
+  promodescuentos: ['www.promodescuentos.com'],
+};
+/** Marked when the switch is first turned on: the stores that block a plain request. */
+export const NAVEGADOR_DEFAULT_SOURCES: readonly string[] = ['amazon', 'palacio', 'elektra'];
+/** Random pause between two pages, anywhere in the office (a person does not open pages back to back). */
+export const NAVEGADOR_PAUSE_MIN_MS = 20_000;
+export const NAVEGADOR_PAUSE_MAX_MS = 40_000;
+/** One page: from navigate to having its HTML. */
+export const NAVEGADOR_PAGE_TIMEOUT_MS = 30_000;
+/** Once loaded, the page gets this long to draw its results before it is read. */
+export const NAVEGADOR_SETTLE_MS = 1_500;
+/**
+ * The browser must answer through its pipe within this time (it usually takes under 1 s). Seen with an empty Windows
+ * user folder: the very first start never answered (27 s and 90 s with the port, 40 s with the pipe), and a second
+ * start answered in under 1 s. So a start that does not answer is killed and tried once more.
+ */
+export const NAVEGADOR_LAUNCH_TIMEOUT_MS = 15_000;
+export const NAVEGADOR_LAUNCH_TRIES = 2;
+/** The request limit of http.ts for a browser read (the page limit plus a little, so the page's own error wins). */
+export const NAVEGADOR_FETCH_TIMEOUT_MS = NAVEGADOR_PAGE_TIMEOUT_MS + 2_000;
+/** What a source may take once its turn came (replaces SOURCE_TIMEOUT_MS: the queue does not count). */
+export const NAVEGADOR_TURN_TIMEOUT_MS = NAVEGADOR_PAGE_TIMEOUT_MS + 5_000;
+/** One command of the debugging protocol. */
+export const NAVEGADOR_CDP_TIMEOUT_MS = 10_000;
+/**
+ * After this the browser is closed as soon as the turn in course is released (the next one opens a new one). Past the
+ * hard limit it is closed even mid-page; that page counts as interrupted, not as the store failing.
+ */
+export const NAVEGADOR_MAX_LIFE_MS = 10 * MIN;
+export const NAVEGADOR_HARD_LIFE_MS = 15 * MIN;
+/** Largest page (characters of HTML, or bytes of a raw answer) that is read; a bigger one is an error. */
+export const NAVEGADOR_MAX_BODY = 5 * 1024 * 1024;
+/** Profiles left behind (a crash, the program killed) older than this are deleted on the next launch. */
+export const NAVEGADOR_STALE_PROFILE_MS = 2 * HOUR;
+/** Waits for the browser to close by itself before killing its process tree. */
+export const NAVEGADOR_CLOSE_WAIT_MS = 5_000;
+/** Deleting the profile: Windows keeps files busy (EBUSY) for a moment after the browser exits. */
+export const NAVEGADOR_RM_TRIES = 10;
+export const NAVEGADOR_RM_WAIT_MS = 500;
+/** JavaScript memory of each page of the browser (MB). */
+export const NAVEGADOR_JS_HEAP_MB = 512;
+/** A store read with the browser is asked at most this often per watch (Amazon keeps its own 6 h). */
+export const NAVEGADOR_MIN_INTERVAL_MS = 3 * HOUR;
+/** A final page on the store's own host with this path is a sign-in wall ("/ap/signin" on Amazon). */
+export const NAVEGADOR_LOGIN_PATH =
+  /^\/(ap\/signin|signin|login|iniciar-sesion|account\/login)(\/|$)/i;
+
 // ── Relevance ────────────────────────────────────────────────────────────────
 /** Query words that never decide relevance (articles, prepositions). */
 export const STOP_WORDS: readonly string[] = [
@@ -256,6 +323,16 @@ export const TEXT = {
   /** A store that is only a link (it blocks programs or needs its page to run). */
   linkOnly: 'La oficina no la lee: ábrela tú',
   emptyQuery: 'Escribe qué buscar',
+  noBrowser: 'No encontré Edge ni Chrome en esta máquina',
+  browserTooBig: 'La página de la tienda es demasiado grande para leerla',
+  browserAccount: 'Edge abrió con una cuenta iniciada; no se leyó nada por seguridad',
+  browserFailed: 'No pude abrir el navegador',
+  browserOffsite: 'La tienda mandó a otro sitio',
+  browserLogin: 'La tienda pidió iniciar sesión',
+  browserSlow: 'La tienda tardó demasiado en cargar en el navegador',
+  browserNoPage: 'El navegador no recibió la página de la tienda',
+  browserGetOnly: 'El navegador solo abre páginas',
+  browserClosed: 'Se cerró el navegador',
   lowestEver: 'El más bajo que ha visto la oficina',
 } as const;
 

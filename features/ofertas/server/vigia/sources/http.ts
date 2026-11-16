@@ -2,7 +2,7 @@
  * What every source shares: one polite request (generic browser User-Agent, no cookies, one try, 15 s limit), the
  * block detection, and the small parsers for prices, URLs and HTML text. Plain Node: global fetch (Node 20+).
  */
-import { SourceBlocked } from '../types.js';
+import { SourceBlocked, SourceInterrupted, SourceReadError } from '../types.js';
 
 /** A generic desktop browser. Never a name, an email or anything that points to a person. */
 export const USER_AGENT =
@@ -24,6 +24,9 @@ const CAPTCHA_MARKERS = [
   'api-services-support@amazon.com',
   'captcha-delivery.com',
   '/errors/validateCaptcha',
+  // Bot walls seen in front of stores (Incapsula, Cloudflare). Only looked for when a page gave no results.
+  'Incapsula incident ID',
+  '<title>Just a moment...</title>',
 ];
 
 export interface FetchedText {
@@ -38,8 +41,17 @@ export interface RequestInit2 {
 }
 
 /**
+ * A fetch that needs more than REQUEST_TIMEOUT_MS says so here (the browser one: it loads a whole page). Plain fetch
+ * functions do not have it.
+ */
+export interface SlowFetch {
+  requestTimeoutMs?: number;
+}
+
+/**
  * One request, no retries. Throws SourceBlocked on 403/429/503, an Error in Spanish on any other failure. The
- * caller's signal and the 15 s limit both abort it.
+ * caller's signal and the 15 s limit (or the fetch's own, SlowFetch) both abort it. A SourceBlocked or
+ * SourceReadError thrown by the fetch itself goes out as it is.
  */
 export async function fetchText(
   fetchFn: typeof fetch,
@@ -49,7 +61,8 @@ export async function fetchText(
   accept = 'text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8',
 ): Promise<FetchedText> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const limit = (fetchFn as SlowFetch).requestTimeoutMs ?? REQUEST_TIMEOUT_MS;
+  const timer = setTimeout(() => controller.abort(), limit);
   const onAbort = (): void => controller.abort();
   if (signal) {
     if (signal.aborted) controller.abort();
@@ -75,6 +88,12 @@ export async function fetchText(
         signal?.aborted ? 'Búsqueda cancelada' : 'La tienda tardó demasiado en contestar',
       );
     }
+    if (
+      err instanceof SourceBlocked ||
+      err instanceof SourceReadError ||
+      err instanceof SourceInterrupted
+    )
+      throw err;
     throw new Error(`Sin conexión con la tienda (${(err as Error).message})`);
   } finally {
     clearTimeout(timer);

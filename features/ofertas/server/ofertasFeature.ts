@@ -37,8 +37,15 @@ import {
   SEARCH_FAILED_DETAIL,
 } from './constants.js';
 import { ASISTENTE_MESSAGES, createAsistenteBridge } from './ofertasAsistente.js';
+import { createLector, type Lector } from './vigia/navegador/lector.js';
 import { createSources, storeLinks } from './vigia/sources/index.js';
-import { cleanGroup, groupList, parseReference, readKeys } from './vigia/storage.js';
+import {
+  cleanGroup,
+  groupList,
+  parseBrowserSettings,
+  parseReference,
+  readKeys,
+} from './vigia/storage.js';
 import type {
   Alert,
   CommunityDeal,
@@ -157,6 +164,7 @@ function toStoreCheck(c: StoreCheck): OfertasStoreCheck {
     closest: c.closest,
     detail: c.detail,
     url: c.url,
+    viaBrowser: c.viaBrowser ? true : undefined,
   });
 }
 
@@ -182,6 +190,8 @@ export function toSource(s: SourceStatus): OfertasSource {
     fragile: s.fragile,
     enabled: s.enabled,
     linkOnly: s.linkOnly ? true : undefined,
+    browser: s.browser ? true : undefined,
+    viaBrowser: s.viaBrowser ? true : undefined,
     detail: s.detail,
     count: s.count,
     lastOkAt: s.lastOkAt,
@@ -195,6 +205,7 @@ function toSettings(s: Settings): OfertasSettings {
     dropPercent: s.dropPercent,
     disabledSources: [...s.disabledSources],
     groupOrder: [...s.groupOrder],
+    navegador: { on: s.navegador.on, sources: [...s.navegador.sources] },
   };
 }
 
@@ -391,6 +402,11 @@ export function parseSettings(msg: Record<string, unknown>): Partial<Settings> {
   if (Array.isArray(msg.disabledSources))
     out.disabledSources = msg.disabledSources.filter((s): s is string => typeof s === 'string');
   if (Array.isArray(msg.groupOrder)) out.groupOrder = groupList(msg.groupOrder);
+  // Both fields or nothing: a switch sent alone must not bring back the factory stores
+  const nav = msg.navegador as Record<string, unknown> | undefined;
+  if (nav && typeof nav === 'object' && typeof nav.on === 'boolean' && Array.isArray(nav.sources)) {
+    out.navegador = parseBrowserSettings({ on: nav.on, sources: nav.sources });
+  }
   return out;
 }
 
@@ -413,12 +429,15 @@ export function createOfertasFeature(opts: OfertasFeatureOptions = {}): ServerFe
   const notify = opts.notify ?? notifyDesktop;
   const home = opts.home ?? os.homedir();
   let vigia: Vigia;
+  /** The browser reader ("Leer con el navegador"): nothing starts until a store is read with it. */
+  let lector: Lector | undefined;
   if (opts.vigia) {
     vigia = opts.vigia;
   } else {
+    lector = createLector({ home });
     vigia = createVigia({
       home,
-      sources: createSources({ keys: () => readKeys(home) }),
+      sources: createSources({ keys: () => readKeys(home), navegador: lector }),
       links: storeLinks,
       notifiers: [createDesktopNotifier(notify)],
       timers: opts.timers,
@@ -547,6 +566,9 @@ export function createOfertasFeature(opts: OfertasFeatureOptions = {}): ServerFe
       unsubscribe();
       asistente.dispose();
       vigia.stop();
+      void lector?.close().catch((err: unknown) => {
+        console.warn(`${LOG_PREFIX} No pude cerrar el navegador:`, (err as Error).message);
+      });
     },
     /** For the connections board (features/conexiones). No keys in here. */
     connections(): ConnectionInfo[] {
