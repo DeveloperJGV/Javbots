@@ -6,6 +6,18 @@
 param([int]$Port = 3100)
 
 $ErrorActionPreference = 'Stop'
+
+# The shortcut runs this script with a hidden window, so an error would vanish and "nothing happens".
+# Any failure ends in a visible message instead.
+trap {
+  $msg = "No pude abrir la oficina.`n`n$($_.Exception.Message)"
+  try {
+    (New-Object -ComObject WScript.Shell).Popup($msg, 0, 'Javbots', 48) | Out-Null
+  } catch {
+    Write-Error $msg
+  }
+  exit 1
+}
 $serverJson = Join-Path $HOME '.pixel-agents\server.json'
 $cli = Join-Path $PSScriptRoot '..\dist\cli.js'
 
@@ -43,9 +55,12 @@ if (-not (Test-Office)) {
   $lnk.WindowStyle = 7  # minimized
   $lnk.Save()
   Start-Process $lnk.FullName
-  $deadline = (Get-Date).AddSeconds(30)
+  # A cold or busy machine can take more than half a minute to load the office; give it two.
+  $deadline = (Get-Date).AddSeconds(120)
   while (-not (Test-Office)) {
-    if ((Get-Date) -gt $deadline) { throw "La oficina no respondió en el puerto $Port." }
+    if ((Get-Date) -gt $deadline) {
+      throw "La oficina no respondió en el puerto $Port después de 2 minutos. Revisa la ventana minimizada 'Javbots' y vuelve a intentar."
+    }
     Start-Sleep -Milliseconds 500
   }
 }
