@@ -2,6 +2,7 @@
  * Every place the price watch searches. Automatic sources first (stable JSON before fragile pages), then the stores
  * that are only linked: they block automated visits or need their page to run, so a person opens their search.
  */
+import { TEXT } from '../constants.js';
 import type { Source, SourceOptions, StoreLink } from '../types.js';
 import { amazonSource } from './amazon.js';
 import { costcoSource } from './costco.js';
@@ -13,7 +14,21 @@ import { walmartSource } from './walmart.js';
 
 const q = encodeURIComponent;
 
+/**
+ * Sources whose robots.txt disallows the search page they read (checked 2026-11-16: Walmart and Promodescuentos
+ * "Disallow: /search", Cyberpuerta "Disallow: /index.php?cl=search"). They stay as code, so the day a store allows it
+ * only this list changes, but the watch never asks them: the panel gives their search as a link.
+ */
+export const ROBOTS_LINK_ONLY: readonly string[] = ['walmart', 'promodescuentos', 'cyberpuerta'];
+
+const linkOnly = (s: Source): Source =>
+  ROBOTS_LINK_ONLY.includes(s.id) ? { ...s, linkOnly: TEXT.robotsLinkOnly } : s;
+
 export function createSources(opts: SourceOptions = {}): Source[] {
+  return allSources(opts).map(linkOnly);
+}
+
+function allSources(opts: SourceOptions): Source[] {
   return [
     vtexSource({ id: 'elektra', name: 'Elektra', host: 'www.elektra.mx' }, opts),
     costcoSource(opts),

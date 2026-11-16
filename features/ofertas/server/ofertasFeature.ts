@@ -16,6 +16,7 @@ import type {
   OfertasSettings,
   OfertasSource,
   OfertasStatus,
+  OfertasStoreCheck,
   OfertasVerdict,
   OfertasWatch,
 } from '../../../core/src/messages.js';
@@ -37,7 +38,7 @@ import {
 } from './constants.js';
 import { ASISTENTE_MESSAGES, createAsistenteBridge } from './ofertasAsistente.js';
 import { createSources, storeLinks } from './vigia/sources/index.js';
-import { parseReference, readKeys } from './vigia/storage.js';
+import { cleanGroup, groupList, parseReference, readKeys } from './vigia/storage.js';
 import type {
   Alert,
   CommunityDeal,
@@ -51,6 +52,7 @@ import type {
   Settings,
   SourceState,
   SourceStatus,
+  StoreCheck,
   StoreLink,
   Verdict,
   Vigia,
@@ -137,6 +139,24 @@ export function toWatch(w: Watch): OfertasWatch {
     verdict: w.verdict ? toVerdict(w.verdict) : undefined,
     // Already validated and trimmed to the protocol's fields (asistente/trabajos.ts)
     asistente: w.asistente ? structuredClone(w.asistente) : undefined,
+    group: w.group,
+    stores: w.stores?.map(toStoreCheck),
+  });
+}
+
+function toStoreCheck(c: StoreCheck): OfertasStoreCheck {
+  return defined<OfertasStoreCheck>({
+    id: c.id,
+    name: c.name,
+    result: c.result,
+    at: c.at,
+    reused: c.reused,
+    price: c.price,
+    returned: c.returned,
+    discarded: c.discarded,
+    closest: c.closest,
+    detail: c.detail,
+    url: c.url,
   });
 }
 
@@ -161,6 +181,7 @@ export function toSource(s: SourceStatus): OfertasSource {
     state: s.state,
     fragile: s.fragile,
     enabled: s.enabled,
+    linkOnly: s.linkOnly ? true : undefined,
     detail: s.detail,
     count: s.count,
     lastOkAt: s.lastOkAt,
@@ -173,6 +194,7 @@ function toSettings(s: Settings): OfertasSettings {
     buenFin: s.buenFin,
     dropPercent: s.dropPercent,
     disabledSources: [...s.disabledSources],
+    groupOrder: [...s.groupOrder],
   };
 }
 
@@ -351,6 +373,10 @@ export function parseWatchInput(msg: Record<string, unknown>): WatchInput | null
     if (!reference) return null;
     input.reference = reference;
   }
+  if (msg.group !== undefined) {
+    if (typeof msg.group !== 'string') return null;
+    input.group = cleanGroup(msg.group) ?? '';
+  }
   return input;
 }
 
@@ -364,12 +390,14 @@ export function parseSettings(msg: Record<string, unknown>): Partial<Settings> {
   if (typeof msg.buenFin === 'boolean') out.buenFin = msg.buenFin;
   if (Array.isArray(msg.disabledSources))
     out.disabledSources = msg.disabledSources.filter((s): s is string => typeof s === 'string');
+  if (Array.isArray(msg.groupOrder)) out.groupOrder = groupList(msg.groupOrder);
   return out;
 }
 
 const MESSAGES = [
   'searchOfertas',
   'saveOfertasWatch',
+  'setOfertasWatchGroup',
   'deleteOfertasWatch',
   'checkOfertas',
   'setOfertasSettings',
@@ -451,6 +479,9 @@ export function createOfertasFeature(opts: OfertasFeatureOptions = {}): ServerFe
           console.warn(`${LOG_PREFIX} La revisión falló:`, (err as Error).message);
         });
       }
+    } else if (msg.type === 'setOfertasWatchGroup') {
+      if (typeof msg.id === 'string' && msg.id && typeof msg.group === 'string')
+        vigia.setGroup(msg.id, msg.group);
     } else if (msg.type === 'deleteOfertasWatch') {
       if (typeof msg.id === 'string' && msg.id) vigia.deleteWatch(msg.id);
     } else if (msg.type === 'checkOfertas') {

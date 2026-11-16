@@ -6,6 +6,7 @@ import {
   ASISTENTE_SETTINGS_NOTE,
   DROP_PERCENT_OPTIONS,
   EVERY_MINUTES_OPTIONS,
+  KEY_STEPS,
   OPT_IN_SOURCE_NOTE,
   OPT_IN_SOURCES,
 } from './constants.js';
@@ -137,25 +138,50 @@ export function OfertasAjustes({
       <section className="flex flex-col gap-2">
         <div className={sectionTitle}>Tiendas</div>
         <ul className="flex flex-col">
-          {status.sources.map((s) => (
-            <li key={s.id} className="flex flex-col">
-              <Checkbox
-                className="px-0!"
-                label={s.name}
-                checked={!settings.disabledSources.includes(s.id)}
-                onChange={() => toggleSource(s.id)}
-              />
-              <span className="text-xs text-text-muted -mt-4 pb-2">
-                {SOURCE_STATE_LABEL[s.state]}
-                {s.detail && s.state !== 'nokey' && s.state !== 'off' ? ` · ${s.detail}` : ''}
-                {s.fragile ? ' · frágil: lee la página de la tienda, puede fallar' : ''}
-              </span>
-              {OPT_IN_SOURCES.includes(s.id) && (
-                <span className="text-xs text-status-permission pb-2">{OPT_IN_SOURCE_NOTE}</span>
-              )}
-            </li>
-          ))}
+          {status.sources
+            .filter((s) => !s.linkOnly)
+            .map((s) => (
+              <li key={s.id} className="flex flex-col">
+                <Checkbox
+                  className="px-0!"
+                  label={s.name}
+                  checked={!settings.disabledSources.includes(s.id)}
+                  onChange={() => toggleSource(s.id)}
+                />
+                <span className="text-xs text-text-muted -mt-4 pb-2">
+                  {SOURCE_STATE_LABEL[s.state]}
+                  {s.detail && s.state !== 'nokey' && s.state !== 'off' ? ` · ${s.detail}` : ''}
+                  {s.fragile ? ' · frágil: lee la página de la tienda, puede fallar' : ''}
+                </span>
+                {OPT_IN_SOURCES.includes(s.id) && (
+                  <span className="text-xs text-status-permission pb-2">{OPT_IN_SOURCE_NOTE}</span>
+                )}
+                {s.state === 'nokey' && KEY_STEPS[s.id] && (
+                  <ol className="text-xs text-status-permission pb-2 pl-8 list-decimal">
+                    {KEY_STEPS[s.id]!.map((step) => (
+                      <li key={step}>{step}</li>
+                    ))}
+                  </ol>
+                )}
+              </li>
+            ))}
         </ul>
+        {status.sources.some((s) => s.linkOnly) && (
+          <div className="flex flex-col gap-2 pt-4">
+            <span className="text-text-muted">Solo con liga (no se pueden prender)</span>
+            <ul className="flex flex-col gap-1">
+              {status.sources
+                .filter((s) => s.linkOnly)
+                .map((s) => (
+                  <li key={s.id} className="text-xs">
+                    {/* No arrow: this is not a link (the link to each search is in the watch's row) */}
+                    <span className="text-text">{s.name}</span>
+                    <span className="text-text-muted"> · {s.detail}</span>
+                  </li>
+                ))}
+            </ul>
+          </div>
+        )}
       </section>
 
       <section className="flex flex-col gap-4">

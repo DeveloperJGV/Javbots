@@ -97,6 +97,42 @@ export interface Source {
   search(query: string, signal?: AbortSignal): Promise<SourceAnswer>;
   /** The page a person opens to see this search in the store. */
   searchUrl(query: string): string;
+  /**
+   * Set when the store does not allow reading its search with a program (its robots.txt): search() is never called,
+   * the person gets the link to open it. The text says why, in Spanish.
+   */
+  readonly linkOnly?: string;
+}
+
+/**
+ * What happened in one store on a check of a watch: found = it has it (price); none = it answered but no result
+ * passed the filter; error = it did not answer; blocked = it refused; off = turned off in the settings; nokey = it
+ * needs a key; link = it is not read by the office (only its link).
+ */
+export type StoreResult = 'found' | 'none' | 'error' | 'blocked' | 'off' | 'nokey' | 'link';
+
+/** One store of the "dónde buscó" row of a watch. */
+export interface StoreCheck {
+  /** Source id, or "link:<name>" for a store that is only linked. */
+  id: string;
+  name: string;
+  result: StoreResult;
+  /** ISO time of the answer (an earlier answer reused by minIntervalMs keeps its own time). */
+  at?: string;
+  /** The answer is an earlier one, reused so the store is not asked too often. */
+  reused?: boolean;
+  /** found: the cheapest result that passed the filter. */
+  price?: number;
+  /** Results the store gave (none and found). */
+  returned?: number;
+  /** Of those, how many the filter dropped. */
+  discarded?: number;
+  /** none: the first title the store gave, to see why it did not pass. */
+  closest?: string;
+  /** Why, in Spanish (error, blocked, nokey, link). */
+  detail?: string;
+  /** This search in the store, for a person to open. */
+  url?: string;
 }
 
 /** A store that is not read automatically: just the link to its own search. */
@@ -127,6 +163,8 @@ export interface WatchInput {
   exclude?: string[];
   /** Saved as is; an edit (with id) that does not send it removes it, like the target. */
   reference?: ManualReference;
+  /** What kind of thing it is ("Bocinas"). An edit that does not send it keeps the one it had; "" removes it. */
+  group?: string;
 }
 
 export interface PricePoint {
@@ -197,6 +235,10 @@ export interface Watch {
   verdict?: Verdict;
   /** The last answers of the optional assistant (kept so seeing them again costs nothing); capped in age. */
   asistente?: WatchAssistant;
+  /** What kind of thing it is ("Bocinas", "Receptor"): the panel shows watches by group. Chosen by the person. */
+  group?: string;
+  /** Where the last check searched and what each store said. Absent in data saved before this existed. */
+  stores?: StoreCheck[];
 }
 
 /** What the optional assistant (asistente/) found for a watched search, each answer with its own date. */
@@ -236,6 +278,8 @@ export interface Settings {
   dropPercent: number;
   /** Source ids turned off. */
   disabledSources: string[];
+  /** The order the person gave the groups (names); groups not listed go after them, alphabetically. */
+  groupOrder: string[];
 }
 
 export interface SourceStatus {
@@ -244,6 +288,8 @@ export interface SourceStatus {
   state: SourceState;
   fragile: boolean;
   enabled: boolean;
+  /** Never asked: the store does not allow it (Source.linkOnly). It cannot be turned on. */
+  linkOnly?: boolean;
   access: string;
   /** In Spanish: "Bloqueó la consulta; reintento después de las 21:40". */
   detail?: string;
@@ -312,6 +358,8 @@ export interface Vigia {
   /** Create (first check as soon as possible) or change a watch. */
   saveWatch(input: WatchInput): Watch;
   deleteWatch(id: string): void;
+  /** Puts a watch in a group ("" = no group). Nothing else of it changes. false = no such watch. */
+  setGroup(id: string, group: string): boolean;
   /** Keeps the assistant's answer on a watch (and the verdict takes its price into account). false = no such watch. */
   setAssistant(id: string, answer: WatchAssistant): boolean;
   /** "La mejor" and the verdict of a live search's product again, with the assistant's prices as one more fact. */

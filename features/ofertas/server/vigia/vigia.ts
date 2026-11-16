@@ -20,6 +20,7 @@ import {
   SCHEDULE_JITTER,
   SEEN_DEALS_CAP,
   SOURCE_TIMEOUT_MS,
+  STORE_CLOSEST_MAX,
   TEXT,
   TICK_MS,
 } from './constants.js';
@@ -27,7 +28,15 @@ import { bestPerStore, groupOffers } from './grouping.js';
 import type { RelevanceRule } from './relevance.js';
 import { isRelevant, normalize } from './relevance.js';
 import { alertsFor, describeTrend, suspiciousListPrice, untilText } from './rules.js';
-import { parseReference, parseSettings, readData, wordList, writeData } from './storage.js';
+import {
+  cleanGroup,
+  parseReference,
+  parseSettings,
+  readData,
+  sameGroupName,
+  wordList,
+  writeData,
+} from './storage.js';
 import type {
   Alert,
   AssistantFacts,
@@ -41,6 +50,7 @@ import type {
   SourceAnswer,
   SourceState,
   SourceStatus,
+  StoreCheck,
   StoreLink,
   Vigia,
   VigiaOptions,
@@ -79,6 +89,15 @@ interface SourceRuntime {
 interface Asked {
   status: SourceStatus;
   answer?: SourceAnswer;
+}
+
+/** One source in a check of a watch: its status, and its answer with the time it was given. */
+interface SourceAsked extends Asked {
+  source: Source;
+  /** ms of the answer. */
+  at?: number;
+  /** An earlier answer, reused because the source is asked at most every minIntervalMs. */
+  reused?: boolean;
 }
 
 const isBlocked = (err: unknown) => err instanceof Error && err.name === 'SourceBlocked';
@@ -143,7 +162,21 @@ export function createVigia(opts: VigiaOptions): Vigia {
     emit();
   }
 
-  const enabled = (s: Source) => !settings.disabledSources.includes(s.id);
+  /**
+   * A group that already exists but for accents or capitals ("bocinas" with "Bocinas" there) is that one, with the
+   * name it already has: never two groups that look the same. `exceptId` = the watch being changed.
+   */
+  function groupAsExisting(group: string | undefined, exceptId?: string): string | undefined {
+    if (!group) return group;
+    const known = [
+      ...watches.filter((w) => w.id !== exceptId).map((w) => w.group),
+      ...settings.groupOrder,
+    ].find((g): g is string => !!g && sameGroupName(g, group));
+    return known ?? group;
+  }
+
+  /** Asked at all: not turned off, and not a store that only gets its link (linkOnly). */
+  const enabled = (s: Source) => !s.linkOnly && !settings.disabledSources.includes(s.id);
 
   function statusOf(s: Source): SourceStatus {
     const r = rt(s.id);
@@ -162,7 +195,10 @@ export function createVigia(opts: VigiaOptions): Vigia {
       enabled: on,
       access: s.access,
     };
-    const detail = !on ? TEXT.off : !ready ? TEXT.noKey : r.detail;
+    if (s.linkOnly) {
+      status.linkOnly = true;
+    }
+    const detail = !on ? (s.linkOnly ?? TEXT.off) : !ready ? TEXT.noKey : r.detail;
     if (detail) {
       status.detail = detail;
     }
@@ -334,6 +370,76 @@ export function createVigia(opts: VigiaOptions): Vigia {
     );
   }
 
+  /**
+   * "Dónde buscó": what each store said in this check, in the order of the sources, then the stores that are only
+   * linked. Nothing here asks a store again.
+   */
+  function storeChecks(asked: readonly SourceAsked[], watch: Watch, t: number): StoreCheck[] {
+    const out: StoreCheck[] = asked.map((a) => {
+      const s = a.source;
+      const check: StoreCheck = { id: s.id, name: s.name, result: 'error' };
+      try {
+        check.url = s.searchUrl(watch.query);
+      } catch {
+        // no link for this one
+      }
+      if (!a.answer) {
+        const state = a.status.state;
+        check.result = s.linkOnly
+          ? 'link'
+          : state === 'off'
+            ? 'off'
+            : state === 'nokey'
+              ? 'nokey'
+              : state === 'blocked'
+                ? 'blocked'
+                : 'error';
+        if (a.status.detail) check.detail = a.status.detail;
+        check.at = iso(t);
+        return check;
+      }
+      check.at = iso(a.at ?? t);
+      if (a.reused) check.reused = true;
+      const offers = a.answer.offers.filter((o) => Number.isFinite(o.price) && o.price > 0);
+      const relevant = offers.filter((o) => isRelevant(o.title, watch));
+      const deals = a.answer.deals.filter((d) => !d.expired);
+      const relevantDeals = deals.filter((d) => isRelevant(d.title, watch));
+      const returned = offers.length + deals.length;
+      check.returned = returned;
+      check.discarded = returned - relevant.length - relevantDeals.length;
+      const prices = [
+        ...relevant.map((o) => o.price),
+        ...relevantDeals.flatMap((d) => (d.price !== undefined && d.price > 0 ? [d.price] : [])),
+      ];
+      if (relevant.length + relevantDeals.length > 0) {
+        check.result = 'found';
+        if (prices.length > 0) check.price = Math.min(...prices);
+      } else {
+        check.result = 'none';
+        const first = offers[0]?.title ?? deals[0]?.title;
+        if (first) check.closest = first.slice(0, STORE_CLOSEST_MAX);
+      }
+      return check;
+    });
+    let links: StoreLink[] = [];
+    try {
+      links = opts.links?.(watch.query) ?? [];
+    } catch {
+      // no extra links
+    }
+    for (const l of links) {
+      if (out.some((c) => c.name === l.name)) continue;
+      out.push({
+        id: `link:${l.name}`,
+        name: l.name,
+        result: 'link',
+        detail: TEXT.linkOnly,
+        url: l.url,
+      });
+    }
+    return out;
+  }
+
   /** One watch: ask the sources (respecting minIntervalMs), update best, history, note and alerts. */
   async function checkOne(id: string): Promise<void> {
     const before = watches.find((w) => w.id === id);
@@ -344,30 +450,34 @@ export function createVigia(opts: VigiaOptions): Vigia {
     const cache = lastAsk.get(id) ?? new Map<string, { at: number; answer: SourceAnswer }>();
     lastAsk.set(id, cache);
     const answers = await Promise.allSettled(
-      sources.map(async (s): Promise<SourceAnswer | undefined> => {
+      sources.map(async (s): Promise<SourceAsked> => {
         const prevAsk = cache.get(s.id);
         const status = statusOf(s);
         if (status.state === 'off' || status.state === 'nokey') {
-          return undefined;
+          return { source: s, status };
         }
         if (prevAsk && s.minIntervalMs && startedAt - prevAsk.at < s.minIntervalMs) {
-          return prevAsk.answer;
+          return { source: s, status, answer: prevAsk.answer, at: prevAsk.at, reused: true };
         }
         const got = await ask(s, before.query);
         if (got.answer) {
           cache.set(s.id, { at: startedAt, answer: got.answer });
         }
-        return got.answer;
+        return { source: s, status: got.status, answer: got.answer, at: now() };
       }),
     );
     const prev = watches.find((w) => w.id === id);
     if (!prev || prev.query !== before.query) {
       return; // deleted or changed while it was checking
     }
-    const got = answers.flatMap((a) => (a.status === 'fulfilled' && a.value ? [a.value] : []));
+    const asked = answers.map((a, i): SourceAsked =>
+      a.status === 'fulfilled' ? a.value : { source: sources[i]!, status: statusOf(sources[i]!) },
+    );
+    const got = asked.flatMap((a) => (a.answer ? [a.answer] : []));
     const t = now();
     const at = iso(t);
     const next: Watch = { ...prev, checkedAt: at, nextCheckAt: iso(nextCheckMs(t)) };
+    next.stores = storeChecks(asked, prev, t);
     const offers = got
       .flatMap((a) => a.offers)
       .filter((o) => Number.isFinite(o.price) && o.price > 0 && isRelevant(o.title, prev))
@@ -519,6 +629,11 @@ export function createVigia(opts: VigiaOptions): Vigia {
         } else {
           delete saved.reference;
         }
+        if (input.group !== undefined) {
+          const group = groupAsExisting(cleanGroup(input.group), saved.id);
+          if (group) saved.group = group;
+          else delete saved.group;
+        }
         if (!sameQuery) {
           // Another product: start over.
           Object.assign(saved, { others: [], history: [], seenDeals: [], reached: false });
@@ -532,6 +647,7 @@ export function createVigia(opts: VigiaOptions): Vigia {
             'pick',
             'verdict',
             'asistente',
+            'stores',
           ] as const) {
             delete saved[k];
           }
@@ -574,6 +690,10 @@ export function createVigia(opts: VigiaOptions): Vigia {
         if (reference) {
           saved.reference = reference;
         }
+        const group = groupAsExisting(cleanGroup(input.group));
+        if (group) {
+          saved.group = group;
+        }
         watches = [saved, ...watches];
       }
       changed();
@@ -597,6 +717,19 @@ export function createVigia(opts: VigiaOptions): Vigia {
           nowMs: t,
         });
       }
+      watches = watches.map((w) => (w.id === id ? saved : w));
+      changed();
+      return true;
+    },
+
+    setGroup(id: string, group: string): boolean {
+      const prev = watches.find((w) => w.id === id);
+      if (!prev) return false;
+      const clean = groupAsExisting(cleanGroup(group), id);
+      if (clean === prev.group) return true;
+      const saved: Watch = { ...prev };
+      if (clean) saved.group = clean;
+      else delete saved.group;
       watches = watches.map((w) => (w.id === id ? saved : w));
       changed();
       return true;

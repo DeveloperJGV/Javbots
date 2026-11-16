@@ -9,14 +9,32 @@ interface Shape {
   words: Set<string>;
 }
 
+/**
+ * Brands and words compared without the signs and spaces inside a name, so "TP-Link", "TP Link" and "TPLink" are the
+ * same brand and the same word.
+ */
+const compact = (text: string) => normalize(text).replace(/ /g, '');
+
 function shape(offer: Offer): Shape {
   const models = [...new Set(modelTokens(offer.title))].sort().join(' ');
-  const words = new Set(
-    tokens(offer.title.replace(/([A-Za-z0-9])[-/.]([A-Za-z0-9])/g, '$1$2')).filter(
-      (t) => !STOP_WORDS.includes(t),
-    ),
+  const brand = offer.brand ? compact(offer.brand) : '';
+  const words = new Set<string>();
+  const ts = tokens(offer.title.replace(/([A-Za-z0-9])[-/.]([A-Za-z0-9])/g, '$1$2')).filter(
+    (t) => !STOP_WORDS.includes(t),
   );
-  return { brand: offer.brand ? normalize(offer.brand) : '', models, words };
+  for (let i = 0; i < ts.length; i++) {
+    const t = ts[i]!;
+    const next = ts[i + 1];
+    // Two pieces are joined only when together they are the offer's brand written apart ("tp link" → "tplink").
+    // Joining any short piece with the next one made the likeness depend on word order ("jbl charge").
+    if (brand && next && t + next === brand) {
+      words.add(brand);
+      i++;
+    } else {
+      words.add(t);
+    }
+  }
+  return { brand, models, words };
 }
 
 function jaccard(a: Set<string>, b: Set<string>): number {

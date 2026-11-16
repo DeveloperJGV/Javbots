@@ -12,6 +12,8 @@ import {
   CHART_PAD,
   CHART_WIDTH,
   CONFIRM_RESET_MS,
+  FOLDED_GROUPS_KEY,
+  NO_GROUP_LABEL,
   OTHER_OFFERS_MAX,
   WORDS_MAX,
 } from './constants.js';
@@ -28,6 +30,15 @@ import {
   Tag,
   VerdictLine,
 } from './OfertasComun.js';
+import { DondeBusco, SinPrecio } from './OfertasDondeBusco.js';
+import { GrupoElegir } from './OfertasGrupoElegir.js';
+import {
+  groupNames,
+  moveGroup,
+  suggestForWatch,
+  type WatchGroup,
+  watchGroups,
+} from './ofertasGrupos.js';
 import {
   chartShape,
   checkedText,
@@ -161,7 +172,45 @@ function EditWatch({
   );
 }
 
-function WatchCard({ watch, send, now }: { watch: OfertasWatch; send: Send; now: number }) {
+/** No group yet: the suggested one, accepted with one click (never put in silence). */
+function GroupSuggestion({
+  watch,
+  suggestion,
+  send,
+  onOther,
+}: {
+  watch: OfertasWatch;
+  suggestion: string;
+  send: Send;
+  onOther: () => void;
+}) {
+  return (
+    <span className="flex flex-wrap items-center gap-4 text-xs">
+      <span className="text-text-muted">¿Va en el grupo «{suggestion}»?</span>
+      <Button
+        size="sm"
+        onClick={() => send({ type: 'setOfertasWatchGroup', id: watch.id, group: suggestion })}
+      >
+        Sí, ponla ahí
+      </Button>
+      <Button size="sm" onClick={onOther}>
+        Otro grupo
+      </Button>
+    </span>
+  );
+}
+
+function WatchCard({
+  watch,
+  send,
+  now,
+  groups,
+}: {
+  watch: OfertasWatch;
+  send: Send;
+  now: number;
+  groups: string[];
+}) {
   const best = watch.best;
   const pick = watch.pick;
   // "La mejor" is shown apart only when it is not the cheapest (a reseller was cheaper)
@@ -170,12 +219,34 @@ function WatchCard({ watch, send, now }: { watch: OfertasWatch; send: Send; now:
   const range = rangeText(watch.history, now);
   const profeco = profecoLink(now);
   const [editing, setEditing] = useState(false);
+  const [choosing, setChoosing] = useState(false);
+  const suggestion = suggestForWatch(watch);
   return (
     <li className={cardClass}>
       <span className="flex flex-wrap items-baseline justify-between gap-8">
         <span className="text-base text-accent-bright">{watch.query}</span>
         {watch.reached && <Tag tone="ok">¡Llegó a tu precio!</Tag>}
       </span>
+      {!watch.group && suggestion && !choosing && (
+        <GroupSuggestion
+          watch={watch}
+          suggestion={suggestion}
+          send={send}
+          onOther={() => setChoosing(true)}
+        />
+      )}
+      {choosing && (
+        <GrupoElegir
+          current={watch.group}
+          groups={groups}
+          suggestion={suggestion}
+          onPick={(group) => {
+            send({ type: 'setOfertasWatchGroup', id: watch.id, group });
+            setChoosing(false);
+          }}
+          onCancel={() => setChoosing(false)}
+        />
+      )}
       {best ? (
         <span className="flex flex-wrap items-baseline gap-8">
           <span className="text-2xl">{money(best.price)}</span>
@@ -188,7 +259,7 @@ function WatchCard({ watch, send, now }: { watch: OfertasWatch; send: Send; now:
           <SellerTag offer={best} />
         </span>
       ) : (
-        <span className="text-text-muted">Todavía sin precio.</span>
+        <SinPrecio watch={watch} send={send} />
       )}
       {pick && pickApart && (
         <span className="flex flex-wrap items-baseline gap-8">
@@ -215,6 +286,7 @@ function WatchCard({ watch, send, now }: { watch: OfertasWatch; send: Send; now:
           </span>
         </span>
       )}
+      <DondeBusco watch={watch} now={now} />
       <span className="flex flex-wrap items-center gap-8">
         <MiniChart history={watch.history} />
         <span className="flex flex-col text-xs text-text-muted">
@@ -258,7 +330,7 @@ function WatchCard({ watch, send, now }: { watch: OfertasWatch; send: Send; now:
           })}
         </ul>
       )}
-      {watch.error && <span className="text-status-error">{watch.error}</span>}
+      {watch.error && best && <span className="text-status-error">{watch.error}</span>}
       <AsistenteBox
         target={{ watchId: watch.id }}
         product={watch.query}
@@ -274,6 +346,11 @@ function WatchCard({ watch, send, now }: { watch: OfertasWatch; send: Send; now:
           <Button size="sm" onClick={() => send({ type: 'checkOfertas', id: watch.id })}>
             Revisar ahora
           </Button>
+          {!choosing && (
+            <Button size="sm" onClick={() => setChoosing(true)}>
+              {watch.group ? 'Cambiar grupo' : 'Grupo'}
+            </Button>
+          )}
           {!editing && (
             <Button size="sm" onClick={() => setEditing(true)}>
               Editar
@@ -286,7 +363,110 @@ function WatchCard({ watch, send, now }: { watch: OfertasWatch; send: Send; now:
   );
 }
 
-/** The watched searches, one card each. */
+/** Folded groups, remembered in this browser only (it may be lost: then everything shows unfolded). */
+function readFolded(): string[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(FOLDED_GROUPS_KEY) ?? '[]') as unknown;
+    return Array.isArray(raw) ? raw.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeFolded(folded: string[]): void {
+  try {
+    localStorage.setItem(FOLDED_GROUPS_KEY, JSON.stringify(folded));
+  } catch {
+    // Without storage it just does not remember
+  }
+}
+
+/** One group: its header (name, how many, the best of it, fold, move) and its cards. */
+function GroupSection({
+  group,
+  index,
+  names,
+  saved,
+  folded,
+  onFold,
+  send,
+  now,
+}: {
+  group: WatchGroup;
+  index: number;
+  names: string[];
+  /** The saved order, with groups that have no watches today. */
+  saved: readonly string[];
+  folded: boolean;
+  onFold: () => void;
+  send: Send;
+  now: number;
+}) {
+  const title = group.name ?? NO_GROUP_LABEL;
+  const n = group.watches.length;
+  const move = (step: -1 | 1) =>
+    send({ type: 'setOfertasSettings', groupOrder: moveGroup(names, group.name!, step, saved) });
+  return (
+    <section className="flex flex-col gap-6" aria-label={title}>
+      <div className="flex flex-wrap items-center justify-between gap-8 border-b-2 border-border pb-2">
+        <button
+          className="flex items-baseline gap-4 text-left cursor-pointer"
+          aria-expanded={!folded}
+          onClick={onFold}
+        >
+          <span className="text-accent-bright w-12">{folded ? '▸' : '▾'}</span>
+          <span className="text-lg text-text">{title}</span>
+          <span className="text-text-muted">
+            ({n} {n === 1 ? 'vigilancia' : 'vigilancias'})
+          </span>
+        </button>
+        <span className="flex flex-wrap items-center gap-4">
+          {group.best ? (
+            <span className="text-xs" title="La más barata del grupo con veredicto «Buen precio»">
+              <Tag tone="ok">Lo mejor</Tag> {group.best.watch.query} ·{' '}
+              {money(group.best.offer.price)} en {group.best.offer.store}
+            </span>
+          ) : (
+            <span className="text-xs text-text-muted">Ninguna con buen precio por ahora</span>
+          )}
+          {group.name && (
+            <>
+              <Button
+                size="sm"
+                variant={index === 0 ? 'disabled' : 'default'}
+                disabled={index === 0}
+                aria-label={`Subir el grupo ${title}`}
+                title="Subir el grupo"
+                onClick={() => move(-1)}
+              >
+                ↑
+              </Button>
+              <Button
+                size="sm"
+                variant={index >= names.length - 1 ? 'disabled' : 'default'}
+                disabled={index >= names.length - 1}
+                aria-label={`Bajar el grupo ${title}`}
+                title="Bajar el grupo"
+                onClick={() => move(1)}
+              >
+                ↓
+              </Button>
+            </>
+          )}
+        </span>
+      </div>
+      {!folded && (
+        <ul className="flex flex-col gap-6">
+          {group.watches.map((w) => (
+            <WatchCard key={w.id} watch={w} send={send} now={now} groups={names} />
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/** The watched searches by group ("Bocinas", "Receptor"…), "Sin grupo" last. */
 export function OfertasVigilando({
   status,
   send,
@@ -296,6 +476,17 @@ export function OfertasVigilando({
   send: Send;
   now: number;
 }) {
+  const [folded, setFolded] = useState<string[]>(readFolded);
+  const order = status.settings.groupOrder ?? [];
+  const groups = watchGroups(status.watches, order);
+  const names = groupNames(status.watches, order);
+  const keyOf = (g: WatchGroup) => g.name ?? '';
+  const toggle = (key: string) =>
+    setFolded((prev) => {
+      const next = prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key];
+      writeFolded(next);
+      return next;
+    });
   return (
     <div className="flex flex-col gap-8">
       <span className="flex items-center justify-between gap-8">
@@ -316,11 +507,21 @@ export function OfertasVigilando({
       {status.watches.length === 0 ? (
         <p className="text-text-muted">Aún no vigilas nada. Busca un producto y toca Vigilar.</p>
       ) : (
-        <ul className="flex flex-col gap-6">
-          {status.watches.map((w) => (
-            <WatchCard key={w.id} watch={w} send={send} now={now} />
+        <div className="flex flex-col gap-10">
+          {groups.map((g, i) => (
+            <GroupSection
+              key={keyOf(g) || '·sin-grupo'}
+              group={g}
+              index={i}
+              names={names}
+              saved={order}
+              folded={folded.includes(keyOf(g))}
+              onFold={() => toggle(keyOf(g))}
+              send={send}
+              now={now}
+            />
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );

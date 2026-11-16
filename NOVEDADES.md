@@ -3,6 +3,17 @@
 Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
 (Pixel Agents) está en [CHANGELOG.md](CHANGELOG.md).
 
+## 16 de noviembre de 2026
+
+- **Ofertas por grupos y con «dónde buscó».** Las vigilancias salen agrupadas (Bocinas, Receptor, Red…), cada grupo
+  plegable, en el orden que quieras y con lo mejor del grupo arriba; el panel sugiere el grupo y tú lo aceptas con un
+  clic. Cada vigilancia dice en qué tiendas buscó y qué contestó cada una (lo tiene, no lo tiene con ese nombre, no
+  contestó, bloqueó, apagada, falta la llave), con su liga para abrirla tú; «Ninguna tienda lo tiene» ahora explica
+  por qué. Las tiendas cuyo `robots.txt` no permite leer su búsqueda quedan solo como liga.
+- **Arreglado en Ofertas:** las marcas con guion (TP-Link, Audio-Technica) y los productos que dicen «Compatible
+  con…» ya se encuentran; un accesorio que nombra dos veces el producto se sigue descartando. La ayuda del vigía de
+  consola (`--help`) ya no toca los datos.
+
 ## 15 de noviembre de 2026
 
 - **Accesos.** Una mesa de cartógrafo junto a la tele abre páginas propias que corren en la computadora (un mapa, un

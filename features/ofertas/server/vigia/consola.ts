@@ -7,8 +7,7 @@
  *
  * Searches, settings and keys live in <home>/.pixel-agents/ofertas.json (the same file the office uses).
  */
-import * as os from 'os';
-
+import { HELP_TEXT, parseArgs } from './consolaArgs.js';
 import { LOG_PREFIX } from './constants.js';
 import { consoleNotifier, ntfyNotifier } from './notifiers.js';
 import { clock, money } from './rules.js';
@@ -16,27 +15,6 @@ import { createSources, storeLinks } from './sources/index.js';
 import { ofertasPath, readKeys, readNotifierConfig } from './storage.js';
 import type { Notifier, SearchOutcome, Vigia } from './types.js';
 import { createVigia } from './vigia.js';
-
-interface Args {
-  home: string;
-  once: boolean;
-  search?: string;
-}
-
-function parseArgs(argv: string[]): Args {
-  const args: Args = { home: os.homedir(), once: false };
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === '--home' && argv[i + 1]) {
-      args.home = argv[++i]!;
-    } else if (a === '--una-vez') {
-      args.once = true;
-    } else if (a === '--buscar' && argv[i + 1]) {
-      args.search = argv[++i]!;
-    }
-  }
-  return args;
-}
 
 const out = (line = '') => console.log(line);
 
@@ -77,6 +55,15 @@ function printRound(vigia: Vigia): void {
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
+  // Before anything opens ofertas.json: asking for the help (or a typo) must never touch the data
+  if (args.help || args.unknown.length > 0) {
+    if (args.unknown.length > 0 && !args.help) {
+      console.error(`${LOG_PREFIX} No conozco: ${args.unknown.join(' ')}\n`);
+      process.exitCode = 2;
+    }
+    out(HELP_TEXT);
+    return;
+  }
   const home = args.home;
   const notifiers: Notifier[] = [consoleNotifier()];
   const ntfy = readNotifierConfig(home).ntfy;

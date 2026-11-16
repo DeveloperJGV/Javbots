@@ -66,6 +66,7 @@ const alert: Alert = {
 };
 
 interface FakeVigia extends Vigia {
+  groups: [string, string][];
   saved: WatchInput[];
   assistants: [string, WatchAssistant][];
   rejudged: { query: string; assistant?: AssistantFacts }[];
@@ -81,10 +82,17 @@ function fakeVigia(): FakeVigia {
     watches: [watch],
     alerts: [alert],
     sources: [source({ lastOkAt: '2026-11-01T00:00:00.000Z' })],
-    settings: { everyMinutes: 180, buenFin: false, dropPercent: 10, disabledSources: [] },
+    settings: {
+      everyMinutes: 180,
+      buenFin: false,
+      dropPercent: 10,
+      disabledSources: [],
+      groupOrder: [],
+    },
     checking: false,
   };
   const v: FakeVigia = {
+    groups: [],
     saved: [],
     assistants: [],
     rejudged: [],
@@ -105,6 +113,10 @@ function fakeVigia(): FakeVigia {
       return watch;
     },
     deleteWatch: () => {},
+    setGroup: (id, group) => {
+      v.groups.push([id, group]);
+      return id === watch.id;
+    },
     setAssistant: (id, answer) => {
       v.assistants.push([id, answer]);
       return id === watch.id;
@@ -269,6 +281,63 @@ describe('ofertas (server feature)', () => {
     vigia.fire();
     expect(a.sent).toHaveLength(1);
     expect(vigia.stopped).toBe(true);
+  });
+
+  it('setOfertasWatchGroup changes only the group; saveOfertasWatch carries it (empty = none)', () => {
+    const feature = createOfertasFeature({ vigia, notify: () => {} });
+    const c = client(true);
+    feature.connect!(c);
+    feature.handleClientMessage!({ type: 'setOfertasWatchGroup', id: 'w1', group: 'Bocinas' }, c);
+    feature.handleClientMessage!({ type: 'setOfertasWatchGroup', id: 'w1' }, c);
+    expect(vigia.groups).toEqual([['w1', 'Bocinas']]);
+    feature.handleClientMessage!(
+      { type: 'saveOfertasWatch', query: 'bocina', group: '  Red  inalámbrica ' },
+      c,
+    );
+    feature.handleClientMessage!(
+      { type: 'saveOfertasWatch', id: 'w1', query: 'bocina', group: '' },
+      c,
+    );
+    feature.handleClientMessage!({ type: 'saveOfertasWatch', query: 'bocina', group: 5 }, c);
+    expect(vigia.saved.map((s) => s.group)).toEqual(['Red inalámbrica', '']);
+    feature.handleClientMessage!({ type: 'setOfertasSettings', groupOrder: ['Red', 'red', 3] }, c);
+    expect(vigia.settings).toEqual([{ groupOrder: ['Red'] }]);
+    // Without the token, nothing
+    const outsider = client(false);
+    feature.handleClientMessage!({ type: 'setOfertasWatchGroup', id: 'w1', group: 'X' }, outsider);
+    expect(vigia.groups).toHaveLength(1);
+    feature.dispose!();
+  });
+
+  it('toStatus sends the group, the stores of the last check and the group order', () => {
+    const state = vigia.state();
+    const s = toStatus({
+      ...state,
+      watches: [
+        {
+          ...state.watches[0]!,
+          group: 'Bocinas',
+          stores: [
+            {
+              id: 'a',
+              name: 'A',
+              result: 'none',
+              returned: 24,
+              discarded: 24,
+              closest: 'Otra cosa',
+              url: 'https://a.example',
+            },
+            { id: 'link:B', name: 'B', result: 'link', url: 'https://b.example' },
+          ],
+        },
+      ],
+      settings: { ...state.settings, groupOrder: ['Bocinas'] },
+    });
+    expect(s.watches[0]).toMatchObject({
+      group: 'Bocinas',
+      stores: [{ result: 'none', returned: 24 }, { result: 'link' }],
+    });
+    expect(s.settings.groupOrder).toEqual(['Bocinas']);
   });
 
   it('toStatus copies only the protocol fields', () => {

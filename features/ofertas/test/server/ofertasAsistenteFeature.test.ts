@@ -43,7 +43,13 @@ function fakeVigia(): FakeVigia {
     watches: [],
     alerts: [],
     sources: [],
-    settings: { everyMinutes: 180, buenFin: false, dropPercent: 10, disabledSources: [] },
+    settings: {
+      everyMinutes: 180,
+      buenFin: false,
+      dropPercent: 10,
+      disabledSources: [],
+      groupOrder: [],
+    },
     checking: false,
   };
   const v: FakeVigia = {
@@ -61,6 +67,7 @@ function fakeVigia(): FakeVigia {
       throw new Error('no');
     },
     deleteWatch: () => {},
+    setGroup: () => true,
     setAssistant: (id, answer) => {
       v.assistants.push([id, answer]);
       return true;

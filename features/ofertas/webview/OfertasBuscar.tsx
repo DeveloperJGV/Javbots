@@ -22,6 +22,8 @@ import {
   Tag,
   VerdictLine,
 } from './OfertasComun.js';
+import { GrupoElegir } from './OfertasGrupoElegir.js';
+import { groupNames, sameGroup, suggestGroup } from './ofertasGrupos.js';
 import { ofertasStore } from './ofertasStore.js';
 import {
   allSourcesFailed,
@@ -96,13 +98,24 @@ export function ReferenceFields({
 }
 
 /** The box to keep watching what was searched. */
-function WatchBox({ query, send }: { query: string; send: Send }) {
+function WatchBox({
+  query,
+  send,
+  groups,
+  suggestion,
+}: {
+  query: string;
+  send: Send;
+  groups: string[];
+  suggestion?: string;
+}) {
   const [target, setTarget] = useState('');
   const [mustHave, setMustHave] = useState('');
   const [exclude, setExclude] = useState('');
   const [refPrice, setRefPrice] = useState('');
   const [refDate, setRefDate] = useState(() => dateField(Date.now()));
   const [more, setMore] = useState(false);
+  const [group, setGroup] = useState('');
   const save = () => {
     const reference = referenceFromFields({ refPrice, refDate });
     send({
@@ -112,14 +125,23 @@ function WatchBox({ query, send }: { query: string; send: Send }) {
       mustHave: splitWords(mustHave),
       exclude: splitWords(exclude),
       ...(reference ? { reference } : {}),
+      ...(group ? { group } : {}),
     });
     ofertasStore.setTab('vigilando');
   };
+  // A new group typed here is offered next time too, until the watch is saved with it
+  const choices = group && !groups.some((g) => sameGroup(g, group)) ? [...groups, group] : groups;
   return (
     <div className={cardClass}>
       <span className="text-base">
         Vigilar esta búsqueda: <span className="text-accent-bright">{query}</span>
       </span>
+      <div className="flex flex-col gap-2">
+        <span className="text-text-muted">
+          Grupo: <span className="text-text">{group || 'sin grupo'}</span>
+        </span>
+        <GrupoElegir current={group} groups={choices} suggestion={suggestion} onPick={setGroup} />
+      </div>
       <label className="flex flex-wrap items-center gap-4">
         <span className="text-text-muted">Avísame cuando baje de $</span>
         <input
@@ -252,7 +274,15 @@ function Group({ group, requestId, send }: { group: OfertasGroup; requestId: str
 }
 
 /** What came back from a search (or "Buscando…"). */
-function Results({ results, send }: { results: OfertasResults; send: Send }) {
+function Results({
+  results,
+  send,
+  status,
+}: {
+  results: OfertasResults;
+  send: Send;
+  status?: OfertasStatus;
+}) {
   if (results.searching) {
     return <p className="text-text-muted">{searchingText(results.sources)}</p>;
   }
@@ -271,7 +301,13 @@ function Results({ results, send }: { results: OfertasResults; send: Send }) {
         </p>
       )}
 
-      <WatchBox key={results.requestId} query={results.query} send={send} />
+      <WatchBox
+        key={results.requestId}
+        query={results.query}
+        send={send}
+        groups={groupNames(status?.watches ?? [], status?.settings.groupOrder)}
+        suggestion={suggestGroup(groups[0]?.title, results.query)}
+      />
 
       {groups.length > 0 ? (
         <ul className="flex flex-col gap-6">
@@ -393,7 +429,7 @@ export function OfertasBuscar({
         </Button>
       </form>
       {results ? (
-        <Results results={results} send={send} />
+        <Results results={results} send={send} status={status} />
       ) : (
         <p className="text-text-muted">
           Busca un producto y ve su precio en varias tiendas a la vez, el más barato primero. Si te

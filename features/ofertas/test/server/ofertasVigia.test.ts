@@ -127,13 +127,13 @@ describe('ofertas: the watch', () => {
     expect(v.state().watches).toEqual([]);
   });
 
-  it('a new file starts with Amazon and Walmart off; a file that already chose is respected', () => {
-    expect(make([]).state().settings.disabledSources).toEqual(['amazon', 'walmart']);
+  it('a new file starts with Amazon off (Walmart is link-only by robots.txt); a file that already chose is respected', () => {
+    expect(make([]).state().settings.disabledSources).toEqual(['amazon']);
     const file = ofertasPath(home);
     fs.mkdirSync(path.dirname(file), { recursive: true });
     // An older file without the choice gets the factory one
     fs.writeFileSync(file, JSON.stringify({ version: 1, ajustes: { everyMinutes: 60 } }));
-    expect(make([]).state().settings.disabledSources).toEqual(['amazon', 'walmart']);
+    expect(make([]).state().settings.disabledSources).toEqual(['amazon']);
     // Chose to read them all: stays that way
     fs.writeFileSync(file, JSON.stringify({ version: 1, ajustes: { disabledSources: [] } }));
     expect(make([]).state().settings.disabledSources).toEqual([]);
@@ -446,6 +446,236 @@ describe('ofertas: the watch', () => {
     expect(calls[0]!.url).toBe('https://ntfy.example/tema');
     expect(calls[0]!.init.body).toBe('Bajó');
     expect(calls[0]!.init.headers).toMatchObject({ Title: 'Ofertas', Click: 'https://x.example' });
+  });
+
+  it('each check keeps where it searched and what each store said, with the time', async () => {
+    const has = fake('a', () =>
+      only(offer('a', 6999), offer('a', 300, 'Funda para audífonos Sony WH-1000XM5')),
+    );
+    const hasNot = fake('b', () =>
+      only(offer('b', 5000, 'Audífonos Sony WH-1000XM4'), offer('b', 900, 'Cable genérico')),
+    );
+    const empty = fake('c', () => only());
+    const broken = fake('d', () => {
+      throw new Error('boom');
+    });
+    const blocked = fake('e', () => {
+      throw new SourceBlocked();
+    });
+    const off = fake('f', () => only(offer('f', 1)));
+    const noKey = fake('g', () => only(), { ready: () => false });
+    const robots = fake('h', () => only(offer('h', 1)), { linkOnly: 'No se permite' });
+    const v = make([has, hasNot, empty, broken, blocked, off, noKey, robots]);
+    v.setSettings({ disabledSources: ['f'] });
+    const w = v.saveWatch({ query: QUERY });
+    await v.check(w.id);
+
+    const stores = v.state().watches[0]!.stores!;
+    const by = (id: string) => stores.find((s) => s.id === id)!;
+    expect(stores.map((s) => [s.id, s.result])).toEqual([
+      ['a', 'found'],
+      ['b', 'none'],
+      ['c', 'none'],
+      ['d', 'error'],
+      ['e', 'blocked'],
+      ['f', 'off'],
+      ['g', 'nokey'],
+      ['h', 'link'],
+      ['link:Otra tienda', 'link'],
+    ]);
+    expect(by('a')).toMatchObject({
+      price: 6999,
+      returned: 2,
+      discarded: 1,
+      url: `https://a.example/?q=${encodeURIComponent(QUERY)}`,
+    });
+    expect(by('b')).toMatchObject({
+      returned: 2,
+      discarded: 2,
+      closest: 'Audífonos Sony WH-1000XM4',
+    });
+    expect(by('c')).toMatchObject({ returned: 0, discarded: 0 });
+    expect(by('c').closest).toBeUndefined();
+    expect(by('h').detail).toBe('No se permite');
+    expect(robots.calls).toBe(0); // never asked
+    expect(off.calls).toBe(0);
+    for (const s of stores.filter((x) => !x.id.startsWith('link:')))
+      expect(s.at).toBe(new Date(START).toISOString());
+    // Saved: it survives a restart
+    expect(make([]).state().watches[0]!.stores).toHaveLength(9);
+  });
+
+  it('a store asked at most every N hours says so: its answer is the earlier one, with its own time', async () => {
+    const slow = fake('a', () => only(offer('a', 6999)), { minIntervalMs: 6 * HOUR });
+    const v = make([slow]);
+    const w = v.saveWatch({ query: QUERY });
+    await v.check(w.id);
+    now = START + HOUR;
+    await v.check(w.id);
+    const s = v.state().watches[0]!.stores![0]!;
+    expect(slow.calls).toBe(1);
+    expect(s).toMatchObject({ result: 'found', reused: true, at: new Date(START).toISOString() });
+  });
+
+  it('a store linked only by robots is off in the status, cannot be asked, and its link is in a search', async () => {
+    const robots = fake('h', () => only(offer('h', 6999)), { linkOnly: 'No se permite' });
+    const v = make([robots]);
+    v.setSettings({ disabledSources: [] });
+    const st = v.state().sources[0]!;
+    expect(st).toMatchObject({
+      state: 'off',
+      enabled: false,
+      linkOnly: true,
+      detail: 'No se permite',
+    });
+    const r = await v.search(QUERY);
+    expect(robots.calls).toBe(0);
+    expect(r.links.map((l) => l.url)).toContain(
+      `https://h.example/?q=${encodeURIComponent(QUERY)}`,
+    );
+  });
+
+  it('groups: chosen when created, changed alone later, kept on edits, and the alerts say it', async () => {
+    let price = 7000;
+    const a = fake('a', () => only(offer('a', price)));
+    const v = make([a]);
+    const w = v.saveWatch({ query: QUERY, group: '  Audífonos  ', target: 6000 });
+    expect(w.group).toBe('Audífonos');
+    await v.check(w.id);
+    // An edit without group keeps it; setGroup changes only the group
+    v.saveWatch({ id: w.id, query: QUERY, target: 6500 });
+    expect(v.state().watches[0]!.group).toBe('Audífonos');
+    expect(v.setGroup(w.id, 'Sonido')).toBe(true);
+    const after = v.state().watches[0]!;
+    expect(after).toMatchObject({ group: 'Sonido', target: 6500 });
+    expect(after.history).toHaveLength(1);
+    expect(v.setGroup('nadie', 'x')).toBe(false);
+    price = 6400;
+    now += HOUR;
+    await v.check(w.id);
+    expect(told[0]!.text.startsWith('Sonido · Audífonos sony wh-1000xm5:')).toBe(true);
+    // "" removes it, in both ways
+    v.setGroup(w.id, '');
+    expect(v.state().watches[0]!.group).toBeUndefined();
+    v.saveWatch({ id: w.id, query: QUERY, group: 'Otra' });
+    v.saveWatch({ id: w.id, query: QUERY, group: '' });
+    expect(v.state().watches[0]!.group).toBeUndefined();
+  });
+
+  it('the group order is a setting, kept clean', () => {
+    const v = make([]);
+    v.setSettings({
+      groupOrder: ['Red', ' Bocinas ', 'red', '', 'Receptor', 'Audífonos', 'AUDIFONOS'],
+    });
+    expect(v.state().settings.groupOrder).toEqual(['Red', 'Bocinas', 'Receptor', 'Audífonos']);
+    expect(make([]).state().settings.groupOrder).toEqual([
+      'Red',
+      'Bocinas',
+      'Receptor',
+      'Audífonos',
+    ]);
+  });
+
+  it('a group that exists but for accents or capitals is that group, with the name it has', () => {
+    const v = make([]);
+    const a = v.saveWatch({ query: QUERY, group: 'Audífonos' });
+    const b = v.saveWatch({ query: 'otra cosa', group: 'audifonos' });
+    expect(b.group).toBe('Audífonos');
+    const c = v.saveWatch({ query: 'tercera cosa' });
+    v.setGroup(c.id, 'AUDÍFONOS');
+    expect(v.state().watches.find((w) => w.id === c.id)!.group).toBe('Audífonos');
+    // A group kept only in the order (no watches today) counts too
+    v.setSettings({ groupOrder: ['Bocinas'] });
+    v.saveWatch({ id: a.id, query: QUERY, group: 'bocinas' });
+    expect(v.state().watches.find((w) => w.id === a.id)!.group).toBe('Bocinas');
+    // Renaming the only watch of a group to another spelling is allowed (it is not "another" group)
+    const v2 = make([]);
+    const solo = v2.saveWatch({ query: QUERY, group: 'Red' });
+    v2.setGroup(solo.id, 'RED');
+    expect(v2.state().watches[0]!.group).toBe('RED');
+  });
+
+  it('data saved before groups and stores existed still loads, and old files gain the fields on the next check', async () => {
+    const file = ofertasPath(home);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(
+      file,
+      JSON.stringify({
+        version: 1,
+        ajustes: {
+          everyMinutes: 45,
+          buenFin: false,
+          dropPercent: 10,
+          disabledSources: ['walmart'],
+        },
+        busquedas: [
+          {
+            id: 'viejo',
+            query: QUERY,
+            mustHave: [],
+            exclude: [],
+            createdAt: new Date(START - DAY).toISOString(),
+            others: [],
+            history: [{ at: new Date(START - DAY).toISOString(), price: 7100 }],
+            reached: false,
+            seenDeals: [],
+            error: 'Ninguna tienda lo tiene',
+          },
+          { id: 'roto', query: QUERY, group: 42, stores: [{ id: 'x' }, 'basura'] },
+        ],
+        avisos: [],
+      }),
+    );
+    const v = make([fake('a', () => only(offer('a', 6999)))]);
+    const [old, broken] = v.state().watches;
+    expect(old!.group).toBeUndefined();
+    expect(old!.stores).toBeUndefined();
+    expect(v.state().settings.groupOrder).toEqual([]);
+    expect(broken!.group).toBeUndefined();
+    expect(broken!.stores).toEqual([]);
+    await v.check('viejo');
+    expect(v.state().watches[0]!.stores!.map((s) => s.result)).toEqual(['found', 'link']);
+    expect(v.state().watches[0]!.error).toBeUndefined();
+  });
+
+  it('"dónde buscó" read from the file is capped: few stores, short texts, one per store, discarded ≤ returned', () => {
+    const file = ofertasPath(home);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    const many = Array.from({ length: 100 }, (_, i) => ({
+      id: `t${i}`,
+      name: `Tienda ${i}`,
+      result: 'none',
+    }));
+    fs.writeFileSync(
+      file,
+      JSON.stringify({
+        version: 1,
+        busquedas: [
+          {
+            id: 'w',
+            query: QUERY,
+            stores: [
+              {
+                id: 'a',
+                name: 'x'.repeat(1000),
+                result: 'none',
+                returned: 3,
+                discarded: 9,
+                detail: 'y'.repeat(1000),
+              },
+              { id: 'a', name: 'Repetida', result: 'found' },
+              ...many,
+            ],
+          },
+        ],
+      }),
+    );
+    const stores = make([]).state().watches[0]!.stores!;
+    expect(stores).toHaveLength(40);
+    expect(stores.filter((c) => c.id === 'a')).toHaveLength(1);
+    expect(stores[0]!).toMatchObject({ result: 'none', returned: 3, discarded: 3 });
+    expect(stores[0]!.name).toHaveLength(300);
+    expect(stores[0]!.detail).toHaveLength(300);
   });
 });
 

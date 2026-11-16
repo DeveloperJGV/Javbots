@@ -130,7 +130,8 @@ export function alertsFor(
   nowMs: number,
 ): AlertDraft[] {
   const at = new Date(nowMs).toISOString();
-  const name = label(prev.query);
+  // The group goes first, so an alert says what kind of thing it is ("Bocinas · Marca B20: …")
+  const name = prev.group ? `${prev.group} · ${label(prev.query)}` : label(prev.query);
   const out: AlertDraft[] = [];
   const best = next.best;
   if (best) {

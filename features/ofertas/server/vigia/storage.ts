@@ -20,6 +20,8 @@ import {
   DROP_PERCENT_MIN,
   EVERY_MINUTES_MAX,
   EVERY_MINUTES_MIN,
+  GROUP_NAME_MAX,
+  GROUP_ORDER_CAP,
   HISTORY_CAP,
   LOG_PREFIX,
   NTFY_TOPIC_PATTERN,
@@ -28,8 +30,12 @@ import {
   OFERTAS_FILE_VERSION,
   OTHERS_CAP,
   SEEN_DEALS_CAP,
+  STORE_CLOSEST_MAX,
+  STORE_TEXT_MAX,
+  STORES_PER_WATCH_MAX,
   WORD_LIST_CAP,
 } from './constants.js';
+import { normalize } from './relevance.js';
 import type {
   Alert,
   AlertKind,
@@ -40,6 +46,8 @@ import type {
   Pick,
   PricePoint,
   Settings,
+  StoreCheck,
+  StoreResult,
   Verdict,
   VerdictKind,
   Watch,
@@ -80,7 +88,31 @@ export function defaultSettings(): Settings {
     buenFin: false,
     dropPercent: DEFAULT_DROP_PERCENT,
     disabledSources: [...DEFAULT_DISABLED_SOURCES],
+    groupOrder: [],
   };
+}
+
+/** A group name: one line, spaces collapsed, capped; undefined when empty or not text. */
+export function cleanGroup(v: unknown): string | undefined {
+  if (typeof v !== 'string') return undefined;
+  const g = v.replace(/\s+/g, ' ').trim().slice(0, GROUP_NAME_MAX).trim();
+  return g || undefined;
+}
+
+/** Two group names are one group whatever their accents or capitals ("Audífonos" = "audifonos"). */
+export const sameGroupName = (a: string, b: string): boolean =>
+  normalize(a) !== '' ? normalize(a) === normalize(b) : a.toLowerCase() === b.toLowerCase();
+
+/** The person's order of groups: clean names, no repeats (accents and capitals aside), capped. */
+export function groupList(v: unknown): string[] {
+  if (!Array.isArray(v)) return [];
+  const out: string[] = [];
+  for (const item of v) {
+    const g = cleanGroup(item);
+    if (g && !out.some((x) => sameGroupName(x, g))) out.push(g);
+    if (out.length >= GROUP_ORDER_CAP) break;
+  }
+  return out;
 }
 
 export function wordList(v: unknown): string[] {
@@ -117,7 +149,48 @@ export function parseSettings(raw: unknown): Settings {
     disabledSources: Array.isArray(r.disabledSources)
       ? wordList(r.disabledSources)
       : [...DEFAULT_DISABLED_SOURCES],
+    groupOrder: groupList(r.groupOrder),
   };
+}
+
+const STORE_RESULTS: readonly StoreResult[] = [
+  'found',
+  'none',
+  'error',
+  'blocked',
+  'off',
+  'nokey',
+  'link',
+];
+
+/** One store of the "dónde buscó" row, field by field. */
+export function parseStoreCheck(raw: unknown): StoreCheck | undefined {
+  const r = rec(raw);
+  const id = str(r.id)?.slice(0, STORE_TEXT_MAX);
+  const name = str(r.name)?.slice(0, STORE_TEXT_MAX);
+  const result = r.result as StoreResult;
+  if (!id || !name || !STORE_RESULTS.includes(result)) return undefined;
+  const out: StoreCheck = { id, name, result };
+  const at = iso(r.at);
+  if (at) out.at = at;
+  if (r.reused === true) out.reused = true;
+  const price = num(r.price);
+  if (price !== undefined && price > 0) out.price = price;
+  for (const k of ['returned', 'discarded'] as const) {
+    const n = num(r[k]);
+    if (n !== undefined && n >= 0) out[k] = Math.round(n);
+  }
+  // Never more discarded than returned
+  if (out.discarded !== undefined && out.returned !== undefined && out.discarded > out.returned) {
+    out.discarded = out.returned;
+  }
+  const closest = str(r.closest);
+  if (closest) out.closest = closest.slice(0, STORE_CLOSEST_MAX);
+  const detail = str(r.detail);
+  if (detail) out.detail = detail.slice(0, STORE_TEXT_MAX);
+  const url = str(r.url);
+  if (url && /^https?:\/\//.test(url)) out.url = url;
+  return out;
 }
 
 export function parseOffer(raw: unknown): Offer | undefined {
@@ -285,6 +358,20 @@ export function parseWatch(raw: unknown): Watch | undefined {
   const asistente = parseWatchAssistant(r.asistente);
   if (asistente) {
     w.asistente = asistente;
+  }
+  const group = cleanGroup(r.group);
+  if (group) {
+    w.group = group;
+  }
+  // Data saved before "dónde buscó" existed has no stores: the panel says it comes with the next check
+  if (Array.isArray(r.stores)) {
+    // One per store (the first: the panel keys its row by store id), and a cap against a damaged file
+    const seen = new Set<string>();
+    w.stores = r.stores
+      .map(parseStoreCheck)
+      .filter(defined)
+      .filter((c) => !seen.has(c.id) && !!seen.add(c.id))
+      .slice(0, STORES_PER_WATCH_MAX);
   }
   const lowest = num(r.lowest);
   if (lowest !== undefined) {

@@ -7,6 +7,7 @@ import {
   BUNDLE_PHRASES,
   DEFAULT_EXCLUDE,
   FOR_MARKERS,
+  JOIN_MAX_TOKENS,
   MODEL_PREFIX_MAX,
   MODEL_UNITS,
   NOT_MODEL_UNIT,
@@ -24,7 +25,7 @@ export interface RelevanceRule {
 export function normalize(text: string): string {
   return text
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9ñ]+/g, ' ')
     .trim();
@@ -96,11 +97,60 @@ function findWord(titleTokens: string[], word: string): number {
   return titleTokens.findIndex((t) => sameWord(t, word));
 }
 
-/** A phrase (one or more words) inside a normalized text, whole words only, plural tolerant on one word. */
-function hasPhrase(normTitle: string, titleTokens: string[], phrase: string): boolean {
+/**
+ * Like findWord, but the word may also be split across a few title tokens: "tplink" is in "TP-Link" ("tp" "link")
+ * and "audiotechnica" in "Audio Technica". Only for words that must be there, never for exclusions (else "ca" +
+ * "se" would discard a title for "case").
+ */
+function findJoined(titleTokens: string[], word: string): number {
+  for (let i = 0; i < titleTokens.length; i++) {
+    let joined = '';
+    for (let j = i; j < titleTokens.length && j - i < JOIN_MAX_TOKENS; j++) {
+      joined += titleTokens[j]!;
+      if (sameWord(joined, word)) return i;
+      if (joined.length > word.length + 2) break;
+    }
+  }
+  return -1;
+}
+
+/**
+ * Where the query word at `k` (and maybe the ones glued after it) sits in the title, and how many query words it
+ * took. "tp link" finds "TPLink" by gluing "tp" + "link"; words that were not next to each other in the query never
+ * glue.
+ */
+function findQueryWord(
+  titleTokens: string[],
+  words: readonly string[],
+  adjacent: readonly boolean[],
+  k: number,
+): { at: number; used: number } | undefined {
+  let glued = '';
+  for (let n = 0; n < JOIN_MAX_TOKENS && k + n < words.length; n++) {
+    if (n > 0 && !adjacent[k + n]) break;
+    glued += words[k + n]!;
+    const at = findJoined(titleTokens, glued);
+    if (at >= 0) return { at, used: n + 1 };
+  }
+  return undefined;
+}
+
+/**
+ * A phrase (one or more words) inside a normalized text, whole words only, plural tolerant on one word. `joined`
+ * (for words that must be there) also accepts it written together or split ("tp-link", "tp link", "tplink").
+ */
+function hasPhrase(
+  normTitle: string,
+  titleTokens: string[],
+  phrase: string,
+  joined = false,
+): boolean {
   const p = normalize(phrase);
   if (!p) {
     return false;
+  }
+  if (joined && findJoined(titleTokens, p.replace(/ /g, '')) >= 0) {
+    return true;
   }
   if (!p.includes(' ')) {
     return findWord(titleTokens, p) >= 0;
@@ -108,11 +158,20 @@ function hasPhrase(normTitle: string, titleTokens: string[], phrase: string): bo
   return ` ${normTitle} `.includes(` ${p} `);
 }
 
-/** The query split into models and plain meaningful words. */
-export function queryParts(query: string): { models: string[]; words: string[] } {
+/**
+ * The query split into models and plain meaningful words. `adjacent[k]` = word k came right after word k - 1 in the
+ * query (only those may be glued together to find a brand written as one word).
+ */
+export function queryParts(query: string): {
+  models: string[];
+  words: string[];
+  adjacent: boolean[];
+} {
   const models = modelTokens(query);
   const modelSet = new Set(models);
   const words: string[] = [];
+  const adjacent: boolean[] = [];
+  let lastAt = -2;
   const glued = query.replace(/([A-Za-z0-9])[-/.]([A-Za-z0-9])/g, '$1$2');
   const ts = tokens(glued);
   for (let i = 0; i < ts.length; i++) {
@@ -129,9 +188,11 @@ export function queryParts(query: string): { models: string[]; words: string[] }
     if (hasDigit(t)) {
       continue; // a unit ("40h") is not required
     }
+    adjacent.push(lastAt === i - 1);
+    lastAt = i;
     words.push(t);
   }
-  return { models, words };
+  return { models, words, adjacent };
 }
 
 function cleanTitle(title: string): { norm: string; toks: string[] } {
@@ -143,6 +204,36 @@ function cleanTitle(title: string): { norm: string; toks: string[] } {
       .trim();
   }
   return { norm, toks: norm ? norm.split(' ') : [] };
+}
+
+/**
+ * After the marker at `m`, does the title name the searched product again? With models: one that was already named
+ * before the marker shows up again ("control para PS5" for "control ps5" names PS5 only once, so it stays). Without
+ * models: every searched word shows up again.
+ */
+function namesAgain(
+  toks: string[],
+  m: number,
+  models: readonly string[],
+  modelPositions: readonly number[],
+  words: readonly string[],
+  adjacent: readonly boolean[],
+): boolean {
+  const after = toks.slice(m + 1);
+  if (models.length > 0) {
+    return models.some((model, i) => modelPositions[i]! < m && findModel(after, model) >= 0);
+  }
+  if (words.length === 0) {
+    return false;
+  }
+  for (let k = 0; k < words.length;) {
+    const found = findQueryWord(after, words, adjacent, k);
+    if (!found) {
+      return false;
+    }
+    k += found.used;
+  }
+  return true;
 }
 
 export function isRelevant(title: string, rule: RelevanceRule): boolean {
@@ -158,7 +249,7 @@ export function relevanceScore(title: string, rule: RelevanceRule): number {
   if (toks.length === 0) {
     return 0;
   }
-  const { models, words } = queryParts(rule.query);
+  const { models, words, adjacent } = queryParts(rule.query);
   if (models.length === 0 && words.length === 0) {
     return 0;
   }
@@ -174,15 +265,16 @@ export function relevanceScore(title: string, rule: RelevanceRule): number {
     positions.push(at);
   }
   const wordPositions: number[] = [];
-  for (const w of words) {
-    const at = findWord(toks, w);
-    if (at < 0) {
+  for (let k = 0; k < words.length;) {
+    const found = findQueryWord(toks, words, adjacent, k);
+    if (!found) {
       return 0;
     }
-    wordPositions.push(at);
+    wordPositions.push(found.at);
+    k += found.used;
   }
   for (const must of rule.mustHave ?? []) {
-    if (normalize(must) && !hasPhrase(norm, toks, must)) {
+    if (normalize(must) && !hasPhrase(norm, toks, must, true)) {
       return 0;
     }
   }
@@ -206,6 +298,16 @@ export function relevanceScore(title: string, rule: RelevanceRule): number {
     // "Control para PS5" answers "control ps5" (the control comes first) but not "ps5".
     if (![...positions, ...wordPositions].some((p) => p < markerAt)) {
       return 0;
+    }
+    // "Cargador iPhone 15 compatible con iPhone 15 Pro": after a marker the title names the searched product AGAIN,
+    // so what came first is an accessory for it. "Subwoofer SW10 … compatible con Dolby Atmos" names something else.
+    for (let m = markerAt; m < toks.length; m++) {
+      if (
+        FOR_MARKERS.includes(toks[m]!) &&
+        namesAgain(toks, m, models, positions, words, adjacent)
+      ) {
+        return 0;
+      }
     }
   }
 

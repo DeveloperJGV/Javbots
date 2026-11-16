@@ -7,11 +7,14 @@ import type {
   OfertasPoint,
   OfertasReference,
   OfertasSource,
+  OfertasStoreCheck,
+  OfertasStoreResult,
   OfertasVerdictKind,
   OfertasWatch,
 } from '../../../core/src/messages.js';
 import {
   AMAZON_ASIN_RE,
+  FEWER_WORDS_MIN,
   KEEPA_PRODUCT_URL,
   PROFECO_BUEN_FIN_UNTIL,
   PROFECO_BUEN_FIN_URL,
@@ -120,6 +123,7 @@ export type ChipTone = 'ok' | 'bad' | 'muted';
 
 /** What a source's chip says after a search: "✓ 12", "no contestó", "bloqueó", "falta llave", "apagada". */
 export function sourceChip(source: OfertasSource): { text: string; tone: ChipTone } {
+  if (source.linkOnly) return { text: '↗ ábrela tú', tone: 'muted' };
   switch (source.state) {
     case 'ok':
       return { text: `✓ ${source.count ?? 0}`, tone: 'ok' };
@@ -364,6 +368,128 @@ export function rangeText(history: OfertasPoint[], nowMs: number = Date.now()): 
 export function referenceText(ref: OfertasReference, nowMs: number = Date.now()): string {
   const d = shortDate(ref.at, nowMs);
   return `Lo viste en ${money(ref.price)} ${d === 'hoy' || d === 'ayer' ? d : `el ${d}`}`;
+}
+
+// ── "Dónde buscó" ────────────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The mark of a store in the row: a sign that reads without color (✓ has it, – answered but not with that name,
+ * ✗ did not answer or refused, ○ turned off, ! needs a key, ↗ only its link) and the tone.
+ */
+export function storeMark(result: OfertasStoreResult): {
+  mark: string;
+  tone: TagTone;
+  label: string;
+} {
+  switch (result) {
+    case 'found':
+      return { mark: '✓', tone: 'ok', label: 'lo tiene' };
+    case 'none':
+      return { mark: '–', tone: 'warn', label: 'no lo tiene con ese nombre' };
+    case 'error':
+      return { mark: '✗', tone: 'bad', label: 'no contestó' };
+    case 'blocked':
+      return { mark: '✗', tone: 'bad', label: 'bloqueó la consulta' };
+    case 'nokey':
+      return { mark: '!', tone: 'bad', label: 'falta la llave' };
+    case 'off':
+      return { mark: '○', tone: 'muted', label: 'apagada' };
+    case 'link':
+      return { mark: '↗', tone: 'muted', label: 'ábrela tú' };
+  }
+}
+
+const results = (n: number) => (n === 1 ? '1 resultado' : `${n} resultados`);
+
+/** The whole sentence of one store: "Contestó 24 resultados; ninguno coincide con «…»". */
+export function storeSentence(c: OfertasStoreCheck, query: string): string {
+  switch (c.result) {
+    case 'found': {
+      const price = c.price !== undefined ? ` desde ${money(c.price)}` : '';
+      const of =
+        c.returned !== undefined
+          ? ` (${c.returned - (c.discarded ?? 0)} de ${results(c.returned)})`
+          : '';
+      return `Lo tiene${price}${of}`;
+    }
+    case 'none':
+      if (!c.returned) return 'Contestó sin resultados';
+      return `Contestó ${results(c.returned)}; ${c.returned === 1 ? 'no coincide' : 'ninguno coincide'} con «${query}»`;
+    case 'nokey':
+      return c.detail ? `Falta la llave (${c.detail})` : 'Falta la llave';
+    default:
+      return c.detail ?? storeMark(c.result).label;
+  }
+}
+
+/** "a las 21:40", "ayer 21:40", "12 nov 21:40"; reused answers say they are earlier. */
+export function storeWhen(c: OfertasStoreCheck, nowMs: number = Date.now()): string {
+  if (!c.at) return '';
+  const d = shortDate(c.at, nowMs);
+  const when = d === 'hoy' ? `a las ${clock(c.at)}` : `${d} ${clock(c.at)}`;
+  return c.reused ? `respuesta de antes, ${when}` : when;
+}
+
+/**
+ * A query with fewer words to try when nothing matched: without its first word (often the brand, which stores write
+ * in many ways), only for 3 words or more. Undefined when there is nothing shorter worth trying.
+ */
+export function fewerWords(query: string): string | undefined {
+  const words = query.trim().split(/\s+/);
+  if (words.length < FEWER_WORDS_MIN) return undefined;
+  return words.slice(1).join(' ');
+}
+
+/**
+ * Why a watch has no price, from where it searched: "Amazon contestó 24 resultados, ninguno coincide con «…»;
+ * Costco contestó sin resultados". Undefined when the watch has no stores yet.
+ */
+export function noPriceSentence(
+  stores: OfertasStoreCheck[] | undefined,
+  query: string,
+): string | undefined {
+  if (!stores || stores.length === 0) return undefined;
+  const parts: string[] = [];
+  // A store found it but gave no price that could be used: it did answer
+  const found = stores.filter((c) => c.result === 'found').map((c) => c.name);
+  if (found.length)
+    parts.push(
+      `${names(found)} lo ${found.length > 1 ? 'tienen' : 'tiene'}, pero sin un precio que se pueda usar`,
+    );
+  for (const c of stores) {
+    if (c.result === 'none') {
+      parts.push(
+        c.returned
+          ? `${c.name} contestó ${results(c.returned)}, ${c.returned === 1 ? 'no coincide' : 'ninguno coincide'} con «${query}»`
+          : `${c.name} contestó sin resultados`,
+      );
+    }
+  }
+  const failed = stores
+    .filter((c) => c.result === 'error' || c.result === 'blocked')
+    .map((c) => c.name);
+  if (failed.length)
+    parts.push(`${names(failed)} no ${failed.length > 1 ? 'contestaron' : 'contestó'}`);
+  if (parts.length === 0)
+    return 'Ninguna tienda se pudo consultar: todas están apagadas, sin llave o solo con liga';
+  return parts.join('; ');
+}
+
+/**
+ * "Contestaron 4 de 6 tiendas que lee · 1 lo tiene · 9 para abrir tú" (answered = any answer, good or not; the
+ * stores that are only a link are counted apart).
+ */
+export function searchedCount(stores: OfertasStoreCheck[]): string {
+  const read = stores.filter((c) => c.result !== 'link').length;
+  const answered = stores.filter((c) => c.result === 'found' || c.result === 'none').length;
+  const found = stores.filter((c) => c.result === 'found').length;
+  const linked = stores.length - read;
+  const parts = [
+    `${answered === 1 ? 'Contestó' : 'Contestaron'} ${answered} de ${read} ${read === 1 ? 'tienda' : 'tiendas'} que lee`,
+  ];
+  if (found) parts.push(`${found} lo ${found === 1 ? 'tiene' : 'tienen'}`);
+  if (linked) parts.push(`${linked} para abrir tú`);
+  return parts.join(' · ');
 }
 
 // ── The optional assistant ───────────────────────────────────────────────────────────────────────────────────

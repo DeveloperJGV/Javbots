@@ -238,6 +238,7 @@ components:
         # Price watch (feature: features/ofertas)
         - $ref: '#/components/schemas/SearchOfertas'
         - $ref: '#/components/schemas/SaveOfertasWatch'
+        - $ref: '#/components/schemas/SetOfertasWatchGroup'
         - $ref: '#/components/schemas/DeleteOfertasWatch'
         - $ref: '#/components/schemas/CheckOfertas'
         - $ref: '#/components/schemas/SetOfertasSettings'
@@ -3099,6 +3100,11 @@ components:
           description: It reads a page that is not an API; it may stop working or block at any time.
         enabled:
           type: boolean
+        linkOnly:
+          type: boolean
+          description: >-
+            The store does not allow reading its search with programs (its robots.txt): never asked, only linked.
+            It cannot be turned on.
         detail:
           type: string
         count:
@@ -3106,6 +3112,52 @@ components:
         lastOkAt:
           type: string
           description: ISO time of the last good answer.
+
+    OfertasStoreCheck:
+      description: >-
+        One store of the "dónde buscó" row of a watch: what it said on the last check.
+      type: object
+      additionalProperties: false
+      required: [id, name, result]
+      properties:
+        id:
+          type: string
+          description: The source id, or "link:<name>" for a store that is only linked.
+        name:
+          type: string
+        result:
+          $ref: '#/components/schemas/OfertasStoreResult'
+        at:
+          type: string
+          description: ISO time of the answer.
+        reused:
+          type: boolean
+          description: An earlier answer, reused so the store is not asked too often.
+        price:
+          type: number
+          description: found = the cheapest result that passed the filter.
+        returned:
+          type: number
+          description: Results the store gave.
+        discarded:
+          type: number
+          description: Of those, how many the filter dropped.
+        closest:
+          type: string
+          maxLength: 160
+          description: none = the first title the store gave (to see why nothing passed), cut at 160 characters.
+        detail:
+          type: string
+        url:
+          type: string
+          description: This search in the store, for a person to open.
+
+    OfertasStoreResult:
+      description: >-
+        found = it has it; none = it answered but no result passed the filter; error = it did not answer;
+        blocked = it refused; off = turned off; nokey = needs a key; link = not read by the office, only linked.
+      type: string
+      enum: [found, none, error, blocked, off, nokey, link]
 
     OfertasSourceState:
       description: >-
@@ -3193,6 +3245,15 @@ components:
           $ref: '#/components/schemas/OfertasVerdict'
         asistente:
           $ref: '#/components/schemas/OfertasWatchAsistente'
+        group:
+          type: string
+          maxLength: 40
+          description: What kind of thing it is ("Bocinas"); absent = no group.
+        stores:
+          type: array
+          description: Where the last check searched and what each store said; absent before the first such check.
+          items:
+            $ref: '#/components/schemas/OfertasStoreCheck'
 
     OfertasAlert:
       type: object
@@ -3243,6 +3304,13 @@ components:
           type: array
           items:
             type: string
+        groupOrder:
+          type: array
+          description: The order the person gave the groups; groups not listed go after them, alphabetically.
+          maxItems: 50
+          items:
+            type: string
+            maxLength: 40
 
     SearchOfertas:
       description: Search a product in every source now. Privileged connections only.
@@ -3281,6 +3349,25 @@ components:
             type: string
         reference:
           $ref: '#/components/schemas/OfertasReference'
+        group:
+          type: string
+          maxLength: 40
+          description: Its group; an edit without it keeps the one it had, "" removes it. The server cuts a longer name at 40 characters.
+
+    SetOfertasWatchGroup:
+      description: Put a watch in a group ("" = no group); nothing else of it changes. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, id, group]
+      properties:
+        type:
+          const: setOfertasWatchGroup
+        id:
+          type: string
+        group:
+          type: string
+          maxLength: 40
+          description: The server cuts a longer name at 40 characters.
 
     DeleteOfertasWatch:
       description: Stop watching a search and forget its history. Privileged only.
@@ -3322,6 +3409,13 @@ components:
           type: array
           items:
             type: string
+        groupOrder:
+          type: array
+          description: The server keeps the first 50 names, each cut at 40 characters, without repeats.
+          maxItems: 50
+          items:
+            type: string
+            maxLength: 40
 
     MarkOfertasAlertsSeen:
       description: The alerts were read; the furniture goes dark. Privileged only.

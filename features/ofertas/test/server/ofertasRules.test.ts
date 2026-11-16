@@ -118,7 +118,164 @@ describe('ofertas: relevance', () => {
   });
 });
 
+describe('ofertas: relevance with brands written with a hyphen, a dot or a slash', () => {
+  // Real brands with signs inside: the query and the title may write them apart, together or with the sign
+  const cases: [query: string, title: string][] = [
+    ['TP-Link Archer C6', 'TP-Link Archer C6 Sistema Wi-Fi Mesh AC1200 (paquete de 3)'],
+    ['TP-Link Archer C6', 'Sistema Mesh TP Link Archer C6 AC1200'],
+    ['TP-Link Archer C6', 'TPLink Archer C6 Wi-Fi Mesh'],
+    ['tp link archer c6', 'TP-Link Archer C6 Wi-Fi Mesh'],
+    ['tp link archer c6', 'TPLink Archer C6 Wi-Fi Mesh'],
+    ['tplink archer c6', 'TP-Link Archer C6'],
+    ['Audio-Technica ATH-M50x', 'Audífonos Audio Technica ATH-M50x profesionales'],
+    ['audio technica ath m50x', 'Audífonos Audio-Technica ATHM50X'],
+    ['audio technica ath m50x', 'Audífonos AudioTechnica ATH-M50x'],
+    ['Hewlett-Packard laptop 15', 'Laptop Hewlett Packard 15 pulgadas'],
+    ['Coca-Cola 600 ml', 'Refresco Coca Cola 600 ml'],
+    ['coca cola 600 ml', 'Refresco Coca-Cola 600 ml'],
+    ['Mercedes-Benz llavero', 'Llavero Mercedes Benz de metal'],
+    ['Panasonic S.A. bocina', 'Bocina Panasonic SA'],
+    ['A.O. Smith calentador', 'Calentador AO Smith de paso'],
+    ['AC/DC playera', 'Playera AC DC negra'],
+    ['ac dc playera', 'Playera AC/DC negra'],
+  ];
+  for (const [query, title] of cases) {
+    it(`«${query}» finds «${title}»`, () => {
+      expect(isRelevant(title, { query })).toBe(true);
+    });
+  }
+
+  it('still needs every word and the model: no gluing words that were not together', () => {
+    expect(isRelevant('TP-Link Archer C80 Wi-Fi 6', { query: 'TP-Link Archer C6' })).toBe(false);
+    expect(isRelevant('Archer C6 de otra marca', { query: 'TP-Link Archer C6' })).toBe(false);
+    expect(isRelevant('Router Link TP Archer C6', { query: 'TP-Link Archer C6' })).toBe(false);
+    // "link" and "tp" were not next to each other in this query: they never glue into "linktp"
+    expect(isRelevant('Cable LinkTP para Archer C6', { query: 'link archer tp c6' })).toBe(false);
+  });
+
+  it('"compatible con" after the product name is a feature, before it an accessory', () => {
+    const q = { query: 'Audio-Technica AT-SW8' };
+    expect(
+      isRelevant(
+        'Audio-Technica AT-SW8 Subwoofer de 8 pulgadas, Compatible con Dolby Atmos y DTS:X, Negro',
+        q,
+      ),
+    ).toBe(true);
+    expect(isRelevant('Cable de audio compatible con Audio-Technica AT-SW8', q)).toBe(false);
+    expect(isRelevant('Base compatible con subwoofer Audio-Technica AT-SW8', q)).toBe(false);
+    expect(
+      isRelevant('Almohadillas compatibles con audífonos Sony WH-1000XM5', {
+        query: 'sony wh-1000xm5',
+      }),
+    ).toBe(false);
+  });
+
+  it('an accessory that names the searched product again after "compatible con" / "para" is dropped', () => {
+    const iphone = { query: 'iphone 15' };
+    expect(isRelevant('Cargador Rápido iPhone 15 Compatible con iPhone 15 Pro Max', iphone)).toBe(
+      false,
+    );
+    expect(isRelevant('Cable USB-C iPhone 15 compatible con iPhone 15 Plus y 15 Pro', iphone)).toBe(
+      false,
+    );
+    expect(isRelevant('Base de carga iPhone 15 para iPhone 15', iphone)).toBe(false);
+    expect(
+      isRelevant('Base de carga DualSense PS5 Compatible con consola PS5 y PS5 Slim', {
+        query: 'ps5',
+      }),
+    ).toBe(false);
+    // Without models: every searched word named again
+    expect(
+      isRelevant('Soporte bocina inteligente compatible con bocina inteligente', {
+        query: 'bocina inteligente',
+      }),
+    ).toBe(false);
+    // What follows names something else: the product itself
+    expect(isRelevant('Apple iPhone 15 128 GB Negro, compatible con MagSafe', iphone)).toBe(true);
+    expect(
+      isRelevant('Acme Monitor SW10 Subwoofer de 10 pulgadas, Compatible con Dolby Atmos y DTS:X', {
+        query: 'Acme SW10',
+      }),
+    ).toBe(true);
+    expect(
+      isRelevant('Bocina inteligente Acme compatible con Alexa', { query: 'bocina inteligente' }),
+    ).toBe(true);
+    // The searched product named once, after the marker: still the product ("control ps5")
+    expect(isRelevant('Control inalámbrico para PS5', { query: 'control ps5' })).toBe(true);
+  });
+
+  it('exclusions never glue pieces of the title ("ca" + "se" is not "case")', () => {
+    expect(isRelevant('Bocina Acme Ca Se edición', { query: 'bocina acme' })).toBe(true);
+    expect(isRelevant('Bocina Acme con case rígido', { query: 'bocina acme' })).toBe(false);
+  });
+
+  it('mustHave accepts the brand written apart or together', () => {
+    const rule = { query: 'archer c6', mustHave: ['tp-link'] };
+    expect(isRelevant('TPLink Archer C6', rule)).toBe(true);
+    expect(isRelevant('TP Link Archer C6', rule)).toBe(true);
+    expect(isRelevant('Archer C6 genérico', rule)).toBe(false);
+  });
+
+  it('groups the same product whatever way the store writes the brand', () => {
+    const groups = groupOffers([
+      offer({
+        sourceId: 'a',
+        store: 'A',
+        title: 'TP-Link Archer C6 Mesh (3 pack)',
+        price: 3200,
+        brand: 'TP-Link',
+      }),
+      offer({
+        sourceId: 'b',
+        store: 'B',
+        title: 'TP Link Archer C6 Mesh pack 3',
+        price: 3100,
+        brand: 'TPLink',
+      }),
+      offer({
+        sourceId: 'c',
+        store: 'C',
+        title: 'TPLink Archer C6 Sistema Mesh 3 pack',
+        price: 3300,
+        brand: 'tp link',
+      }),
+    ]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]!.offers.map((o) => o.price)).toEqual([3100, 3200, 3300]);
+  });
+});
+
 describe('ofertas: grouping', () => {
+  it('word order does not split the same product; a brand written apart joins only as that brand', () => {
+    const jbl = groupOffers([
+      offer({
+        sourceId: 'a',
+        store: 'A',
+        title: 'Bocina JBL Charge 5 Azul',
+        price: 2500,
+        brand: 'JBL',
+      }),
+      offer({
+        sourceId: 'b',
+        store: 'B',
+        title: 'Bocina Portátil Bluetooth Charge 5 JBL Azul',
+        price: 2600,
+      }),
+    ]);
+    expect(jbl).toHaveLength(1);
+    const tv = groupOffers([
+      offer({ sourceId: 'a', store: 'A', title: 'LG OLED C3 55', price: 20000, brand: 'LG' }),
+      offer({
+        sourceId: 'b',
+        store: 'B',
+        title: 'Pantalla OLED 55 C3 LG',
+        price: 21000,
+        brand: 'LG',
+      }),
+    ]);
+    expect(tv).toHaveLength(1);
+  });
+
   it('joins the same product of three stores, cheapest first', () => {
     const groups = groupOffers([
       offer({

@@ -131,6 +131,7 @@ export type ClientMessage =
   | SaveFreelanceOffer
   | SearchOfertas
   | SaveOfertasWatch
+  | SetOfertasWatchGroup
   | DeleteOfertasWatch
   | CheckOfertas
   | SetOfertasSettings
@@ -1105,6 +1106,8 @@ export interface OfertasWatch {
   pick?: OfertasPick;
   verdict?: OfertasVerdict;
   asistente?: OfertasWatchAsistente;
+  group?: string;
+  stores?: OfertasStoreCheck[];
 }
 
 export interface OfertasOffer {
@@ -1189,6 +1192,22 @@ export interface OfertasAsistenteSimilar {
 
 export type OfertasAsistenteTipoSimilar = 'compa' | 'alternativa';
 
+export interface OfertasStoreCheck {
+  id: string;
+  name: string;
+  result: OfertasStoreResult;
+  at?: string;
+  reused?: boolean;
+  price?: number;
+  returned?: number;
+  discarded?: number;
+  closest?: string;
+  detail?: string;
+  url?: string;
+}
+
+export type OfertasStoreResult = 'found' | 'none' | 'error' | 'blocked' | 'off' | 'nokey' | 'link';
+
 export interface OfertasAlert {
   id: string;
   watchId: string;
@@ -1209,6 +1228,7 @@ export interface OfertasSource {
   state: OfertasSourceState;
   fragile: boolean;
   enabled: boolean;
+  linkOnly?: boolean;
   detail?: string;
   count?: number;
   lastOkAt?: string;
@@ -1221,6 +1241,7 @@ export interface OfertasSettings {
   buenFin: boolean;
   dropPercent: number;
   disabledSources: string[];
+  groupOrder?: string[];
 }
 
 export interface OfertasResults {
@@ -1577,10 +1598,10 @@ export interface InstallMusicExtension {
 
 export interface MusicControl {
   type: 'musicControl';
-  action: AnonymousSchema_874;
+  action: AnonymousSchema_889;
 }
 
-export type AnonymousSchema_874 = 'previous' | 'togglePlay' | 'next';
+export type AnonymousSchema_889 = 'previous' | 'togglePlay' | 'next';
 
 export interface DisconnectSpotify {
   type: 'disconnectSpotify';
@@ -1820,6 +1841,13 @@ export interface SaveOfertasWatch {
   mustHave?: string[];
   exclude?: string[];
   reference?: OfertasReference;
+  group?: string;
+}
+
+export interface SetOfertasWatchGroup {
+  type: 'setOfertasWatchGroup';
+  id: string;
+  group: string;
 }
 
 export interface DeleteOfertasWatch {
@@ -1838,6 +1866,7 @@ export interface SetOfertasSettings {
   buenFin?: boolean;
   dropPercent?: number;
   disabledSources?: string[];
+  groupOrder?: string[];
 }
 
 export interface MarkOfertasAlertsSeen {

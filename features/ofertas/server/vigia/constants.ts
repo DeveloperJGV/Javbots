@@ -43,6 +43,18 @@ export const LOWEST_MIN_HISTORY = 2;
 export const LIST_PRICE_MIN_HISTORY = 3;
 /** Words kept in mustHave / exclude of a watch. */
 export const WORD_LIST_CAP = 20;
+/**
+ * Longest group name ("Bocinas"), and most groups remembered in the order the person gave them. The panel keeps its
+ * own GROUP_NAME_MAX (webview/constants.ts) and core/asyncapi.yaml declares both: change the three together.
+ */
+export const GROUP_NAME_MAX = 40;
+export const GROUP_ORDER_CAP = 50;
+/** Longest title kept as "the closest result" of a store that had nothing (see StoreCheck.closest). */
+export const STORE_CLOSEST_MAX = 160;
+/** Longest id, name or detail of a store kept from the file (a damaged or edited file can hold anything). */
+export const STORE_TEXT_MAX = 300;
+/** Most stores of "dónde buscó" kept per watch from the file (there are about a dozen sources). */
+export const STORES_PER_WATCH_MAX = 40;
 
 // ── Verdict ("¿es oferta de verdad?") ────────────────────────────────────────
 /** Windows of the office's own history, in days. */
@@ -174,8 +186,8 @@ export const DEFAULT_EXCLUDE: readonly string[] = [
   'calcomania',
   'vinil',
   'adaptador',
-  'compatible con',
-  'compatibles con',
+  // "compatible con" is not here: a real product says "Compatible con Dolby Atmos" after its name. An accessory says
+  // it before the product it fits ("Cable compatible con …"), and FOR_MARKERS drops that one.
   'replacement',
   'reemplazo',
   'usado',
@@ -205,6 +217,8 @@ export const BUNDLE_PHRASES: readonly string[] = [
  */
 export const FOR_MARKERS: readonly string[] = ['para', 'compatible', 'compatibles', 'for', 'p'];
 
+/** A searched word may be split across this many title tokens ("TP-Link" → "tp" "link" is "tplink"), and back. */
+export const JOIN_MAX_TOKENS = 3;
 /** Letter-only tokens this short glue to the number that follows ("wh 1000xm5" → "wh1000xm5"). */
 export const MODEL_PREFIX_MAX = 3;
 /** Units that are not a model ("40h", "5w", "2024"). Storage (gb/tb) does tell models apart. */
@@ -236,6 +250,11 @@ export const TEXT = {
   pausedError: 'falló',
   noStoreAnswered: 'Ninguna tienda contestó',
   noStoreHasIt: 'Ninguna tienda lo tiene',
+  /** A source that is only linked because its robots.txt does not allow reading its search with programs. */
+  robotsLinkOnly:
+    'Su robots.txt no permite leer su búsqueda con programas: la oficina no la consulta, ábrela tú',
+  /** A store that is only a link (it blocks programs or needs its page to run). */
+  linkOnly: 'La oficina no la lee: ábrela tú',
   emptyQuery: 'Escribe qué buscar',
   lowestEver: 'El más bajo que ha visto la oficina',
 } as const;
@@ -244,4 +263,4 @@ export const TEXT = {
  * Sources that start switched off: their sites do not allow automated reading (terms of use, bot walls), so reading
  * them is the owner's explicit choice in Settings, never the factory default.
  */
-export const DEFAULT_DISABLED_SOURCES: readonly string[] = ['amazon', 'walmart'];
+export const DEFAULT_DISABLED_SOURCES: readonly string[] = ['amazon'];
