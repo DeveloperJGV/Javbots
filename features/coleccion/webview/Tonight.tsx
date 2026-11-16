@@ -1,6 +1,6 @@
 import { type CSSProperties, useMemo, useState } from 'react';
 
-import { platformById } from '../core/platforms.js';
+import { platformOrder } from '../core/platforms.js';
 import { defaultAsk, type TonightAsk, tonightPicks } from '../core/tonight.js';
 import type { Game } from '../core/types.js';
 import { PAD_SVG } from './art.js';
@@ -35,7 +35,7 @@ export function Tonight({ games, today }: { games: readonly Game[]; today: strin
   const { picks, total } = tonightPicks(games, ask, round, today, seed);
   const owned = games.filter((g) => !g.wanted);
   const platforms = [...new Set(owned.map((g) => g.platform))].sort(
-    (a, b) => (platformById(a) ? 0 : 1) - (platformById(b) ? 0 : 1),
+    (a, b) => platformOrder(a) - platformOrder(b) || a.localeCompare(b),
   );
   const change = (patch: Partial<TonightAsk>) => {
     setAsk({ ...ask, ...patch });

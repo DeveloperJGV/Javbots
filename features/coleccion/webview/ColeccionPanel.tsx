@@ -190,11 +190,20 @@ function Rail({
   state: ColeccionState;
   wantedCount: number;
 }) {
+  // Many consoles: the rail lists the ones with a shelf; the rest open on demand (all of them while it's empty)
+  const [more, setMore] = useState(false);
+  const showAll = more || shelves.length === 0;
   let era = '';
   const known = new Set(PLATFORMS.map((p) => p.id));
   const extra = shelves.filter((s) => !known.has(s.platform));
+  const has = new Set(shelves.map((s) => s.platform));
+  const hidden = PLATFORMS.filter((p) => !has.has(p.id)).length;
   const items = [
-    ...PLATFORMS.map((p) => ({ id: p.id, name: p.name, era: p.era })),
+    ...PLATFORMS.filter((p) => showAll || has.has(p.id)).map((p) => ({
+      id: p.id,
+      name: p.name,
+      era: p.era,
+    })),
     ...extra.map((s) => ({ id: s.platform, name: s.name, era: s.era })),
   ];
   return (
@@ -234,6 +243,16 @@ function Rail({
           </button>,
         ];
       })}
+      {shelves.length > 0 && hidden > 0 && (
+        <button
+          type="button"
+          className="col-chip more"
+          aria-expanded={more}
+          onClick={() => setMore(!more)}
+        >
+          {more ? 'Solo las que tienen juegos' : `+ Otra consola (${hidden})`}
+        </button>
+      )}
       <div className="opts">
         <button
           type="button"

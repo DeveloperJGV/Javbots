@@ -1,7 +1,7 @@
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 
 import { PLAYERS_MAX, TITLE_MAX } from '../core/constants.js';
-import { PLATFORMS } from '../core/platforms.js';
+import { platformsByEra } from '../core/platforms.js';
 import { fold, knownSeries } from '../core/shelves.js';
 import { CONDITIONS, type Game, LENGTHS, PROGRESS, REGIONS } from '../core/types.js';
 import type { ColeccionState, FormMode } from './coleccionStore.js';
@@ -156,19 +156,25 @@ export function GameForm({
       <div className="col-q">
         <span className="k">Consola</span>
         <div className="col-plats" role="group" aria-label="Consola">
-          {PLATFORMS.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              className="col-chip"
-              aria-pressed={draft.platform === p.id}
-              style={{ '--cc': lookOf(p.id).accent } as CSSProperties}
-              onClick={() => set({ platform: p.id })}
-            >
-              <span className="sw" />
-              {p.name}
-            </button>
-          ))}
+          {platformsByEra().map(({ era, platforms }) => [
+            <span key={`e:${era}`} className="era">
+              {era}
+            </span>,
+            ...platforms.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                className="col-chip"
+                aria-pressed={draft.platform === p.id}
+                title={p.name}
+                style={{ '--cc': lookOf(p.id).accent } as CSSProperties}
+                onClick={() => set({ platform: p.id })}
+              >
+                <span className="sw" />
+                {p.name}
+              </button>
+            )),
+          ])}
         </div>
       </div>
       {mode !== 'acquire' && (

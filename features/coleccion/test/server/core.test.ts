@@ -4,12 +4,17 @@ import {
   agoText,
   buildShelves,
   emptyGame,
+  ERAS,
   type Game,
   gameFileContent,
   knownSeries,
   mergeSave,
   moveFocus,
   normalizeGame,
+  PLATFORMS,
+  platformById,
+  platformOrder,
+  platformsByEra,
   readCollection,
   seriesMembers,
   shelfItems,
@@ -222,5 +227,125 @@ describe('coleccion core: ¿Qué jugamos hoy?', () => {
     expect(agoText(TODAY, TODAY)).toBe('hoy');
     expect(agoText('2026-10-01', TODAY)).toBe('hace 6 semanas');
     expect(agoText('2024-01-01', TODAY)).toBe('hace 3 años');
+  });
+});
+
+describe('consoles and the rail', () => {
+  it('the whole rail, in order: by era, and by year inside each era', () => {
+    expect(PLATFORMS.map((p) => p.id)).toEqual([
+      'a2600',
+      'intv',
+      'coleco',
+      'a7800',
+      'nes',
+      'sms',
+      'gb',
+      'genesis',
+      'tg16',
+      'neogeo',
+      'gg',
+      'snes',
+      'segacd',
+      '32x',
+      'gbc',
+      '3do',
+      'jaguar',
+      'saturn',
+      'vboy',
+      'ps1',
+      'n64',
+      'ngpc',
+      'dreamcast',
+      'ps2',
+      'gba',
+      'xbox',
+      'gc',
+      'ds',
+      'psp',
+      'x360',
+      'ps3',
+      'wii',
+      '3ds',
+      'psvita',
+      'wiiu',
+      'ps4',
+      'xone',
+      'switch',
+      'xsx',
+      'ps5',
+      'switch2',
+      'pc',
+    ]);
+    expect(new Set(PLATFORMS.map((p) => p.id)).size).toBe(PLATFORMS.length);
+    for (let i = 1; i < PLATFORMS.length; i++) {
+      const [a, b] = [PLATFORMS[i - 1], PLATFORMS[i]];
+      const ea = ERAS.indexOf(a.era as (typeof ERAS)[number]);
+      const eb = ERAS.indexOf(b.era as (typeof ERAS)[number]);
+      expect(ea, a.id).toBeGreaterThanOrEqual(0);
+      expect(eb, `${b.id} after ${a.id}`).toBeGreaterThanOrEqual(ea);
+      if (ea === eb) expect(b.year, `${b.id} after ${a.id}`).toBeGreaterThanOrEqual(a.year);
+      expect(platformOrder(b.id)).toBe(platformOrder(a.id) + 1);
+    }
+    // The PC has no generation: its own group, last
+    expect(PLATFORMS.at(-1)).toMatchObject({ id: 'pc', era: 'Computadora' });
+    expect(platformOrder('pc98')).toBe(PLATFORMS.length);
+  });
+
+  it('cartridges and cards are drawn from the front, discs by their spine', () => {
+    const carts = PLATFORMS.filter((p) => p.cartridge).map((p) => p.id);
+    expect(carts).toEqual([
+      'a2600',
+      'intv',
+      'coleco',
+      'a7800',
+      'nes',
+      'sms',
+      'gb',
+      'genesis',
+      'tg16',
+      'neogeo',
+      'gg',
+      'snes',
+      '32x',
+      'gbc',
+      'jaguar',
+      'vboy',
+      'n64',
+      'ngpc',
+      'gba',
+      'ds',
+      '3ds',
+      'psvita',
+      'switch2',
+    ]);
+    for (const id of ['segacd', '3do', 'saturn', 'ps1', 'dreamcast', 'psp', 'pc'])
+      expect(platformById(id)?.cartridge, id).toBe(false);
+  });
+
+  it('a 3DS, DS or PC game sits on its own shelf, in its place, not with the unknown ones', () => {
+    const list = [
+      game('Pc Uno', 'pc'),
+      game('Raro', 'pc98'),
+      game('Tres De', '3ds'),
+      game('Doble', 'ds'),
+      game('Viejo', 'a2600'),
+      game('Gris', 'x360'),
+    ];
+    const shelves = buildShelves(list, false);
+    expect(shelves.map((s) => s.platform)).toEqual(['a2600', 'ds', 'x360', '3ds', 'pc', 'pc98']);
+    expect(shelves[3]).toMatchObject({ name: 'Nintendo 3DS', era: 'HD', cartridge: true });
+    expect(shelves[1]).toMatchObject({ name: 'Nintendo DS', era: 'HD', cartridge: true });
+    expect(shelves[4]).toMatchObject({ name: 'PC', era: 'Computadora', cartridge: false });
+    expect(shelves[5]).toMatchObject({ name: 'pc98', era: 'Otras' });
+    // A 3DS game read from the file keeps its id
+    expect(
+      normalizeGame({ id: 'abc12345', title: 'X', platform: '3DS' }, TODAY)?.game.platform,
+    ).toBe('3ds');
+  });
+
+  it('the form picker groups every console by era', () => {
+    const groups = platformsByEra();
+    expect(groups.map((g) => g.era)).toEqual([...ERAS]);
+    expect(groups.flatMap((g) => g.platforms)).toEqual([...PLATFORMS]);
   });
 });

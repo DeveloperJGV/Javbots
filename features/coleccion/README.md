@@ -1,16 +1,17 @@
 # Colección de juegos
 
 Un estante en la oficina, junto a la tele del cuarto de juegos. Al abrirlo, la colección sale en **repisas por
-consola**, de NES a Xbox Series X, con cada caja o cartucho dibujado por código y el nombre en el lomo. Se llena a
-mano: arranca vacía.
+consola**, del Atari 2600 al Switch 2 (portátiles y PC incluidas), con cada caja o cartucho dibujado por código y
+el nombre en el lomo. Se llena a mano: arranca vacía.
 
 Es una función normal de la oficina: reglas y código, sin cuentas ni servicios de internet.
 
 ## Qué hace
 
-- **Repisas por consola:** una por consola que tenga algo, en el orden del riel de la izquierda (agrupado por época,
-  con cuántos juegos hay en cada una). Cada repisa se recorre sola con sus flechas, con la rueda de lado (o Shift +
-  rueda) o arrastrando. Cada una dice cuántos tiene, cuántos busca y cuántos van a medias; la consola con más juegos
+- **Repisas por consola:** una por consola que tenga algo, en el orden del riel de la izquierda (agrupado por época
+  y, dentro de cada época, por año de salida en América; con cuántos juegos hay en cada una). El riel enseña solo
+  las consolas con juegos; «+ Otra consola» abre las demás (con la colección vacía salen todas). Cada repisa se
+  recorre sola con sus flechas, con la rueda de lado (o Shift + rueda) o arrastrando. Cada una dice cuántos tiene, cuántos busca y cuántos van a medias; la consola con más juegos
   (5 o más) se ilumina.
 - **Caja abierta:** la caja sale de la repisa y se abre como estuche. Atrás, su ficha: región, completo / suelto /
   sellado, cómo va, última vez que se jugó, jugadores, cuánto dura una partida, de quién es, cuándo llegó, su serie
@@ -68,8 +69,18 @@ la oficina ve sola los cambios hechos a mano antes de escribir encima.
 ```
 
 - Texto vacío y 0 quieren decir «sin anotar». Un hueco «se busca» es un juego con `"wanted": true` y su `price`.
-- `platform`: `nes`, `snes`, `n64`, `ps1`, `gc`, `xbox`, `ps2`, `x360`, `wii`, `ps3`, `wiiu`, `xone`, `ps4`, `switch`,
-  `ps5`, `xsx`. Otra escrita a mano sale en su propia repisa al final.
+- `platform`, en el orden del riel (`core/platforms.ts`):
+  - Clásicas: `a2600` Atari 2600, `intv` Intellivision, `coleco` ColecoVision, `a7800` Atari 7800.
+  - 8 y 16 bits: `nes`, `sms` Master System, `gb` Game Boy, `genesis`, `tg16` TurboGrafx-16, `neogeo`, `gg` Game
+    Gear, `snes`, `segacd`, `32x`, `gbc` Game Boy Color.
+  - 32 y 64 bits: `3do`, `jaguar`, `saturn`, `vboy` Virtual Boy, `ps1`, `n64`, `ngpc` Neo Geo Pocket Color.
+  - 128 bits: `dreamcast`, `ps2`, `gba` Game Boy Advance, `xbox`, `gc`.
+  - HD: `ds`, `psp`, `x360`, `ps3`, `wii`, `3ds`, `psvita`, `wiiu`, `ps4`, `xone`.
+  - Ahora: `switch`, `xsx`, `ps5`, `switch2`.
+  - Computadora: `pc` (no tiene generación: su propio grupo, al final).
+
+  Otra escrita a mano sale en su propia repisa después de todas.
+
 - `region`: `ntsc-u`, `pal`, `ntsc-j`, `otra`. `condition`: `completo`, `suelto`, `sellado`. `progress`: `sin-jugar`,
   `a-medias`, `terminado`, `de-siempre`. `length`: `rato`, `1h`, `tarde`.
 - `externalId`, `barcode` y `cover` (opcionales) quedan listos para la etapa 2 y todavía no se usan.

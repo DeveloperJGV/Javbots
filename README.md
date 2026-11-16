@@ -28,7 +28,8 @@ cambiamos el idioma, el arte, los cuartos y le agregamos cosas nuevas. La docume
 - **15 de noviembre de 2026**: el cuarto de **Freelance** ya busca trabajo: escribes tu oferta y lo que buscas, y un
   agente de Claude Code lee anuncios públicos y te deja los trabajos calificados con pago, fecha y cliente. Busca
   también automatización con IA, consultoría y capacitación, y te deja ligas listas de Upwork, Workana y
-  Freelancer.com.
+  Freelancer.com. Y la colección de juegos ya tiene repisa para 42 consolas, del Atari 2600 al Switch 2, con las
+  portátiles y la PC.
 - **14 de noviembre de 2026**: un estante junto a la tele guarda tu **colección de juegos** en repisas por consola,
   de NES a Series X: se llena a mano, cada juego se abre como estuche, los huecos "se busca" llevan su precio y
   **"¿Qué jugamos hoy?"** propone tres.

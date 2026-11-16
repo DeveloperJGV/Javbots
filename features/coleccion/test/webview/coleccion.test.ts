@@ -23,7 +23,7 @@ import {
   shortPrice,
   summaryParts,
 } from '../../webview/coleccionText.js';
-import { COLECCION_SHELF_TYPE } from '../../webview/constants.js';
+import { COLECCION_SHELF_TYPE, PLATFORM_LOOKS } from '../../webview/constants.js';
 import { GameCase } from '../../webview/GameCase.js';
 import { GameForm } from '../../webview/GameForm.js';
 import { Tonight } from '../../webview/Tonight.js';
@@ -293,6 +293,26 @@ describe('the panel', () => {
     expect(count(only, /col-gap glow/g)).toBe(4);
   });
 
+  it('the rail lists the consoles with games; the rest open with «+ Otra consola»', () => {
+    const html = panel(state([game('Uno', '3ds'), game('Dos', 'pc'), game('Tres', 'gb')]));
+    expect(count(html, /class="p"/g)).toBe(3);
+    expect(html).toContain(`+ Otra consola (${PLATFORMS.length - 3})`);
+    expect(html.indexOf('Game Boy<')).toBeLessThan(html.indexOf('Nintendo 3DS<'));
+    expect(html.indexOf('Nintendo 3DS<')).toBeLessThan(html.indexOf('>PC<'));
+    expect(html).not.toContain('Otras');
+  });
+
+  it('every console has its own look (colors and size), none falls back to the generic one', () => {
+    for (const p of PLATFORMS) {
+      const look = PLATFORM_LOOKS[p.id];
+      expect(look, p.id).toBeDefined();
+      // A cartridge's label needs room: at least ~40 px tall
+      if (p.cartridge) expect(look.h, p.id).toBeGreaterThanOrEqual(40);
+    }
+    const accents = PLATFORMS.map((p) => PLATFORM_LOOKS[p.id].accent);
+    expect(new Set(accents).size).toBeGreaterThan(PLATFORMS.length * 0.8);
+  });
+
   it('a problem reading the file shows under the shelves', () => {
     const s = state([game('Uno', 'nes')]);
     s.status!.problems = ['coleccion.json no se pudo leer (x).'];
@@ -352,6 +372,10 @@ describe('the panel', () => {
     expect(html).toContain('Agregar juegos');
     expect(html).toContain('Guardar y otro (Enter)');
     expect(html).toMatch(/aria-pressed="true"[^>]*><span class="sw"><\/span>GameCube/);
+    // The picker groups the consoles by era
+    expect(count(html, /<span class="era">/g)).toBe(7);
+    expect(html.indexOf('>Clásicas<')).toBeLessThan(html.indexOf('Atari 2600'));
+    expect(html.indexOf('>Computadora<')).toBeLessThan(html.indexOf('</span>PC<'));
     expect(html).toContain('Cómo está');
     const wanted = renderToStaticMarkup(
       createElement(GameForm, {

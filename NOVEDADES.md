@@ -16,6 +16,9 @@ Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
   (también automatización con IA y agentes, consultoría y capacitación) y entrega ligas listas de Upwork, Workana y
   Freelancer.com para que las abras tú; lo dudoso sale en amarillo, nada con menos de 60 sale como recomendado y la
   nota de la búsqueda se ve arriba de los resultados.
+- **La colección de juegos tiene repisa para 42 consolas**, del Atari 2600 al Switch 2, con las portátiles (Game Boy,
+  DS, 3DS, PSP, Vita…) y la PC; cada una en su época y por año, con su color y su caja o cartucho. El riel muestra las
+  que tienen juegos («+ Otra consola» abre las demás) y el formulario las agrupa por época.
 
 ## 14 de noviembre de 2026
 
