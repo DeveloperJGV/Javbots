@@ -1,3 +1,5 @@
+import { accesosStore } from '../../../../features/accesos/webview/accesosStore.js';
+import { accesosHint } from '../../../../features/accesos/webview/accesosText.js';
 import { agendaStore } from '../../../../features/agenda/webview/agendaStore.js';
 import { bodegaStore } from '../../../../features/bodega/webview/bodegaStore.js';
 import { coleccionStore } from '../../../../features/coleccion/webview/coleccionStore.js';
@@ -99,6 +101,10 @@ export function furnitureTargetAt(
   // Game collection shelf (features/coleccion), next to the free-time TV.
   if (os.isColeccionAt(worldX, worldY))
     return target(HINT_LABELS.coleccion, () => coleccionStore.open());
+
+  // Map table (features/accesos): the pages that run on this computer.
+  if (os.isAccesosAt(worldX, worldY))
+    return target(accesosHint(accesosStore.get().status), () => accesosStore.open());
 
   // Directorio room (features/directorio): the front desk.
   if (os.isDirectorioAt(worldX, worldY))

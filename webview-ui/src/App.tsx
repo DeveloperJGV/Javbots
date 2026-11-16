@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { AccesosPanel } from '../../features/accesos/webview/AccesosPanel.js';
+import { useAccesos } from '../../features/accesos/webview/useAccesos.js';
 import { AgendaPanel } from '../../features/agenda/webview/AgendaPanel.js';
 import { useAgenda } from '../../features/agenda/webview/useAgenda.js';
 import { BodegaPanel } from '../../features/bodega/webview/BodegaPanel.js';
@@ -122,6 +124,8 @@ function App() {
   useDecks(transport);
   // Optional feature (features/coleccion): the game collection, from its furniture (or the page's #coleccion hash)
   useColeccion(transport);
+  // Optional feature (features/accesos): pages on this computer, from the map table (or #accesos)
+  useAccesos(transport);
   usePerfil(transport);
   useSearchRoom(transport, directorioStore);
   useFreelance(transport);
@@ -741,6 +745,8 @@ function App() {
         <DecksPanel transport={transport} />
         {/* Optional feature (features/coleccion): the game shelves, from their furniture (or #coleccion) */}
         <ColeccionPanel transport={transport} />
+        {/* Optional feature (features/accesos): pages on this computer, from the map table (or #accesos) */}
+        <AccesosPanel transport={transport} />
         <PerfilPanel />
         {/* Optional feature (features/directorio): searches by an agent with criteria, from the room's furniture */}
         <DirectorioPanel transport={transport} />

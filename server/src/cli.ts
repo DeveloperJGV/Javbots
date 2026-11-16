@@ -10,6 +10,7 @@
 
 import * as path from 'path';
 
+import { createAccesosFeature } from '../../features/accesos/server/accesosFeature.js';
 import { createAgendaFeature } from '../../features/agenda/server/agendaFeature.js';
 import { AGENDA_FLOOR_LAYOUT_FILE } from '../../features/agenda/server/constants.js';
 import { createHerdrLauncher } from '../../features/busquedas/server/herdrLauncher.js';
@@ -369,6 +370,9 @@ async function main(): Promise<void> {
       createDecksFeature({ officeToken: () => currentConfig?.token ?? null }),
       // Optional feature: the game collection, shelves by console filled by hand (features/coleccion).
       createColeccionFeature(),
+      // Optional feature: pages that run on this computer, opened (and started) from a piece of furniture
+      // (features/accesos).
+      createAccesosFeature(),
       // Optional feature: the owner's personality screen in the freelance room, from a private file (features/perfil).
       createPerfilFeature(),
     ];

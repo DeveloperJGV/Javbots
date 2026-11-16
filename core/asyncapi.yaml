@@ -163,6 +163,8 @@ components:
         # Game collection (feature: features/coleccion)
         - $ref: '#/components/schemas/ColeccionStatus'
         - $ref: '#/components/schemas/ColeccionResult'
+        # Pages on this computer opened from a piece of furniture (feature: features/accesos)
+        - $ref: '#/components/schemas/AccesosStatus'
       discriminator: type
 
     ClientMessage:
@@ -255,6 +257,9 @@ components:
         - $ref: '#/components/schemas/ColeccionOpen'
         - $ref: '#/components/schemas/ColeccionSave'
         - $ref: '#/components/schemas/ColeccionDelete'
+        # Pages on this computer opened from a piece of furniture (feature: features/accesos)
+        - $ref: '#/components/schemas/AccesosOpen'
+        - $ref: '#/components/schemas/AccesosStart'
       discriminator: type
 
     # ── Server message variants ────────────────────────────────────
@@ -3958,6 +3963,81 @@ components:
           const: coleccionDelete
         requestId:
           type: string
+        id:
+          type: string
+
+    # ── Pages on this computer (feature: features/accesos) ──────────
+
+    AccesosStatus:
+      description: >-
+        The owner's pages that run on this computer (~/.pixel-agents/accesos.json) and whether each one answers.
+        Sent on webviewReady, on accesosOpen, after every check and while a page is being started. Privileged
+        connections only. file is the list's path; problems says what in it could not be used.
+      type: object
+      additionalProperties: false
+      required: [type, accesos, file, problems]
+      properties:
+        type:
+          const: accesosStatus
+        accesos:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccesoView'
+        file:
+          type: string
+        problems:
+          type: array
+          items:
+            type: string
+
+    AccesoView:
+      description: >-
+        One page: its id, name, description and local address (http://localhost or 127.0.0.1 only). canStart says
+        whether the list tells how to start it (the command itself never leaves the server). state is on, off,
+        starting or unknown (not checked yet); error is the last start that went wrong.
+      type: object
+      additionalProperties: false
+      required: [id, name, description, url, canStart, state]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        url:
+          type: string
+        canStart:
+          type: boolean
+        state:
+          $ref: '#/components/schemas/AccesoState'
+        error:
+          type: string
+
+    AccesoState:
+      description: Whether the page answers (on, off), is being started (starting) or was not checked yet (unknown).
+      type: string
+      enum: ['on', 'off', 'starting', 'unknown']
+
+    AccesosOpen:
+      description: The pages panel opened; answered with accesosStatus, then again after checking every page.
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: accesosOpen
+
+    AccesosStart:
+      description: >-
+        Start the page with that id, with the command the owner's list gives for it (never one from the page);
+        answered with accesosStatus as it goes. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, id]
+      properties:
+        type:
+          const: accesosStart
         id:
           type: string
 

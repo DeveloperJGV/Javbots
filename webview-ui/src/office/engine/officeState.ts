@@ -1,4 +1,9 @@
 import { pickDiversePalette } from '../../../../core/src/paletteUtils.js';
+import { applyAccesosFurniture } from '../../../../features/accesos/webview/accesosFurniture.js';
+import {
+  accesosStore,
+  isAccesosFurniture,
+} from '../../../../features/accesos/webview/accesosStore.js';
 import { applyAgendaFurniture } from '../../../../features/agenda/webview/agendaFurniture.js';
 import { agendaStore, isAgendaFurniture } from '../../../../features/agenda/webview/agendaStore.js';
 import { BODEGA_EMPTY_TYPE, BODEGA_TYPE } from '../../../../features/bodega/webview/constants.js';
@@ -1329,8 +1334,14 @@ export class OfficeState {
     );
     // Optional feature: the deals kiosk lights up while there are unseen alerts (features/ofertas)
     const withOfertas = applyOfertasFurniture(withPlaylist, ofertasStore.get().status);
+    // Optional feature: the map table's candle burns while one of its pages answers (features/accesos)
+    const withAccesos = applyAccesosFurniture(
+      withOfertas,
+      accesosStore.get().status,
+      this.furnitureAnimTimer,
+    );
     // Private packs (webview-ui/src/packs/registry.ts)
-    const withPacks = applyPackFurniture(withOfertas, {
+    const withPacks = applyPackFurniture(withAccesos, {
       timeSec: this.furnitureAnimTimer,
       officeState: this,
     });
@@ -1523,6 +1534,13 @@ export class OfficeState {
   isColeccionAt(worldX: number, worldY: number): boolean {
     return this.furniture.some(
       (f) => isColeccionFurniture(f.type) && hitsPaintedPixel(f, worldX, worldY),
+    );
+  }
+
+  /** Whether a world point lands on the map table that opens the pages on this computer (features/accesos). */
+  isAccesosAt(worldX: number, worldY: number): boolean {
+    return this.furniture.some(
+      (f) => isAccesosFurniture(f.type) && hitsPaintedPixel(f, worldX, worldY),
     );
   }
 

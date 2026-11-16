@@ -5,6 +5,9 @@ Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
 
 ## 15 de noviembre de 2026
 
+- **Accesos.** Una mesa de cartógrafo junto a la tele abre páginas propias que corren en la computadora (un mapa, un
+  tablero): dice si están prendidas, las prende si la lista explica cómo y las abre en una pestaña nueva. La vela de
+  la mesa se prende mientras una página contesta. La lista se escribe a mano en `~/.pixel-agents/accesos.json`.
 - **Freelance.** El escritorio del cuarto hacker abre un panel verde sobre negro: tu oferta, lo que buscas y un agente
   de Claude Code que lee anuncios públicos y deja trabajos calificados con pago, fecha y cliente; marcas **Postulé** o
   **Descartado**. El agente solo lee: no se registra ni manda propuestas. El mapa de clientes prende un punto por cada

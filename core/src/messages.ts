@@ -66,7 +66,8 @@ export type ServerMessage =
   | DecksCardInfo
   | DecksImportResult
   | ColeccionStatus
-  | ColeccionResult;
+  | ColeccionResult
+  | AccesosStatus;
 
 export type ClientMessage =
   | WebviewReady
@@ -146,7 +147,9 @@ export type ClientMessage =
   | DecksImport
   | ColeccionOpen
   | ColeccionSave
-  | ColeccionDelete;
+  | ColeccionDelete
+  | AccesosOpen
+  | AccesosStart;
 
 export interface ProviderCapabilities {
   type: 'providerCapabilities';
@@ -1407,6 +1410,25 @@ export interface ColeccionResult {
   error?: string;
 }
 
+export interface AccesosStatus {
+  type: 'accesosStatus';
+  accesos: AccesoView[];
+  file: string;
+  problems: string[];
+}
+
+export interface AccesoView {
+  id: string;
+  name: string;
+  description: string;
+  url: string;
+  canStart: boolean;
+  state: AccesoState;
+  error?: string;
+}
+
+export type AccesoState = 'on' | 'off' | 'starting' | 'unknown';
+
 export interface WebviewReady {
   type: 'webviewReady';
   office?: string;
@@ -1555,10 +1577,10 @@ export interface InstallMusicExtension {
 
 export interface MusicControl {
   type: 'musicControl';
-  action: AnonymousSchema_863;
+  action: AnonymousSchema_874;
 }
 
-export type AnonymousSchema_863 = 'previous' | 'togglePlay' | 'next';
+export type AnonymousSchema_874 = 'previous' | 'togglePlay' | 'next';
 
 export interface DisconnectSpotify {
   type: 'disconnectSpotify';
@@ -1895,5 +1917,14 @@ export interface ColeccionSave {
 export interface ColeccionDelete {
   type: 'coleccionDelete';
   requestId: string;
+  id: string;
+}
+
+export interface AccesosOpen {
+  type: 'accesosOpen';
+}
+
+export interface AccesosStart {
+  type: 'accesosStart';
   id: string;
 }
