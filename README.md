@@ -26,7 +26,8 @@ cambiamos el idioma, el arte, los cuartos y le agregamos cosas nuevas. La docume
 ## Novedades
 
 - **16 de noviembre de 2026**: las **Ofertas** salen por grupos (Bocinas, Receptor, Red…), plegables y en tu orden,
-  y cada vigilancia dice en qué tiendas buscó y qué contestó cada una. La **colección de juegos** ya tiene portadas
+  y cada vigilancia dice en qué tiendas buscó y qué contestó cada una; también pueden leer Amazon y otras tiendas
+  con el navegador, si lo prendes en Ajustes. La **colección de juegos** ya tiene portadas
   (en pixel art en la repisa, completas en la ficha) y cada juego se ve como lo tienes: con caja o como cartucho suelto.
 - **15 de noviembre de 2026**: el cuarto de **Freelance** ya busca trabajo: escribes tu oferta y lo que buscas, y un
   agente de Claude Code lee anuncios públicos y te deja los trabajos calificados con pago, fecha y cliente. Busca

@@ -20,6 +20,10 @@ Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
 - **Arreglado en Ofertas:** las marcas con guion (TP-Link, Audio-Technica) y los productos que dicen «Compatible
   con…» ya se encuentran; un accesorio que nombra dos veces el producto se sigue descartando. La ayuda del vigía de
   consola (`--help`) ya no toca los datos.
+- **Ofertas: leer con el navegador.** Nuevo en Ajustes y apagado de fábrica: la oficina puede leer Amazon y otras
+  tiendas con Edge (o Chrome) sin ventana, con un perfil aparte sin tus sesiones, una página a la vez y espaciada. Si
+  la tienda pide captcha o iniciar sesión, se marca «bloqueó» y no se insiste. «Dónde buscó» dice qué tiendas se
+  leyeron «con el navegador», y las que no permiten programas en su robots.txt lo dicen en su línea.
 
 ## 15 de noviembre de 2026
 
