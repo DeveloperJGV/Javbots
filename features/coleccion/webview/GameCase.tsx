@@ -1,12 +1,13 @@
 import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
-import { platformById } from '../core/platforms.js';
+import type { ColeccionCoverState } from '../../../core/src/messages.js';
+import { officeToken } from '../../../webview-ui/src/officeToken.js';
 import { seriesMembers } from '../core/shelves.js';
 import { agoText } from '../core/tonight.js';
 import type { Game } from '../core/types.js';
-import { cover, drawCartridge, drawDisc, paint } from './art.js';
-import { ConfirmButton } from './ColeccionBits.js';
-import { coleccionStore } from './coleccionStore.js';
+import { cover, paint } from './art.js';
+import { ConfirmButton, type Send } from './ColeccionBits.js';
+import { type ColeccionState, coleccionStore } from './coleccionStore.js';
 import {
   addedText,
   copyLine,
@@ -16,6 +17,8 @@ import {
   progressText,
 } from './coleccionText.js';
 import { lookOf, lookVars } from './constants.js';
+import { ConditionSwitch, CoverPanel } from './CoverPanel.js';
+import { coverUrl } from './coverPixels.js';
 
 const reduced = () =>
   typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -35,6 +38,9 @@ export function GameCase({
   today,
   onDelete,
   onPlayed,
+  search,
+  state,
+  send,
 }: {
   game: Game;
   games: readonly Game[];
@@ -43,22 +49,23 @@ export function GameCase({
   today: string;
   onDelete: (id: string) => void;
   onPlayed: (game: Game) => void;
+  /** Its last cover search, the panel's state (pending cover action, errors) and the way to the office. */
+  search?: ColeccionCoverState;
+  state?: ColeccionState;
+  send?: Send;
 }) {
   const look = lookOf(game.platform);
-  const cartridge = platformById(game.platform)?.cartridge ?? false;
   const caseRef = useRef<HTMLDivElement>(null);
   const lidRef = useRef<HTMLDivElement>(null);
   const frontRef = useRef<HTMLCanvasElement>(null);
-  const mediaRef = useRef<HTMLCanvasElement>(null);
   const [closing, setClosing] = useState(false);
   const series = game.series ? seriesMembers(games, game.series) : [];
   const at = siblings.indexOf(game.id);
+  const coverArt = game.coverArt;
 
-  useEffect(() => paint(frontRef.current, cover(game.title, 48, 64)), [game.title]);
   useEffect(() => {
-    if (cartridge) drawCartridge(mediaRef.current, game, look);
-    else drawDisc(mediaRef.current, game, game.platform === 'gc');
-  }, [game, look, cartridge]);
+    if (!coverArt) paint(frontRef.current, cover(game.title, 48, 64));
+  }, [game.title, coverArt]);
 
   // Fly out of the shelf and open
   useLayoutEffect(() => {
@@ -164,24 +171,25 @@ export function GameCase({
           aria-label={game.title}
         >
           <div className="base">
-            <canvas
-              ref={mediaRef}
-              className={
-                cartridge ? 'col-cartridge' : game.platform === 'gc' ? 'col-disc mini' : 'col-disc'
-              }
-              aria-hidden="true"
-            />
+            <CoverPanel game={game} look={look} search={search} state={state} send={send} />
           </div>
           <div className="lid" ref={lidRef}>
-            <div className="face front">
-              <div className="band">{platformName(game.platform).toUpperCase()}</div>
-              <canvas ref={frontRef} aria-hidden="true" />
-              <div className="label">{game.title}</div>
-            </div>
+            {coverArt ? (
+              <div className="face front real">
+                <img src={coverUrl(game.id, coverArt.at, officeToken())} alt="" />
+              </div>
+            ) : (
+              <div className="face front">
+                <div className="band">{platformName(game.platform).toUpperCase()}</div>
+                <canvas ref={frontRef} aria-hidden="true" />
+                <div className="label">{game.title}</div>
+              </div>
+            )}
             <div className="face back">
               <span className="cons">{platformName(game.platform)}</span>
               <h2>{game.title}</h2>
               <div className="line">{copyLine(game)}</div>
+              <ConditionSwitch game={game} state={state} send={send} />
               <div className="facts">
                 <div>
                   <span>Cómo va</span>

@@ -29,6 +29,27 @@ export const SAVED_NOTE_MS = 2600;
 /** Most suggestions under the search box. */
 export const SUGGEST_LIMIT = 8;
 
+// ── Covers ─────────────────────────────────────────────────────────────────────────────────
+/** Where a game's cover is served (+ game id), and a candidate's thumbnail (+ game id / n). */
+export const COVER_PATH = '/api/coleccion/portada/';
+export const COVER_CANDIDATE_PATH = '/api/coleccion/candidata/';
+/** What may be uploaded as a cover (the server checks it again by its bytes). */
+export const COVER_UPLOAD_TYPES: readonly string[] = ['image/png', 'image/jpeg', 'image/webp'];
+export const COVER_UPLOAD_MAX_BYTES = 4 * 1024 * 1024;
+/** Pixel art kept for the shelves (the small results only, never the downloaded images). */
+export const PIXEL_CACHE_MAX = 400;
+/** Covers downloaded and pixelated at once. */
+export const PIXEL_JOBS = 2;
+/**
+ * A cover is drawn at most this big (longest side, px) before it is pixelated: above the 500 to 1000 px box scans
+ * (so the look does not change), far below what would hurt a tab.
+ */
+export const COVER_DRAW_MAX_SIDE = 1200;
+/** How far outside the visible list a piece starts getting its pixel art. */
+export const NEAR_VIEW_MARGIN = '400px 0px';
+/** An image search the person can open to look for a cover by hand. */
+export const COVER_SEARCH_URL = 'https://www.google.com/search?tbm=isch&q=';
+
 // ── Texts ──────────────────────────────────────────────────────────────────────────────────
 export const REGION_LABEL: Record<string, string> = {
   'ntsc-u': 'NTSC-U',
@@ -89,7 +110,27 @@ export const COVER_COLORS = {
   groove: 'rgba(0,0,0,.35)',
   shine: 'rgba(255,255,255,.25)',
   dim: 'rgba(0,0,0,.3)',
+  /** Under a cartridge's label: a printed label is paper, so a cover's transparent corners never show the frame. */
+  paper: '#efe9da',
 } as const;
+/** Loose cartridges and cards: plastic, its lit edge and its grooves ("cart", the generic one, uses its console's). */
+export const CART_COLORS = {
+  nes: { body: '#9b9b9b', light: '#bdbdbd', dark: '#5e5e5e' },
+  snes: { body: '#b9b5ae', light: '#d6d2cc', dark: '#7e7a74' },
+  n64: { body: '#4a4a50', light: '#66666e', dark: '#26262b' },
+  gb: { body: '#a8a8a0', light: '#c6c6be', dark: '#6e6e66' },
+  gbc: { body: '#3c3c46', light: '#5a5a6a', dark: '#1e1e26' },
+  gba: { body: '#5a5a66', light: '#787890', dark: '#34343e' },
+  genesis: { body: '#1b1b1f', light: '#3a3a42', dark: '#060608' },
+  sms: { body: '#1d1d1d', light: '#e8e8ec', dark: '#060608' },
+  a2600: { body: '#1d1d1d', light: '#3a3a3e', dark: '#060608' },
+  vboy: { body: '#2a2a2e', light: '#c8102e', dark: '#101014' },
+  ds: { body: '#3a3a42', light: '#5a5a64', dark: '#1e1e24' },
+  '3ds': { body: '#dcdce2', light: '#f6f6f8', dark: '#8e8e98' },
+  switch: { body: '#d1262f', light: '#ec6a70', dark: '#7a141a' },
+  card: { body: '#e2e2e8', light: '#ffffff', dark: '#8e8e98' },
+} as const;
+
 /** Gamepad drawn in "¿Qué jugamos hoy?" (body, d-pad, four face buttons). */
 export const PAD_COLORS = {
   body: '#e8e8ec',
@@ -549,8 +590,8 @@ export const COLECCION_CSS = `
 .col-head h1 { margin: 0; font-size: 30px; font-weight: normal; text-shadow: 2px 2px 0px var(--ink); white-space: nowrap; line-height: 1; }
 .col-head .sub { font-size: 16px; color: var(--color-text-muted); margin-top: 4px; white-space: nowrap; }
 .col-head .sub b { color: var(--color-text); font-weight: normal; } .col-head .sub i { font-style: normal; color: var(--wanted); }
-.col-search { position: relative; margin-left: auto; }
-.col-search input { width: 270px; background: var(--color-bg-dark); border: 2px solid var(--color-border); padding: 5px 10px 5px 32px;
+.col-search { position: relative; margin-left: auto; flex: 0 1 270px; min-width: 150px; }
+.col-search input { width: 100%; background: var(--color-bg-dark); border: 2px solid var(--color-border); padding: 5px 10px 5px 32px;
   outline: none; box-shadow: 2px 2px 0px var(--ink); font-size: 18px; }
 .col-search input:focus { border-color: var(--color-accent-bright); }
 .col-search input::placeholder { color: var(--color-text-muted); }
@@ -664,7 +705,7 @@ export const COLECCION_CSS = `
   background: rgba(255,255,255,.04); }
 .col-slot.add:hover { border-style: solid; border-color: var(--color-accent-bright); color: #fff; }
 .col-run { display: flex; align-items: flex-end; gap: 1px; position: relative; padding: 0 3px; }
-.col-run.series { background: rgba(255,255,255,.04); box-shadow: inset 0 -3px 0 var(--series); margin: 0 6px; }
+.col-run.series { box-shadow: inset 0 -3px 0 var(--series); margin: 0 6px; }
 .col-run .plaque { position: absolute; bottom: -16px; left: 2px; max-width: calc(100% - 4px); overflow: hidden; font-size: 16px; line-height: 16px;
   color: #f2d58a; white-space: nowrap; z-index: 3; background: var(--wood); padding: 0 4px; }
 .col-more { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 4px; font-size: 16px; color: var(--color-text-muted); }
@@ -772,6 +813,81 @@ textarea.col-input { resize: none; height: 70px; line-height: 1.2; font-size: 18
   z-index: 5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .col-locked { position: absolute; inset: 0; display: grid; place-items: center; padding: 40px; text-align: center; font-size: 22px;
   color: var(--color-text-muted); }
+
+/* covers: pieces on the shelf (a box from the front, a loose cartridge, card or disc), drawn in art pixels */
+.col-box.pc { background: transparent; box-shadow: none; }
+.col-box.pc canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+.col-box.pc.front { box-shadow: 2px 2px 0px rgba(0,0,0,.45); }
+.col-box.pc.sel, .col-box.pc:focus-visible { box-shadow: 0 0 0 2px #fff; }
+.col-shelf .top .all { display: flex; gap: 6px; margin-left: 8px; }
+.col-mini { background: var(--color-btn-bg); border: 2px solid var(--color-border); box-shadow: 2px 2px 0px var(--ink); padding: 0 6px;
+  font-size: 16px; line-height: 20px; white-space: nowrap; color: var(--color-text); text-decoration: none; display: inline-block; }
+.col-mini:hover:not(:disabled) { border-color: var(--color-accent-bright); }
+.col-mini.danger { background: var(--color-danger); border-color: var(--color-danger); }
+.col-mini.acc { background: var(--color-accent); border-color: var(--color-accent-bright); }
+
+/* covers: the opened case */
+.col-case .front.real { padding: 0; }
+.col-case .front.real img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.col-cover { position: absolute; inset: 6px; padding: 12px 12px 10px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.col-cover.over { outline: 2px dashed var(--color-accent-bright); outline-offset: -6px; background: rgba(255,255,255,.05); }
+.col-cover-full { margin: 0; position: relative; flex: 1; min-height: 0; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.col-cover-full img { flex: 1; min-height: 0; max-width: 100%; object-fit: contain; image-rendering: auto; box-shadow: 2px 2px 0px var(--ink); }
+.col-cover-full figcaption { font-size: 16px; color: var(--color-text-muted); }
+.col-cover-full .media { position: absolute; right: -6px; bottom: 16px; pointer-events: none; }
+.col-cover-media { flex: 1; min-height: 0; display: grid; place-items: center; }
+.col-cover-line { font-size: 16px; text-align: center; line-height: 1.15; overflow-wrap: anywhere; color: var(--color-text); }
+.col-cover-line.bad { color: var(--color-warning); }
+.col-cover-acts { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.col-cover-hint { font-size: 16px; color: var(--color-text-muted); }
+.col-choose { flex: 1; min-height: 0; width: 100%; display: flex; flex-direction: column; gap: 6px; align-items: center; }
+.col-choose .hd { font-size: 18px; }
+.col-choose .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 100%; flex: 1; min-height: 0; }
+.col-choose .grid button { background: var(--color-bg-dark); border: 2px solid var(--color-border); padding: 4px; display: flex; flex-direction: column;
+  align-items: center; gap: 2px; min-height: 0; min-width: 0; overflow: hidden; }
+.col-choose .grid button:hover:not(:disabled) { border-color: var(--color-accent-bright); }
+.col-choose .grid button.cur { border-color: var(--color-accent); box-shadow: inset 0 0 0 2px var(--color-accent); }
+.col-choose .grid button.cur small { color: var(--color-accent-bright); }
+.col-choose img { width: 100%; height: 100px; object-fit: contain; image-rendering: auto; }
+.col-choose .nm { font-size: 16px; line-height: 1.05; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.col-choose small { font-size: 16px; color: var(--color-text-muted); }
+.col-cond { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: -6px 0 12px; font-size: 16px; color: var(--paper-muted); }
+.col-cond .seg { display: inline-flex; margin-left: auto; }
+.col-cond .seg button { background: transparent; border: 2px solid var(--paper-ink); color: var(--paper-ink); padding: 0 8px; font-size: 16px; line-height: 20px; }
+.col-cond .seg button + button { border-left: 0; }
+.col-cond .seg button[aria-pressed=true] { background: var(--paper-ink); color: var(--paper); }
+
+/* covers: «Buscar las que faltan» and the IGDB key */
+.col-run-box { background: var(--color-bg); border: 2px solid var(--color-border); padding: 8px 10px; margin-top: 10px; box-shadow: 2px 2px 0px var(--ink);
+  font-size: 16px; }
+.col-run-box.floating { position: absolute; right: 22px; bottom: 26px; width: 340px; z-index: 8; margin: 0; border-color: var(--color-accent-bright); }
+.col-run-box .hd { display: flex; align-items: center; font-size: 18px; margin-bottom: 6px; }
+.col-run-box .hd .x { margin-left: auto; }
+.col-run-box .hd .fold { margin-left: auto; }
+.col-run-box .hd .fold + .x { margin-left: 6px; }
+.col-run-box.floating.min { width: auto; max-width: 340px; padding: 4px 8px; }
+.col-run-box.floating.min .hd { margin: 0; gap: 8px; font-size: 16px; }
+.col-run-box.floating.min .hd .fold { margin-left: 8px; }
+.col-shelves.with-run { padding-bottom: 260px; }
+.col-shelves.with-run-min { padding-bottom: 60px; }
+.col-bar { height: 12px; background: var(--color-bg-dark); border: 2px solid var(--color-border); }
+.col-bar i { display: block; height: 100%; transition: width .3s steps(4);
+  background: repeating-linear-gradient(90deg, var(--color-accent-bright) 0 6px, var(--color-accent) 6px 8px); }
+.col-run-box .ln { margin-top: 6px; }
+.col-run-box .why { margin: 6px 0 0; padding: 0; list-style: none; color: var(--color-text-muted); }
+.col-run-box .why b { color: var(--color-text); font-weight: normal; }
+.col-run-box .acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.col-covers-intro { margin: 0 0 8px; font-size: 18px; color: var(--color-text-muted); line-height: 1.2; }
+.col-covers-h { margin: 16px 0 6px; font-size: 16px; font-weight: normal; color: var(--color-text-muted); letter-spacing: 1px; text-transform: uppercase; }
+.col-key p { margin: 4px 0; font-size: 18px; line-height: 1.2; }
+.col-key .terms { color: var(--color-text-muted); }
+.col-key a { color: var(--color-accent-bright); }
+.col-key ol { margin: 6px 0; padding-left: 22px; font-size: 18px; line-height: 1.2; list-style: decimal; }
+.col-key ol li { margin: 2px 0; }
+.col-key .fields { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin-top: 8px; }
+.col-key label { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 180px; font-size: 16px; color: var(--color-text-muted); }
+.col-key.on { display: flex; align-items: center; gap: 12px; }
+.col-key .ok { color: var(--color-status-success); font-size: 18px; }
 @media (prefers-reduced-motion: reduce) {
   .col-panel *, .col-panel *::before, .col-panel *::after { animation: none !important; transition: none !important; }
 }

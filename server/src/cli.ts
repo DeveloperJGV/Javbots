@@ -369,7 +369,7 @@ async function main(): Promise<void> {
       // (features/decks).
       createDecksFeature({ officeToken: () => currentConfig?.token ?? null }),
       // Optional feature: the game collection, shelves by console filled by hand (features/coleccion).
-      createColeccionFeature(),
+      createColeccionFeature({ officeToken: () => currentConfig?.token ?? null }),
       // Optional feature: pages that run on this computer, opened (and started) from a piece of furniture
       // (features/accesos).
       createAccesosFeature(),

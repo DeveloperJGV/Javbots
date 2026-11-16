@@ -1,3 +1,4 @@
+import type { ColeccionCoverProgress, ColeccionCoverState } from '../../../core/src/messages.js';
 import { emptyGame, isoDay, normalizeGame } from '../core/game.js';
 import type { Game } from '../core/types.js';
 import { COLECCION_PANEL_TYPES } from './constants.js';
@@ -7,7 +8,17 @@ export interface ColeccionStatusView {
   games: Game[];
   file: string;
   problems: string[];
+  /** The IGDB key is set (never the key itself). */
+  igdbKey: boolean;
+  /** The last cover search of each game since the office started. */
+  covers: ColeccionCoverState[];
+  /** «Buscar las que faltan»: its progress, or its summary once it ended. */
+  coverRun?: ColeccionCoverProgress;
 }
+
+/** A cover action sent and not answered yet (only one at a time). */
+export type CoverOpKind =
+  'pick' | 'dismiss' | 'remove' | 'key' | 'keyRemove' | 'condition' | 'upload';
 
 /** How the form was opened: a new game (and then another), an edit, or a "se busca" gap that was bought. */
 export type FormMode = 'new' | 'edit' | 'acquire';
@@ -17,7 +28,8 @@ export type ColeccionView =
   | { kind: 'case'; id: string }
   | { kind: 'wanted'; id: string }
   | { kind: 'form'; mode: FormMode; draft: Game }
-  | { kind: 'tonight' };
+  | { kind: 'tonight' }
+  | { kind: 'covers' };
 
 export interface ColeccionState {
   open: boolean;
@@ -38,7 +50,19 @@ export interface ColeccionState {
   savedInRow: number;
   /** Changes when the form must put the cursor back in the name (after "save and next"). */
   focusName: number;
+  /** A cover action (pick, remove, key, condition, upload) waiting for its answer, and the last one's error. */
+  op?: { requestId: string; kind: CoverOpKind; id?: string };
+  opError?: string;
+  /** «Elige una» the person closed with «Ninguna», by game: the search stamp it was. */
+  dismissedChoice?: Record<string, string>;
+  /** The run summary the person closed (its finishedAt). */
+  dismissedRun?: string;
+  /** The run's floating box folded to one line. */
+  runMinimized?: boolean;
 }
+
+/** Said when the connection to the office drops with something waiting for an answer. */
+export const CONNECTION_LOST_TEXT = 'Se cayó la conexión con la oficina; vuelve a intentarlo.';
 
 let counter = 0;
 const newRequestId = () => `${Date.now().toString(36)}-${++counter}`;
@@ -85,20 +109,97 @@ export class ColeccionStore {
   }
 
   close(): void {
-    this.set({ open: false, pending: undefined, formError: undefined, litSeries: undefined });
+    this.set({
+      open: false,
+      pending: undefined,
+      formError: undefined,
+      litSeries: undefined,
+      op: undefined,
+      opError: undefined,
+    });
   }
 
-  setStatus(raw: { games: unknown[]; file: string; problems: string[] }): void {
+  setStatus(raw: {
+    games: unknown[];
+    file: string;
+    problems: string[];
+    igdbKey?: boolean;
+    covers?: ColeccionCoverState[];
+    coverRun?: ColeccionCoverProgress;
+  }): void {
     const games = raw.games.map((g) => fromWire(g)).filter((g): g is Game => g !== null);
     let { view } = this.state;
     const exists = (id: string) => games.some((g) => g.id === id);
     if ((view.kind === 'case' || view.kind === 'wanted') && !exists(view.id))
       view = { kind: 'shelves' };
-    this.set({ status: { games, file: raw.file, problems: raw.problems }, view });
+    this.set({
+      status: {
+        games,
+        file: raw.file,
+        problems: raw.problems,
+        igdbKey: raw.igdbKey === true,
+        covers: Array.isArray(raw.covers) ? raw.covers : [],
+        coverRun: raw.coverRun,
+      },
+      view,
+    });
   }
 
-  /** The server's answer to a save or a delete. */
+  /** A cover action is about to be sent: its request id (the answer comes as coleccionResult). */
+  startOp(kind: CoverOpKind, id?: string): string {
+    const requestId = newRequestId();
+    this.set({ op: { requestId, kind, id }, opError: undefined });
+    return requestId;
+  }
+
+  /** An upload ended (it answers over HTTP, not with coleccionResult). */
+  endUpload(requestId: string, error?: string): void {
+    if (this.state.op?.requestId !== requestId) return;
+    this.set({ op: undefined, opError: error });
+  }
+
+  setOpError(message: string | undefined): void {
+    this.set({ opError: message });
+  }
+
+  /** «Ninguna»: hides that game's choice until it is searched again. */
+  dismissChoice(id: string, stamp: string): void {
+    this.set({ dismissedChoice: { ...this.state.dismissedChoice, [id]: stamp } });
+  }
+
+  dismissRun(finishedAt: string): void {
+    this.set({ dismissedRun: finishedAt });
+  }
+
+  /** Folds the run's floating box to one line, or opens it again. */
+  minimizeRun(min: boolean): void {
+    this.set({ runMinimized: min });
+  }
+
+  /**
+   * The connection to the office dropped: an answer that was waiting will never come, so the buttons come back
+   * (an upload answers over HTTP on its own, so it is left to finish).
+   */
+  connectionLost(): void {
+    const next: Partial<ColeccionState> = {};
+    if (this.state.op && this.state.op.kind !== 'upload') {
+      next.op = undefined;
+      next.opError = CONNECTION_LOST_TEXT;
+    }
+    if (this.state.pending) {
+      next.pending = undefined;
+      next.formError = CONNECTION_LOST_TEXT;
+    }
+    if (Object.keys(next).length > 0) this.set(next);
+  }
+
+  /** The server's answer to a save or a delete (or to a cover action). */
   setResult(result: { requestId: string; ok: boolean; id?: string; error?: string }): void {
+    const op = this.state.op;
+    if (op && op.requestId === result.requestId) {
+      this.set({ op: undefined, opError: result.ok ? undefined : (result.error ?? 'No se pudo.') });
+      return;
+    }
     const pending = this.state.pending;
     if (!pending || pending.requestId !== result.requestId) return;
     if (!result.ok) {
@@ -138,7 +239,7 @@ export class ColeccionStore {
   }
 
   show(view: ColeccionView): void {
-    this.set({ view, formError: undefined });
+    this.set({ view, formError: undefined, opError: undefined });
   }
 
   select(id: string | undefined): void {
@@ -149,7 +250,11 @@ export class ColeccionStore {
   openItem(id: string): void {
     const g = this.state.status?.games.find((x) => x.id === id);
     if (!g) return;
-    this.set({ selectedId: id, view: g.wanted ? { kind: 'wanted', id } : { kind: 'case', id } });
+    this.set({
+      selectedId: id,
+      view: g.wanted ? { kind: 'wanted', id } : { kind: 'case', id },
+      opError: undefined,
+    });
   }
 
   /** The form for a new game (on a platform when it comes from a shelf), an edit, or a bought gap. */

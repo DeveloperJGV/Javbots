@@ -7,9 +7,10 @@ import {
   useRef,
 } from 'react';
 
-import { sameSeries, type Shelf } from '../core/shelves.js';
+import { sameSeries, type Shelf, shelfItems } from '../core/shelves.js';
 import type { Game } from '../core/types.js';
-import { cover, paint } from './art.js';
+import { drawBoxFront, drawDisc, drawLooseCart } from './art.js';
+import { ConfirmButton } from './ColeccionBits.js';
 import { coleccionStore } from './coleccionStore.js';
 import { isDusty, isNew, shelfCount, shortPrice } from './coleccionText.js';
 import {
@@ -20,6 +21,19 @@ import {
   SHELF_DRAG_SLOP_PX,
   SHELF_FOCUS_MARGIN_PX,
 } from './constants.js';
+import { coverStyle, type PixelSpec, useNearView, usePixelCover } from './coverPixels.js';
+import {
+  batchIds,
+  boxArt,
+  CART_ART,
+  type CoverStyle,
+  LABEL_ANCHOR_Y,
+  labelStyle,
+  type Piece,
+  pieceOf,
+  pieceSize,
+  sealedOf,
+} from './pieces.js';
 
 /** How far each shelf has been moved, by platform (kept while the panel lives). */
 export type Offsets = Map<string, number>;
@@ -33,12 +47,50 @@ interface ShelfProps {
   litSeries?: string;
   onlyWanted: boolean;
   onOpen: (id: string) => void;
+  /** «Todos con caja / Todos sueltos» for this shelf's games (left out: no buttons). */
+  onCondition?: (ids: string[], condition: 'completo' | 'suelto') => void;
 }
 
-/** A cartridge's label: the cover drawn small. */
-function CartLabel({ title }: { title: string }) {
+/** The pixel art a piece needs from the cover (a box: the whole cover; a cartridge: its label), or null. */
+function pixelSpecOf(piece: Piece, platform: string, style: CoverStyle): PixelSpec | null {
+  if (piece.kind === 'box' && piece.art === 'cover') {
+    const { cover } = boxArt(platform, style);
+    return { w: cover.w, h: cover.h, style, anchorY: 0.5 };
+  }
+  if (piece.kind === 'loose' && piece.media !== 'disc') {
+    const { label } = CART_ART[piece.media];
+    return { w: label.w, h: label.h, style: labelStyle(style), anchorY: LABEL_ANCHOR_Y };
+  }
+  return null;
+}
+
+/** A box from the front, a loose cartridge or card, or a loose disc, drawn on a canvas in art pixels. */
+export function PieceArt({
+  game,
+  piece,
+  look,
+  style,
+}: {
+  game: Game;
+  piece: Piece;
+  look: PlatformLook;
+  style: CoverStyle;
+}) {
   const ref = useRef<HTMLCanvasElement>(null);
-  useEffect(() => paint(ref.current, cover(title, 24, 32)), [title]);
+  // Only pieces near the visible part of the list fetch and pixelate their cover
+  const near = useNearView(ref);
+  const px = usePixelCover(game.id, game.coverArt, pixelSpecOf(piece, game.platform, style), near);
+  const media = piece.kind === 'loose' ? piece.media : '';
+  useLayoutEffect(() => {
+    const target = ref.current;
+    if (piece.kind === 'box') drawBoxFront(target, game, look, boxArt(game.platform, style), px);
+    else if (piece.kind === 'loose') {
+      if (piece.media === 'disc') drawDisc(target, game, game.platform === 'gc');
+      else drawLooseCart(target, game, look, piece.media, px);
+    }
+    // Redrawn only when what it shows changes (not on every status from the office)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game.title, game.platform, piece.kind, media, look, style, px]);
   return <canvas ref={ref} aria-hidden="true" />;
 }
 
@@ -49,6 +101,7 @@ function GameBox({
   today,
   state,
   selected,
+  style,
   onOpen,
 }: {
   game: Game;
@@ -57,6 +110,7 @@ function GameBox({
   today: string;
   state: '' | 'dim' | 'glow';
   selected: boolean;
+  style: CoverStyle;
   onOpen: (id: string) => void;
 }) {
   const size = { '--w': `${look.w}px`, '--hh': `${look.h}px` } as CSSProperties;
@@ -78,24 +132,30 @@ function GameBox({
     );
   }
   const bandH = Math.round(look.h * 0.16);
+  const piece = pieceOf(game, !!game.coverArt);
+  const dims = pieceSize(piece, game.platform, style, look);
+  const kind =
+    piece.kind === 'spine'
+      ? ''
+      : piece.kind === 'box'
+        ? 'pc front'
+        : piece.media === 'disc'
+          ? 'pc disc'
+          : 'pc loose';
+  const extra = piece.kind === 'loose' ? ' (suelto)' : '';
   return (
     <button
       type="button"
-      className={`col-box ${cartridge ? 'cart' : ''} ${game.condition === 'sellado' ? 'sealed' : ''} ${state} ${selected ? 'sel' : ''}`}
-      style={size}
+      className={`col-box ${kind} ${game.condition === 'sellado' ? 'sealed' : ''} ${state} ${selected ? 'sel' : ''}`}
+      style={{ '--w': `${dims.w}px`, '--hh': `${dims.h}px` } as CSSProperties}
       data-id={game.id}
-      title={game.title}
-      aria-label={game.title}
+      title={`${game.title}${extra}`}
+      aria-label={`${game.title}${extra}`}
       onClick={() => onOpen(game.id)}
       onFocus={() => coleccionStore.select(game.id)}
     >
-      {cartridge ? (
-        <>
-          <span className="label">
-            <CartLabel title={game.title} />
-          </span>
-          <span className="ribs" />
-        </>
+      {piece.kind !== 'spine' ? (
+        <PieceArt game={game} piece={piece} look={look} style={style} />
       ) : (
         <>
           <span className="band" style={{ height: bandH }} />
@@ -122,8 +182,16 @@ export function ShelfRow({
   litSeries,
   onlyWanted,
   onOpen,
+  onCondition,
 }: ShelfProps) {
   const look = lookOf(shelf.platform);
+  const style = coverStyle();
+  const owned = shelfItems(shelf).filter((g) => !g.wanted);
+  // Boxes from the front and loose pieces have their own heights: the shelf is as tall as its tallest
+  const rowH = Math.max(
+    look.h,
+    ...owned.map((g) => pieceSize(pieceOf(g, !!g.coverArt), g.platform, style, look).h),
+  );
   const wood = useRef<HTMLDivElement>(null);
   const track = useRef<HTMLDivElement>(null);
   const suppressClick = useRef(false);
@@ -212,6 +280,10 @@ export function ShelfRow({
     onOpen(id);
   };
   const counts = shelfCount(shelf);
+  // Only the ones that would change (a sealed game keeps its «sellado»)
+  const toBox = batchIds(owned, 'completo');
+  const toLoose = batchIds(owned, 'suelto');
+  const sealed = sealedOf(owned);
 
   return (
     <section
@@ -233,6 +305,30 @@ export function ShelfRow({
           {counts.halfway && ` · ${counts.halfway}`}
         </span>
         {lit && <span className="star">★ lo que más tienes</span>}
+        {onCondition && owned.length >= 2 && (
+          <span className="all">
+            {toBox.length > 0 && (
+              <ConfirmButton
+                className="col-mini"
+                label="Todos con caja"
+                confirmLabel={`¿${toBox.length === 1 ? 'Ese' : `Los ${toBox.length}`} con caja?`}
+                onConfirm={() => onCondition(toBox, 'completo')}
+              />
+            )}
+            {toLoose.length > 0 && (
+              <ConfirmButton
+                className="col-mini"
+                label="Todos sueltos"
+                confirmLabel={`¿${toLoose.length === 1 ? 'Ese' : `Los ${toLoose.length}`} sueltos?${
+                  sealed > 0
+                    ? ` (${sealed === 1 ? 'el sellado se queda' : `los ${sealed} sellados se quedan`} igual)`
+                    : ''
+                }`}
+                onConfirm={() => onCondition(toLoose, 'suelto')}
+              />
+            )}
+          </span>
+        )}
         <span className="arrows">
           <button
             type="button"
@@ -251,11 +347,7 @@ export function ShelfRow({
         </span>
       </div>
       <div className="col-wood" ref={wood} onPointerDown={onPointerDown}>
-        <div
-          className="col-track"
-          ref={track}
-          style={{ '--h': `${look.h + 34}px` } as CSSProperties}
-        >
+        <div className="col-track" ref={track} style={{ '--h': `${rowH + 34}px` } as CSSProperties}>
           {shelf.runs.map((run) =>
             run.series !== null ? (
               <div className="col-run series" key={`s:${run.items[0].id}`}>
@@ -269,6 +361,7 @@ export function ShelfRow({
                     today={today}
                     state={stateOf(g)}
                     selected={g.id === selectedId}
+                    style={style}
                     onOpen={open}
                   />
                 ))}
@@ -282,6 +375,7 @@ export function ShelfRow({
                 today={today}
                 state={stateOf(run.items[0])}
                 selected={run.items[0].id === selectedId}
+                style={style}
                 onOpen={open}
               />
             ),

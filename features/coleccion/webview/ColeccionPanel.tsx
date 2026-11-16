@@ -34,6 +34,8 @@ import {
   lookVars,
   SUGGEST_LIMIT,
 } from './constants.js';
+import { CoverRun, CoverSheet } from './CoverSheet.js';
+import { floatingRun } from './coverText.js';
 import { GameCase } from './GameCase.js';
 import { GameForm } from './GameForm.js';
 import { type Offsets, ShelfRow } from './Shelves.js';
@@ -398,6 +400,23 @@ export function ColeccionOpen({
     },
     [send, today],
   );
+  const setCondition = useCallback(
+    (ids: string[], condition: 'completo' | 'suelto') => {
+      const requestId = coleccionStore.startOp('condition');
+      send({ type: 'coleccionSetCondition', requestId, ids, condition });
+    },
+    [send],
+  );
+  // Owned games in shelf order (for «la siguiente por elegir»)
+  const order = useMemo(
+    () =>
+      shelves
+        .flatMap(shelfItems)
+        .filter((g) => !g.wanted)
+        .map((g) => g.id),
+    [shelves],
+  );
+  const coverRun = status?.coverRun;
 
   // The rail follows the shelf at the top of the list
   useEffect(() => {
@@ -471,6 +490,8 @@ export function ColeccionOpen({
         .map((g) => g.id)
     : [];
   const problems = problemsLine(status?.problems ?? []);
+  // The run's box covers the bottom right: the list leaves room to scroll what it covers into view
+  const runBox = floatingRun(state);
 
   return (
     <>
@@ -486,6 +507,9 @@ export function ColeccionOpen({
         }
         role="dialog"
         aria-label="Colección de juegos"
+        // An image dropped a little off the case's drop zone must not make the page open it
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => e.preventDefault()}
       >
         <div className="col-head">
           <div>
@@ -528,6 +552,19 @@ export function ColeccionOpen({
               >
                 ¿Qué jugamos hoy?
               </button>
+              <button
+                type="button"
+                className="col-btn"
+                aria-pressed={view.kind === 'covers'}
+                title="Buscar las portadas que faltan y la llave de IGDB"
+                onClick={() =>
+                  coleccionStore.show(
+                    view.kind === 'covers' ? { kind: 'shelves' } : { kind: 'covers' },
+                  )
+                }
+              >
+                {coverRun?.running ? `Portadas ${coverRun.done}/${coverRun.total}` : 'Portadas'}
+              </button>
             </>
           )}
           <button
@@ -553,7 +590,16 @@ export function ColeccionOpen({
               {games.length === 0 ? (
                 <EmptyCollection />
               ) : (
-                <div className="col-shelves" ref={listRef}>
+                <div
+                  className={
+                    runBox === 'open'
+                      ? 'col-shelves with-run'
+                      : runBox === 'min'
+                        ? 'col-shelves with-run-min'
+                        : 'col-shelves'
+                  }
+                  ref={listRef}
+                >
                   {shelves.map((s) => (
                     <ShelfRow
                       key={s.platform}
@@ -565,9 +611,13 @@ export function ColeccionOpen({
                       litSeries={state.litSeries}
                       onlyWanted={state.onlyWanted}
                       onOpen={(id) => coleccionStore.openItem(id)}
+                      onCondition={setCondition}
                     />
                   ))}
                 </div>
+              )}
+              {view.kind !== 'covers' && (
+                <CoverRun state={state} send={send} order={order} floating />
               )}
               {problems && (
                 <div className="col-problems" title={status.problems.join('\n')}>
@@ -587,7 +637,16 @@ export function ColeccionOpen({
             today={today}
             onDelete={remove}
             onPlayed={played}
+            search={status?.covers.find((c) => c.id === caseGame.id)}
+            state={state}
+            send={send}
           />
+        )}
+        {view.kind === 'covers' && (
+          <>
+            <div className="col-veil" onClick={() => coleccionStore.show({ kind: 'shelves' })} />
+            <CoverSheet state={state} send={send} order={order} />
+          </>
         )}
         {view.kind === 'form' && (
           <>

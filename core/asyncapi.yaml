@@ -258,6 +258,14 @@ components:
         - $ref: '#/components/schemas/ColeccionOpen'
         - $ref: '#/components/schemas/ColeccionSave'
         - $ref: '#/components/schemas/ColeccionDelete'
+        - $ref: '#/components/schemas/ColeccionCoverFind'
+        - $ref: '#/components/schemas/ColeccionCoverRun'
+        - $ref: '#/components/schemas/ColeccionCoverPick'
+        - $ref: '#/components/schemas/ColeccionCoverRemove'
+        - $ref: '#/components/schemas/ColeccionIgdbKey'
+        - $ref: '#/components/schemas/ColeccionIgdbKeyRemove'
+        - $ref: '#/components/schemas/ColeccionSetCondition'
+        - $ref: '#/components/schemas/ColeccionCoverDismiss'
         # Pages on this computer opened from a piece of furniture (feature: features/accesos)
         - $ref: '#/components/schemas/AccesosOpen'
         - $ref: '#/components/schemas/AccesosStart'
@@ -3933,7 +3941,7 @@ components:
         Sent on webviewReady, on coleccionOpen and after every change. Privileged connections only.
       type: object
       additionalProperties: false
-      required: [type, games, file, problems]
+      required: [type, games, file, problems, igdbKey, covers, coverRun]
       properties:
         type:
           const: coleccionStatus
@@ -3947,9 +3955,21 @@ components:
           type: array
           items:
             type: string
+        igdbKey:
+          type: boolean
+          description: An IGDB key is saved (the key itself never leaves the server).
+        covers:
+          type: array
+          description: The last cover search of each game since the server started (kept in memory).
+          items:
+            $ref: '#/components/schemas/ColeccionCoverState'
+        coverRun:
+          $ref: '#/components/schemas/ColeccionCoverProgress'
 
     ColeccionResult:
-      description: The answer to coleccionSave or coleccionDelete (id = the game saved or deleted).
+      description: >-
+        The answer to coleccionSave, coleccionDelete, coleccionCoverPick, coleccionCoverDismiss, coleccionCoverRemove, coleccionIgdbKey,
+        coleccionIgdbKeyRemove or coleccionSetCondition (id = the game saved, deleted or changed, when there is one).
       type: object
       additionalProperties: false
       required: [type, requestId, ok]
@@ -4022,6 +4042,151 @@ components:
           type: string
         cover:
           type: string
+          description: An old free-text field, kept as it came; not the cover image (that is coverArt).
+        coverArt:
+          $ref: '#/components/schemas/ColeccionCoverArt'
+        coverNone:
+          type: string
+          description: >-
+            ISO time the person answered «Ninguna» to its cover choice (set only by the server): Buscar las que faltan
+            leaves it alone until it is searched by hand, its title or console changes, or it gets a cover.
+
+    ColeccionCoverArt:
+      description: >-
+        The cover image a game has, set only by the server (what a client sends here is ignored). The image is served
+        at GET /api/coleccion/portada/<game id> with the office token; add &v=<at> so a new image is not cached as the
+        old one. source libretro (key = its file name), igdb (key = its image_id) or subida (uploaded; key empty);
+        at = ISO time it was set; type png, jpg or webp.
+      type: object
+      additionalProperties: false
+      required: [source, key, at, type]
+      properties:
+        source:
+          $ref: '#/components/schemas/ColeccionCoverSource'
+        key:
+          type: string
+        at:
+          type: string
+        type:
+          $ref: '#/components/schemas/ColeccionCoverType'
+
+    ColeccionCoverSource:
+      type: string
+      enum: [libretro, igdb, subida]
+
+    ColeccionCoverType:
+      type: string
+      enum: [png, jpg, webp]
+
+    ColeccionCoverState:
+      description: >-
+        How the last cover search of a game went. state buscando (in course), encontrada (an exact match, already set
+        as its cover; source and label say which), elige (candidates, at most 4, for the person to choose; their
+        thumbnails are GET /api/coleccion/candidata/<game id>/<n>; choose with coleccionCoverPick and this stamp) or
+        nada (not found; reason sin-cobertura = no source has that console; pocas = the source has very few of that
+        console; sin-llave = only IGDB could have it and there is no key; sin-respuesta = the source did not answer
+        or the image could not be fetched, try again; sin-coincidencia = nothing like it; cambio = its title or
+        console changed, so the cover it had was taken away and it must be searched again). needsKey = an IGDB key
+        would let it look further. A search over a game that already has a cover never replaces it: it always ends
+        in elige (the current one marked current). Names come from outside: show them as text, never as HTML.
+      type: object
+      additionalProperties: false
+      required: [id, state, stamp, at]
+      properties:
+        id:
+          type: string
+        state:
+          $ref: '#/components/schemas/ColeccionCoverStateKind'
+        stamp:
+          type: string
+        at:
+          type: string
+          description: ISO time the search ended (or started, while buscando).
+        source:
+          type: string
+        label:
+          type: string
+        candidates:
+          type: array
+          items:
+            $ref: '#/components/schemas/ColeccionCoverCandidate'
+        reason:
+          $ref: '#/components/schemas/ColeccionCoverReason'
+        needsKey:
+          type: boolean
+
+    ColeccionCoverStateKind:
+      type: string
+      enum: [buscando, encontrada, elige, nada]
+
+    ColeccionCoverReason:
+      type: string
+      enum: [sin-cobertura, pocas, sin-llave, sin-respuesta, sin-coincidencia, cambio]
+
+    ColeccionCoverCandidate:
+      description: >-
+        One candidate cover (n = its position in the list). region is the source's region text, or empty. current =
+        it is the cover the game has now.
+      type: object
+      additionalProperties: false
+      required: [source, label, region]
+      properties:
+        source:
+          type: string
+        label:
+          type: string
+        region:
+          type: string
+        current:
+          type: boolean
+
+    ColeccionCoverProgress:
+      description: >-
+        Buscar las que faltan: how the run goes (running) or how it ended (finishedAt set; stopped = the person
+        stopped it). total = games it is going to search; done = searched so far; found, choose, notFound and failed
+        split done (failed = a source did not answer: not counted as searched, the next run tries it again);
+        skipped = games without a cover it left alone (a choice waiting, «Ninguna», or already known not to be
+        there); reasons counts the not-found and failed ones by reason.
+      type: object
+      additionalProperties: false
+      required: [running, stopped, total, done, found, choose, notFound, failed, skipped, reasons]
+      properties:
+        running:
+          type: boolean
+        stopped:
+          type: boolean
+        total:
+          type: integer
+        done:
+          type: integer
+        found:
+          type: integer
+        choose:
+          type: integer
+        notFound:
+          type: integer
+        failed:
+          type: integer
+        skipped:
+          type: integer
+        reasons:
+          type: array
+          items:
+            $ref: '#/components/schemas/ColeccionCoverReasonCount'
+        startedAt:
+          type: string
+        finishedAt:
+          type: string
+
+    ColeccionCoverReasonCount:
+      type: object
+      additionalProperties: false
+      required: [reason, count]
+      properties:
+        reason:
+          type: string
+        count:
+          type: integer
 
     ColeccionOpen:
       description: The collection panel opened; answered with coleccionStatus. Privileged only.
@@ -4058,6 +4223,133 @@ components:
         requestId:
           type: string
         id:
+          type: string
+
+    ColeccionCoverFind:
+      description: >-
+        Look for one game's cover (libretro first, IGDB when it applies and there is a key). Progress and outcome
+        arrive in coleccionStatus.covers. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, id]
+      properties:
+        type:
+          const: coleccionCoverFind
+        id:
+          type: string
+
+    ColeccionCoverRun:
+      description: >-
+        Buscar las que faltan: start or stop looking for every game without a cover, one request per second per
+        source at most. Progress in coleccionStatus.coverRun. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, action]
+      properties:
+        type:
+          const: coleccionCoverRun
+        action:
+          $ref: '#/components/schemas/ColeccionCoverRunAction'
+
+    ColeccionCoverRunAction:
+      type: string
+      enum: [start, stop]
+
+    ColeccionCoverPick:
+      description: >-
+        Use candidate n (0 to 3) of the game's last elige search as its cover; stamp must be that search's, so an old
+        click cannot set another image. Answered with coleccionResult. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, requestId, id, n, stamp]
+      properties:
+        type:
+          const: coleccionCoverPick
+        requestId:
+          type: string
+        id:
+          type: string
+        n:
+          type: integer
+        stamp:
+          type: string
+
+    ColeccionCoverDismiss:
+      description: >-
+        Close the game's elige search (stamp must be that search's). On a game without a cover it is «Ninguna» and is
+        kept (coverNone); on a game with one it keeps the current cover. Answered with coleccionResult. Privileged
+        only.
+      type: object
+      additionalProperties: false
+      required: [type, requestId, id, stamp]
+      properties:
+        type:
+          const: coleccionCoverDismiss
+        requestId:
+          type: string
+        id:
+          type: string
+        stamp:
+          type: string
+
+    ColeccionCoverRemove:
+      description: Take a game's cover away (the image is deleted). Answered with coleccionResult. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, requestId, id]
+      properties:
+        type:
+          const: coleccionCoverRemove
+        requestId:
+          type: string
+        id:
+          type: string
+
+    ColeccionIgdbKey:
+      description: >-
+        Save the IGDB key (a Twitch app's client id and secret) in its own file next to the office's; it is never
+        sent back (coleccionStatus only says igdbKey true). Answered with coleccionResult. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, requestId, clientId, clientSecret]
+      properties:
+        type:
+          const: coleccionIgdbKey
+        requestId:
+          type: string
+        clientId:
+          type: string
+        clientSecret:
+          type: string
+
+    ColeccionIgdbKeyRemove:
+      description: Delete the saved IGDB key. Answered with coleccionResult. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, requestId]
+      properties:
+        type:
+          const: coleccionIgdbKeyRemove
+        requestId:
+          type: string
+
+    ColeccionSetCondition:
+      description: >-
+        Set the condition of several games at once (completo, suelto, sellado, or empty = its console's default) in
+        one write; se busca gaps are left as they are. Answered with coleccionResult. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, requestId, ids, condition]
+      properties:
+        type:
+          const: coleccionSetCondition
+        requestId:
+          type: string
+        ids:
+          type: array
+          items:
+            type: string
+        condition:
           type: string
 
     # ── Pages on this computer (feature: features/accesos) ──────────

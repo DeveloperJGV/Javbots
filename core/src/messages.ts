@@ -149,6 +149,14 @@ export type ClientMessage =
   | ColeccionOpen
   | ColeccionSave
   | ColeccionDelete
+  | ColeccionCoverFind
+  | ColeccionCoverRun
+  | ColeccionCoverPick
+  | ColeccionCoverRemove
+  | ColeccionIgdbKey
+  | ColeccionIgdbKeyRemove
+  | ColeccionSetCondition
+  | ColeccionCoverDismiss
   | AccesosOpen
   | AccesosStart;
 
@@ -1397,6 +1405,9 @@ export interface ColeccionStatus {
   games: ColeccionGame[];
   file: string;
   problems: string[];
+  igdbKey: boolean;
+  covers: ColeccionCoverState[];
+  coverRun: ColeccionCoverProgress;
 }
 
 export interface ColeccionGame {
@@ -1421,6 +1432,63 @@ export interface ColeccionGame {
   externalId?: string;
   barcode?: string;
   cover?: string;
+  coverArt?: ColeccionCoverArt;
+  coverNone?: string;
+}
+
+export interface ColeccionCoverArt {
+  source: ColeccionCoverSource;
+  key: string;
+  at: string;
+  type: ColeccionCoverType;
+}
+
+export type ColeccionCoverSource = 'libretro' | 'igdb' | 'subida';
+
+export type ColeccionCoverType = 'png' | 'jpg' | 'webp';
+
+export interface ColeccionCoverState {
+  id: string;
+  state: ColeccionCoverStateKind;
+  stamp: string;
+  at: string;
+  source?: string;
+  label?: string;
+  candidates?: ColeccionCoverCandidate[];
+  reason?: ColeccionCoverReason;
+  needsKey?: boolean;
+}
+
+export type ColeccionCoverStateKind = 'buscando' | 'encontrada' | 'elige' | 'nada';
+
+export interface ColeccionCoverCandidate {
+  source: string;
+  label: string;
+  region: string;
+  current?: boolean;
+}
+
+export type ColeccionCoverReason =
+  'sin-cobertura' | 'pocas' | 'sin-llave' | 'sin-respuesta' | 'sin-coincidencia' | 'cambio';
+
+export interface ColeccionCoverProgress {
+  running: boolean;
+  stopped: boolean;
+  total: number;
+  done: number;
+  found: number;
+  choose: number;
+  notFound: number;
+  failed: number;
+  skipped: number;
+  reasons: ColeccionCoverReasonCount[];
+  startedAt?: string;
+  finishedAt?: string;
+}
+
+export interface ColeccionCoverReasonCount {
+  reason: string;
+  count: number;
 }
 
 export interface ColeccionResult {
@@ -1598,10 +1666,10 @@ export interface InstallMusicExtension {
 
 export interface MusicControl {
   type: 'musicControl';
-  action: AnonymousSchema_889;
+  action: AnonymousSchema_919;
 }
 
-export type AnonymousSchema_889 = 'previous' | 'togglePlay' | 'next';
+export type AnonymousSchema_919 = 'previous' | 'togglePlay' | 'next';
 
 export interface DisconnectSpotify {
   type: 'disconnectSpotify';
@@ -1947,6 +2015,58 @@ export interface ColeccionDelete {
   type: 'coleccionDelete';
   requestId: string;
   id: string;
+}
+
+export interface ColeccionCoverFind {
+  type: 'coleccionCoverFind';
+  id: string;
+}
+
+export interface ColeccionCoverRun {
+  type: 'coleccionCoverRun';
+  action: ColeccionCoverRunAction;
+}
+
+export type ColeccionCoverRunAction = 'start' | 'stop';
+
+export interface ColeccionCoverPick {
+  type: 'coleccionCoverPick';
+  requestId: string;
+  id: string;
+  n: number;
+  stamp: string;
+}
+
+export interface ColeccionCoverRemove {
+  type: 'coleccionCoverRemove';
+  requestId: string;
+  id: string;
+}
+
+export interface ColeccionIgdbKey {
+  type: 'coleccionIgdbKey';
+  requestId: string;
+  clientId: string;
+  clientSecret: string;
+}
+
+export interface ColeccionIgdbKeyRemove {
+  type: 'coleccionIgdbKeyRemove';
+  requestId: string;
+}
+
+export interface ColeccionSetCondition {
+  type: 'coleccionSetCondition';
+  requestId: string;
+  ids: string[];
+  condition: string;
+}
+
+export interface ColeccionCoverDismiss {
+  type: 'coleccionCoverDismiss';
+  requestId: string;
+  id: string;
+  stamp: string;
 }
 
 export interface AccesosOpen {

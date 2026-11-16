@@ -2,6 +2,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { COLLECTION_FILE_VERSION, GAMES_MAX, TRASH_MAX } from '../core/constants.js';
+import type { CoverArt } from '../core/cover.js';
+import { sameCoverTitle } from '../core/coverMatch.js';
 import {
   gameFileContent,
   isGameId,
@@ -11,7 +13,7 @@ import {
   normalizeGame,
   readCollection,
 } from '../core/game.js';
-import type { Game } from '../core/types.js';
+import { type Condition, CONDITIONS, type Game } from '../core/types.js';
 import { COLLECTION_FILE, DAMAGED_PREFIX, FILE_MAX_BYTES, ID_TRIES } from './constants.js';
 
 export interface CollectionStoreOptions {
@@ -33,6 +35,20 @@ export interface CollectionStore {
   save(input: unknown): Game;
   /** Takes the game out (it stays in the file's trash). False when there was no such game. */
   remove(id: string): boolean;
+  /**
+   * Sets or clears a game's cover data (the server's own field); a cover set also clears its «Ninguna». False when
+   * there is no such game. Throws when the file cannot be written.
+   */
+  setCover(id: string, cover: CoverArt | null): boolean;
+  /** Writes or clears the time the person answered «Ninguna» to its cover choice. False when there is no such game. */
+  setCoverNone(id: string, at: string | null): boolean;
+  /** The file exists and was read whole (not damaged, not too big): what it lacks is really not there. */
+  readWhole(): boolean;
+  /**
+   * Sets the condition of several games in one write ("se busca" gaps and unknown ids are skipped). Returns how
+   * many changed. Throws on a condition that is not one.
+   */
+  setConditions(ids: readonly string[], condition: Condition): number;
 }
 
 interface Entry {
@@ -159,6 +175,18 @@ export function createCollectionStore(opts: CollectionStoreOptions): CollectionS
     if (!previous && entries.size >= GAMES_MAX)
       throw new Error(`la colección ya tiene ${GAMES_MAX} juegos`);
     const game = mergeSave(previous?.game, read.game, today, new Date(now()).toISOString());
+    // The cover is the server's: what the client sends for it is ignored, what was there stays. Except when the
+    // title or the console changed: a cover a source found for the old one no longer fits (an uploaded one is the
+    // person's and stays), and an old «Ninguna» was about another game
+    const sameGame =
+      !!previous &&
+      previous.game.platform === game.platform &&
+      sameCoverTitle(previous.game.title, game.title);
+    const art = previous?.game.coverArt;
+    if (art && (sameGame || art.source === 'subida')) game.coverArt = art;
+    else delete game.coverArt;
+    if (previous?.game.coverNone && sameGame) game.coverNone = previous.game.coverNone;
+    else delete game.coverNone;
     if (!previous) {
       // A free id; a bounded number of tries, so a broken random source fails instead of hanging
       let id = '';
@@ -177,12 +205,70 @@ export function createCollectionStore(opts: CollectionStoreOptions): CollectionS
     const entry = isGameId(id) ? entries.get(id) : undefined;
     if (!entry) return false;
     entries.delete(id);
+    // The image is deleted with the game: its cover data does not go to the trash
+    const { coverArt: _image, coverNone: _none, ...gone } = entry.game;
     trash = [
-      { ...gameFileContent(entry.game, entry.unknown), deletedAt: new Date(now()).toISOString() },
+      { ...gameFileContent(gone, entry.unknown), deletedAt: new Date(now()).toISOString() },
       ...trash,
     ].slice(0, TRASH_MAX);
     write();
     return true;
+  }
+
+  function setCover(id: string, cover: CoverArt | null): boolean {
+    beforeChange();
+    const entry = isGameId(id) ? entries.get(id) : undefined;
+    if (!entry) return false;
+    const game: Game = { ...entry.game };
+    if (cover) {
+      game.coverArt = { ...cover };
+      delete game.coverNone;
+    } else delete game.coverArt;
+    entries.set(id, { game, unknown: entry.unknown });
+    try {
+      write();
+    } catch (err) {
+      // Nothing changed on disk: memory says the same
+      entries.set(id, entry);
+      throw err;
+    }
+    return true;
+  }
+
+  function setCoverNone(id: string, at: string | null): boolean {
+    beforeChange();
+    const entry = isGameId(id) ? entries.get(id) : undefined;
+    if (!entry) return false;
+    if ((entry.game.coverNone ?? null) === at) return true;
+    const game: Game = { ...entry.game };
+    if (at) game.coverNone = at;
+    else delete game.coverNone;
+    entries.set(id, { game, unknown: entry.unknown });
+    try {
+      write();
+    } catch (err) {
+      entries.set(id, entry);
+      throw err;
+    }
+    return true;
+  }
+
+  function setConditions(ids: readonly string[], condition: Condition): number {
+    if (condition !== '' && !(CONDITIONS as readonly string[]).includes(condition))
+      throw new Error('ese estado no existe');
+    beforeChange();
+    let changed = 0;
+    for (const id of new Set(ids)) {
+      const entry = isGameId(id) ? entries.get(id) : undefined;
+      if (!entry || entry.game.wanted || entry.game.condition === condition) continue;
+      entries.set(id, {
+        game: { ...entry.game, condition, updatedAt: new Date(now()).toISOString() },
+        unknown: entry.unknown,
+      });
+      changed++;
+    }
+    if (changed > 0) write();
+    return changed;
   }
 
   return {
@@ -193,5 +279,12 @@ export function createCollectionStore(opts: CollectionStoreOptions): CollectionS
     check,
     save,
     remove,
+    setCover,
+    setCoverNone,
+    setConditions,
+    readWhole: () => {
+      check();
+      return signature !== 'none' && !damaged && !tooBig;
+    },
   };
 }

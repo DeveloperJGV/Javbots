@@ -25,6 +25,14 @@ export function useColeccion(transport: MessageTransport): void {
       }),
     [transport],
   );
+  // A dropped connection never answers what was waiting: free the buttons and say so
+  useEffect(
+    () =>
+      transport.onStateChange((state) => {
+        if (state !== 'connected') coleccionStore.connectionLost();
+      }),
+    [transport],
+  );
   useEffect(() => {
     openFromHash();
     window.addEventListener('hashchange', openFromHash);

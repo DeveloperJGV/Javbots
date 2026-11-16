@@ -14,6 +14,7 @@ import {
   SERIES_MAX,
   TITLE_MAX,
 } from './constants.js';
+import { isIsoTime, normalizeCoverArt } from './cover.js';
 import {
   CONDITIONS,
   type Game,
@@ -46,6 +47,8 @@ const KNOWN_FIELDS = new Set([
   'externalId',
   'barcode',
   'cover',
+  'coverArt',
+  'coverNone',
 ]);
 
 /** A platform id as written in the file: lowercase letters, digits and dashes. */
@@ -170,6 +173,12 @@ export function normalizeGame(raw: unknown, today: string): ReadGame | null {
   if (barcode) game.barcode = barcode;
   const cover = line(r.cover, COVER_MAX);
   if (cover) game.cover = cover;
+  if (r.coverArt !== undefined) {
+    const art = normalizeCoverArt(r.coverArt);
+    if (art) game.coverArt = art;
+    else problems.push('los datos de su portada no se entienden; se ignoran.');
+  }
+  if (isIsoTime(r.coverNone)) game.coverNone = r.coverNone;
   // A wanted gap has no copy yet: what describes a copy does not apply
   if (game.wanted) {
     game.condition = '';
@@ -207,6 +216,8 @@ export function gameFileContent(
   if (game.externalId) out.externalId = game.externalId;
   if (game.barcode) out.barcode = game.barcode;
   if (game.cover) out.cover = game.cover;
+  if (game.coverArt) out.coverArt = { ...game.coverArt };
+  if (game.coverNone) out.coverNone = game.coverNone;
   for (const [k, v] of Object.entries(unknown)) if (!(k in out)) out[k] = v;
   return out;
 }

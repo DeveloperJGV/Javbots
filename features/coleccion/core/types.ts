@@ -1,3 +1,5 @@
+import type { CoverArt } from './cover.js';
+
 /** Where a copy is from. */
 export const REGIONS = ['ntsc-u', 'pal', 'ntsc-j', 'otra'] as const;
 export type Region = (typeof REGIONS)[number] | '';
@@ -49,7 +51,15 @@ export interface Game {
   updatedAt: string;
   externalId?: string;
   barcode?: string;
+  /** An old free-text field, kept as it came and unused. */
   cover?: string;
+  /** The cover image this game has (set by the server only; the image lives next to the collection file). */
+  coverArt?: CoverArt;
+  /**
+   * ISO time the person answered «Ninguna» to its cover choice (server only): «Buscar las que faltan» leaves it alone
+   * until it is searched by hand, its title or console changes, or it gets a cover.
+   */
+  coverNone?: string;
 }
 
 /** A game as read, plus what could not be understood in it. */

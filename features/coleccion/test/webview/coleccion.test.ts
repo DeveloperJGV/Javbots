@@ -74,7 +74,17 @@ const state = (games: Game[] | undefined, extra: Partial<ColeccionState> = {}): 
   onlyWanted: false,
   savedInRow: 0,
   focusName: 0,
-  ...(games ? { status: { games, file: '/tmp/.pixel-agents/coleccion.json', problems: [] } } : {}),
+  ...(games
+    ? {
+        status: {
+          games,
+          file: '/tmp/.pixel-agents/coleccion.json',
+          problems: [],
+          igdbKey: false,
+          covers: [],
+        },
+      }
+    : {}),
   ...extra,
 });
 
