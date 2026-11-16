@@ -32,7 +32,10 @@ export const freelanceOfferStore = new FreelanceOfferStore();
 export const isFreelanceFurniture = (type: string | undefined): boolean =>
   FREELANCE_FURNITURE_TYPES.includes((type ?? '').split(':')[0]);
 
-/** Recommended results nobody marked yet, over every request (the world map lights one pin each). */
+/**
+ * Recommended results nobody marked yet, over every request (the world map lights one pin each). A "dudoso" one is
+ * not counted: it asks the owner to check it first.
+ */
 export function openLeads(status: SearchRoomStatus | undefined): number {
   if (!status) return 0;
   let n = 0;

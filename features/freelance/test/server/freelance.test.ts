@@ -12,7 +12,7 @@ import {
   modelArgs,
 } from '../../../busquedas/server/herdrLauncher.js';
 import { readDetails, readResults } from '../../../busquedas/server/searchRoom.js';
-import { FREELANCE_KINDS } from '../../server/constants.js';
+import { FREELANCE_KINDS, FREELANCE_MIN_RECOMMENDED } from '../../server/constants.js';
 import { FREELANCE_DEFAULT_CRITERIA, FREELANCE_DEFAULT_OFFER } from '../../server/defaults.js';
 import { createFreelanceFeature } from '../../server/freelanceFeature.js';
 import { offerFromWire, offerToWire } from '../../server/offer.js';
@@ -160,6 +160,17 @@ describe('Freelance', () => {
     feature.dispose?.();
   });
 
+  it('la oferta de ejemplo guardada antes de que existiera "desde" sigue siendo ejemplo', () => {
+    const old: Record<string, unknown> = { ...FREELANCE_DEFAULT_OFFER };
+    delete old.desde;
+    fs.writeFileSync(path.join(tmp, 'freelance.json'), JSON.stringify({ oferta: old }));
+    const { feature, client, offer } = setup();
+    feature.handleClientMessage?.({ type: 'webviewReady' }, client);
+    expect(offer().offer.basedIn).toBe('');
+    expect(offer().offerIsExample).toBe(true);
+    feature.dispose?.();
+  });
+
   it('el encargo lleva el pedido, la oferta, los criterios en orden, la entrega y la skill', () => {
     const { feature, client, room } = setup();
     feature.handleClientMessage?.(
@@ -249,6 +260,117 @@ describe('Freelance', () => {
       client,
     );
     expect(room().requests[0].results[0].mark).toBe('contactado');
+    feature.dispose?.();
+  });
+
+  it('"desde": ida y vuelta panel ↔ archivo ↔ encargo; un archivo viejo sin "desde" sigue sirviendo', () => {
+    const { feature, client, offer, room } = setup();
+    feature.handleClientMessage?.(
+      {
+        type: 'saveFreelanceOffer',
+        offer: {
+          ...offerToWire(FREELANCE_DEFAULT_OFFER),
+          title: 'Apps',
+          basedIn: '  País de ejemplo (UTC-6),\nremoto  ',
+        },
+      },
+      client,
+    );
+    expect(config().oferta).toMatchObject({ desde: 'País de ejemplo (UTC-6), remoto' });
+    expect(offer().offer.basedIn).toBe('País de ejemplo (UTC-6), remoto');
+    feature.handleClientMessage?.(
+      { type: 'createSearchRequest', room: 'freelance', text: 'Apps', criteriaId: 'proyectos' },
+      client,
+    );
+    const id = room().requests[0].id;
+    const brief = fs.readFileSync(path.join(tmp, 'freelance', 'pedidos', `${id}.md`), 'utf8');
+    expect(brief).toContain('**Desde dónde trabaja:** País de ejemplo (UTC-6), remoto');
+    expect(brief).toMatch(/descarta los anuncios que no acepten ese país/);
+    feature.dispose?.();
+
+    // an old file, written before "desde" existed
+    fs.writeFileSync(
+      path.join(tmp, 'freelance.json'),
+      JSON.stringify({ oferta: { titulo: 'Viejo', servicios: ['Web'] } }),
+    );
+    const old = setup();
+    old.feature.handleClientMessage?.({ type: 'webviewReady' }, old.client);
+    expect(old.offer().offer).toMatchObject({ title: 'Viejo', basedIn: '' });
+    expect(old.offer().offerIsExample).toBe(false);
+    old.feature.handleClientMessage?.(
+      { type: 'createSearchRequest', room: 'freelance', text: 'Web', criteriaId: 'proyectos' },
+      old.client,
+    );
+    const oldId = old.room().requests[0].id;
+    const oldBrief = fs.readFileSync(path.join(tmp, 'freelance', 'pedidos', `${oldId}.md`), 'utf8');
+    expect(oldBrief).toContain('**Desde dónde trabaja:** (no lo dijo)');
+    expect(offerFromWire({ title: 'Sin desde', services: [] })?.desde).toBe('');
+    old.feature.dispose?.();
+  });
+
+  it('la oferta de fábrica trae un "desde" de ejemplo y hay cinco juegos de criterios', () => {
+    expect(FREELANCE_DEFAULT_OFFER.desde).toMatch(/^Ejemplo: /);
+    expect(FREELANCE_DEFAULT_CRITERIA.map((c) => c.id)).toEqual([
+      'proyectos',
+      'largo-plazo',
+      'directos',
+      'automatizacion',
+      'consultoria',
+    ]);
+    for (const set of FREELANCE_DEFAULT_CRITERIA) {
+      expect(set.label.length).toBeGreaterThan(0);
+      expect(set.rules.length).toBeGreaterThanOrEqual(5);
+    }
+  });
+
+  it('el encargo pide varias consultas y explica los tres veredictos con el mínimo de 60', () => {
+    const { feature, client, room } = setup();
+    feature.handleClientMessage?.(
+      {
+        type: 'createSearchRequest',
+        room: 'freelance',
+        text: 'Apps',
+        criteriaId: 'automatizacion',
+      },
+      client,
+    );
+    const id = room().requests[0].id;
+    const brief = fs.readFileSync(path.join(tmp, 'freelance', 'pedidos', `${id}.md`), 'utf8');
+    expect(brief).toContain('## Cómo buscar');
+    expect(brief).toMatch(/\*\*varias\*\* consultas/);
+    expect(brief).toMatch(/en inglés y en español/);
+    expect(brief).toContain('"Dónde buscar"');
+    expect(brief).toContain(`recomendado\` es solo de ${FREELANCE_MIN_RECOMMENDED}`);
+    expect(brief).toContain('"veredicto": "recomendado | dudoso | descartado"');
+    expect(brief).toContain(`1. ${FREELANCE_DEFAULT_CRITERIA[3].rules[0]}`);
+    feature.dispose?.();
+  });
+
+  it('un "recomendado" de menos de 60 llega al panel como dudoso', () => {
+    const { feature, client, room } = setup();
+    feature.handleClientMessage?.(
+      { type: 'createSearchRequest', room: 'freelance', text: 'Apps', criteriaId: 'proyectos' },
+      client,
+    );
+    const id = room().requests[0].id;
+    fs.writeFileSync(
+      path.join(tmp, 'freelance', 'resultados', `${id}.json`),
+      JSON.stringify({
+        pedido: id,
+        nota: 'Upwork pide sesión.\nTe dejo las ligas armadas.',
+        resultados: [
+          { nombre: 'Bajo', puntuacion: 59, veredicto: 'recomendado' },
+          { nombre: 'Bueno', puntuacion: 60, veredicto: 'recomendado' },
+        ],
+      }),
+    );
+    feature.room.poll();
+    const req = room().requests[0];
+    expect(req.results.map((r) => [r.name, r.verdict])).toEqual([
+      ['Bueno', 'recomendado'],
+      ['Bajo', 'dudoso'],
+    ]);
+    expect(req.resultsNote).toBe('Upwork pide sesión.\nTe dejo las ligas armadas.');
     feature.dispose?.();
   });
 

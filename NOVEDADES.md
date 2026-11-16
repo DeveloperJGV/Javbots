@@ -12,6 +12,10 @@ Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
 - **Buscar abre a Claude aunque herdr no lo deje arrancar.** Si `herdr agent start` se niega (pasa en Windows con Git
   Bash), la oficina escribe Claude en la pestaña nueva con el encargo y el modelo; si nada funciona, cierra esa
   pestaña en vez de dejarla vacía. Vale para Freelance y para el Directorio.
+- **Freelance busca más que programación.** La oferta dice desde dónde trabajas, el agente arma varias búsquedas
+  (también automatización con IA y agentes, consultoría y capacitación) y entrega ligas listas de Upwork, Workana y
+  Freelancer.com para que las abras tú; lo dudoso sale en amarillo, nada con menos de 60 sale como recomendado y la
+  nota de la búsqueda se ve arriba de los resultados.
 
 ## 14 de noviembre de 2026
 

@@ -2624,9 +2624,11 @@ components:
           type: string
 
     SearchResultVerdict:
-      description: The agent's verdict by the criteria.
+      description: >-
+        The agent's verdict by the criteria. dudoso = it may fit but the owner
+        should check it (a room may also turn a low-scored recomendado into dudoso).
       type: string
-      enum: [recomendado, descartado]
+      enum: [recomendado, dudoso, descartado]
 
     SearchResultMark:
       description: What the owner did with a result.
@@ -2803,6 +2805,9 @@ components:
           description: Free text (e.g. "desde 25 USD/h" or "por proyecto").
         availability:
           type: string
+        basedIn:
+          type: string
+          description: Where the owner works from (country, time zone, remote), free text; optional, old clients may omit it.
         languages:
           type: array
           items:

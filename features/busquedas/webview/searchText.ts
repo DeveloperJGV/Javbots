@@ -8,6 +8,9 @@ export const STATE_LABELS: Record<SearchRequestState, string> = {
   error: 'No se pudo lanzar',
 };
 
+/** What a "dudoso" result says next to its name (amber, not the red of a discarded one). */
+export const DOUBTFUL_LABEL = 'dudoso, revísalo tú';
+
 /** "★ 4.6 (312 reseñas)", or '' without data. */
 export function ratingText(r: Pick<SearchResult, 'rating' | 'reviews'>): string {
   const parts: string[] = [];
@@ -16,10 +19,16 @@ export function ratingText(r: Pick<SearchResult, 'rating' | 'reviews'>): string 
   return parts.join(' ');
 }
 
-/** Recommended first, then discarded; what the owner discarded goes last of all. */
+/** The agent's verdict, best first (same order as the server's readResults). */
+const VERDICT_ORDER: Record<SearchResult['verdict'], number> = {
+  recomendado: 0,
+  dudoso: 1,
+  descartado: 2,
+};
+
+/** Recommended first, then doubtful, then discarded; what the owner discarded goes last of all. */
 export function resultsInOrder(results: readonly SearchResult[]): SearchResult[] {
-  const rank = (r: SearchResult) =>
-    r.mark === 'descartado' ? 2 : r.verdict === 'descartado' ? 1 : 0;
+  const rank = (r: SearchResult) => (r.mark === 'descartado' ? 3 : VERDICT_ORDER[r.verdict]);
   return [...results].sort((a, b) => rank(a) - rank(b) || b.score - a.score);
 }
 

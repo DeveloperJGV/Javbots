@@ -1019,7 +1019,7 @@ export interface SearchResult {
   details?: SearchResultDetail[];
 }
 
-export type SearchResultVerdict = 'recomendado' | 'descartado';
+export type SearchResultVerdict = 'recomendado' | 'dudoso' | 'descartado';
 
 export type SearchResultMark = 'contactado' | 'descartado' | 'agendado';
 
@@ -1052,6 +1052,7 @@ export interface FreelanceOfferSpec {
   technologies: string[];
   rate: string;
   availability: string;
+  basedIn?: string;
   languages: string[];
   notWanted: string[];
 }
@@ -1554,10 +1555,10 @@ export interface InstallMusicExtension {
 
 export interface MusicControl {
   type: 'musicControl';
-  action: AnonymousSchema_862;
+  action: AnonymousSchema_863;
 }
 
-export type AnonymousSchema_862 = 'previous' | 'togglePlay' | 'next';
+export type AnonymousSchema_863 = 'previous' | 'togglePlay' | 'next';
 
 export interface DisconnectSpotify {
   type: 'disconnectSpotify';

@@ -45,7 +45,7 @@ un panel que use `SearchRequestCard` con sus propios botones en `actions`.
 ```json
 {
   "pedido": "<id>",
-  "nota": "opcional",
+  "nota": "opcional, sobre toda la búsqueda (puede traer saltos de renglón)",
   "resultados": [
     {
       "nombre": "…",
@@ -58,7 +58,7 @@ un panel que use `SearchRequestCard` con sus propios botones en `actions`.
       "fuente": "…",
       "porque": "…",
       "puntuacion": 90,
-      "veredicto": "recomendado",
+      "veredicto": "recomendado | dudoso | descartado",
       "nota": "opcional, de este resultado",
       "detalles": [{ "etiqueta": "Pago", "valor": "800 USD, precio fijo" }]
     }
@@ -70,10 +70,18 @@ Lo que no cuadra se tira: ligas que no son `http(s)`, tipos desconocidos (pasan 
 números fuera de rango, textos largos, más de 6 `detalles` o detalles sin etiqueta o sin valor. El id de cada resultado sale de su nombre, así que las marcas sobreviven a
 que el agente reescriba el archivo.
 
+El `veredicto` se lee sin importar mayúsculas: `descartado`, `dudoso` o, cualquier otra cosa, `recomendado`. El orden
+es recomendados → dudosos → descartados y, dentro de cada grupo, por puntuación y reseñas. La `nota` general se
+guarda con sus saltos de renglón (a lo más 12 renglones y 1500 caracteres) y `SearchRequestCard` la pinta en un
+recuadro arriba de los resultados ("Nota del agente").
+
 ## Extras que un cuarto puede usar
 
 - `detalles` (opcional, a lo más 6 `{ etiqueta, valor }`) y `nota` por resultado: `SearchRequestCard` los muestra si
   vienen. El Directorio no los usa y se ve igual.
+- `minRecommended` en `createSearchRoom`: un `recomendado` con menos puntuación pasa a `dudoso` (Freelance usa 60).
+  Sin la opción no hay mínimo (el Directorio).
+- `dudoso`: `SearchRequestCard` lo pinta en ámbar ("dudoso, revísalo tú"), no en rojo como un descartado.
 - `markLabels` en `SearchRequestCard`: cambia el rótulo de la marca "Contacté" (Freelance dice "Postulé"); la marca
   guardada sigue siendo `contactado`.
 - `createHerdrLauncher(exec, now, { model })`: el modelo de Claude Code con que arranca el agente

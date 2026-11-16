@@ -9,6 +9,7 @@ import type {
   SearchResult,
   SearchResultDetail,
   SearchResultMark,
+  SearchResultVerdict as SearchVerdict,
   SearchRoomStatus,
 } from '../../../core/src/messages.js';
 import {
@@ -20,6 +21,8 @@ import {
   MAX_REQUESTS,
   MAX_RESULTS,
   MAX_RESULTS_FILE_BYTES,
+  MAX_RESULTS_NOTE_CHARS,
+  MAX_RESULTS_NOTE_LINES,
   MAX_TEXT_CHARS,
   MAX_WHY_CHARS,
   REQUESTS_DIR,
@@ -62,6 +65,8 @@ export interface SearchRoomOptions {
   criteria: CriteriaStore;
   /** The room's result kinds, best first (an unknown kind becomes the last one). */
   kinds: readonly string[];
+  /** A "recomendado" scored below this becomes "dudoso" (the agent must not oversell). Absent = no minimum. */
+  minRecommended?: number;
   /** The request's brief (markdown) the agent reads: what to look for, the criteria, the skill, where to deliver. */
   brief(req: StoredRequest, criteria: SearchCriteriaSet | undefined, paths: RequestPaths): string;
   launcher?: AgentLauncher;
@@ -73,10 +78,13 @@ export interface SearchRoomOptions {
 type Raw = Record<string, unknown>;
 const obj = (v: unknown): Raw =>
   typeof v === 'object' && v !== null && !Array.isArray(v) ? (v as Raw) : {};
+/** Zero-width and bidi-override characters (plus U+2028/9): they can hide or reorder what the panel shows. */
+const INVISIBLE_RE = /[\u200b-\u200f\u2028-\u202e\u2066-\u2069\ufeff]+/g;
 const text = (v: unknown, max = MAX_FIELD_CHARS): string | undefined => {
   if (typeof v !== 'string' && typeof v !== 'number') return undefined;
   const s = String(v)
     .replace(/[\u0000-\u001f\u007f]+/g, ' ')
+    .replace(INVISIBLE_RE, ' ')
     .trim();
   return s ? s.slice(0, max) : undefined;
 };
@@ -102,6 +110,7 @@ export function safeLink(v: unknown): string | undefined {
   if (!s) return undefined;
   try {
     const u = new URL(s);
+    if (u.username || u.password) return undefined; // user:pass@ can disguise where a link goes
     return u.protocol === 'https:' || u.protocol === 'http:' ? u.toString() : undefined;
   } catch {
     return undefined;
@@ -123,12 +132,53 @@ export function readDetails(raw: unknown): SearchResultDetail[] {
 }
 
 /**
+ * The agent's verdict word (any case) → the protocol's; anything unknown counts as recommended, and a recommended
+ * one below `minRecommended` (when the room sets it) becomes doubtful.
+ */
+function readVerdict(v: unknown, score: number, minRecommended: number | undefined): SearchVerdict {
+  const word = text(v, 20)?.toLowerCase();
+  if (word === 'descartado') return 'descartado';
+  if (word === 'dudoso') return 'dudoso';
+  return minRecommended !== undefined && score < minRecommended ? 'dudoso' : 'recomendado';
+}
+
+/** Recommended first, then doubtful, then discarded. */
+const VERDICT_RANK: Record<SearchVerdict, number> = {
+  recomendado: 0,
+  dudoso: 1,
+  descartado: 2,
+};
+
+/** The general note: control characters out, line breaks kept (at most a few), cut to size. */
+function multiline(v: unknown): string | undefined {
+  if (typeof v !== 'string') return undefined;
+  const lines = v
+    .replace(/\r\n?|[\u2028\u2029]/g, '\n')
+    .replace(/[\u0000-\u0009\u000b-\u001f\u007f]+/g, ' ')
+    .replace(INVISIBLE_RE, ' ')
+    .split('\n')
+    .map((l) => l.trim());
+  const s = lines
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+    .split('\n')
+    .slice(0, MAX_RESULTS_NOTE_LINES)
+    .join('\n')
+    .slice(0, MAX_RESULTS_NOTE_CHARS)
+    .trim();
+  return s || undefined;
+}
+
+/**
  * The agent's results file (resultados/<id>.json, Spanish keys as the skill says) → checked results, best first:
- * recommended before discarded, then by score, then by number of reviews. Anything odd is dropped, never trusted.
+ * recommended, then doubtful, then discarded; inside each, by score, then by number of reviews. With
+ * `minRecommended`, a "recomendado" scored below it becomes "dudoso". Anything odd is dropped, never trusted.
  */
 export function readResults(
   raw: unknown,
   kinds: readonly string[],
+  minRecommended?: number,
 ): { results: SearchResult[]; note?: string } {
   const r = obj(raw);
   const list = Array.isArray(r.resultados) ? r.resultados.slice(0, MAX_RESULTS) : [];
@@ -143,15 +193,14 @@ export function readResults(
     let id = slug(name);
     for (let n = 2; ids.has(id); n++) id = `${slug(name)}-${n}`;
     ids.add(id);
-    const verdict =
-      text(e.veredicto, 20)?.toLowerCase() === 'descartado' ? 'descartado' : 'recomendado';
+    const score = Math.round(num(e.puntuacion ?? e['puntuación'], 0, 100) ?? 0);
     const res: SearchResult = {
       id,
       name,
       kind,
       why: text(e.porque ?? e['por qué'], MAX_WHY_CHARS) ?? '',
-      score: Math.round(num(e.puntuacion ?? e['puntuación'], 0, 100) ?? 0),
-      verdict,
+      score,
+      verdict: readVerdict(e.veredicto, score, minRecommended),
     };
     const rating = num(e.calificacion ?? e['calificación'], 0, 5);
     const reviews = num(e.resenas ?? e['reseñas'], 0, 10_000_000);
@@ -173,11 +222,11 @@ export function readResults(
   }
   results.sort(
     (a, b) =>
-      Number(a.verdict === 'descartado') - Number(b.verdict === 'descartado') ||
+      VERDICT_RANK[a.verdict] - VERDICT_RANK[b.verdict] ||
       b.score - a.score ||
       (b.reviews ?? 0) - (a.reviews ?? 0),
   );
-  const note = text(r.nota, MAX_WHY_CHARS);
+  const note = multiline(r.nota);
   return note ? { results, note } : { results };
 }
 
@@ -262,7 +311,10 @@ export function createSearchRoom(opts: SearchRoomOptions) {
       try {
         const raw = obj(JSON.parse(fs.readFileSync(file, 'utf8')));
         if (raw.pedido !== undefined && raw.pedido !== req.id) continue;
-        cache.set(req.id, { mtimeMs: stat.mtimeMs, ...readResults(raw, opts.kinds) });
+        cache.set(req.id, {
+          mtimeMs: stat.mtimeMs,
+          ...readResults(raw, opts.kinds, opts.minRecommended),
+        });
         if (req.state !== 'listo') {
           req.state = 'listo';
           delete req.note;

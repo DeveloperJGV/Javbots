@@ -14,6 +14,9 @@ export const FREELANCE_SKILL_FILE = 'SKILL.md';
 /** Kinds of result, best first. */
 export const FREELANCE_KINDS = ['directo', 'plataforma', 'otro'] as const;
 
+/** A result scored below this cannot be "recomendado": the search room shows it as "dudoso" (features/busquedas). */
+export const FREELANCE_MIN_RECOMMENDED = 60;
+
 /** Claude Code model the search agent starts with when freelance.json has no "modelo" ("" = machine default). */
 export const FREELANCE_DEFAULT_MODEL = 'sonnet';
 

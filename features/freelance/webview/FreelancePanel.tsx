@@ -44,6 +44,7 @@ function OfferEditor({
   const [title, setTitle] = useState(offer.title);
   const [rate, setRate] = useState(offer.rate);
   const [availability, setAvailability] = useState(offer.availability);
+  const [basedIn, setBasedIn] = useState(offer.basedIn ?? '');
   const [services, setServices] = useState(textOf(offer.services));
   const [technologies, setTechnologies] = useState(textOf(offer.technologies));
   const [languages, setLanguages] = useState(textOf(offer.languages));
@@ -54,6 +55,7 @@ function OfferEditor({
     technologies: linesOf(technologies),
     rate: rate.trim(),
     availability: availability.trim(),
+    basedIn: basedIn.trim(),
     languages: linesOf(languages),
     notWanted: linesOf(notWanted),
   };
@@ -96,6 +98,12 @@ function OfferEditor({
           {field('Disponibilidad', availability, setAvailability, 'Ej. 20 h por semana, remoto')}
         </span>
       </span>
+      {field(
+        'Desde dónde trabajo',
+        basedIn,
+        setBasedIn,
+        'Ej. México (UTC-6), remoto: el agente descarta lo que no acepte tu país o tu zona',
+      )}
       {area('Idiomas', languages, setLanguages, 'Ej. Español')}
       {area('Lo que no aceptas', notWanted, setNotWanted, 'Ej. Trabajo gratis a prueba')}
       <span className="flex gap-8">
@@ -236,6 +244,7 @@ export function FreelancePanel({ transport }: { transport: MessageTransport }) {
                   <OfferLine label="Tecnologías" value={offerStatus.offer.technologies} />
                   <OfferLine label="Tarifa" value={offerStatus.offer.rate} />
                   <OfferLine label="Disponibilidad" value={offerStatus.offer.availability} />
+                  <OfferLine label="Desde dónde trabajo" value={offerStatus.offer.basedIn ?? ''} />
                   <OfferLine label="Idiomas" value={offerStatus.offer.languages} />
                   <OfferLine label="No acepto" value={offerStatus.offer.notWanted} />
                   <span className="text-text-muted">

@@ -12,6 +12,8 @@ export interface FreelanceOffer {
   tecnologias: string[];
   tarifa: string;
   disponibilidad: string;
+  /** Where the person works from (country, time zone, remote): ads that do not take it are discarded. */
+  desde: string;
   idiomas: string[];
   noQuiero: string[];
 }
@@ -53,6 +55,30 @@ export const FREELANCE_DEFAULT_CRITERIA: SearchCriteriaSet[] = [
       'Descartar a quien pida trabajo gratis, pagos o datos personales por adelantado, o solo se deje contactar por mensajería sin nombre ni empresa.',
     ],
   },
+  {
+    id: 'automatizacion',
+    label: 'Automatización con IA y agentes',
+    rules: [
+      'Primero, proyectos de automatizar procesos con IA: agentes, chatbots, integraciones entre servicios, servidores MCP o configurar herramientas como Claude Code para un equipo.',
+      'Alcance claro y entregable definido (qué se automatiza, con qué herramientas y cómo se entrega); sin alcance, bajar la puntuación.',
+      'Pago a la vista y razonable contra la tarifa; sin pago visible, bajar la puntuación.',
+      'Publicado en los últimos 14 días y todavía abierto.',
+      'Cliente real y comprobable: pago verificado, trabajos anteriores, sitio propio o empresa reconocible.',
+      'Descartar los de pago irreal para la tarea (como "hazme un clon de ChatGPT por 50 USD") y las señales de estafa: el freelancer paga, prueba gratis larga, salir de la plataforma, cheques, cripto.',
+    ],
+  },
+  {
+    id: 'consultoria',
+    label: 'Consultoría y capacitación',
+    rules: [
+      'Primero, consultoría, talleres, cursos o capacitación en IA o herramientas de desarrollo para equipos o empresas.',
+      'Que la oferta esté en un idioma que se habla (el de la oferta) y diga el tema, el público y el formato (en línea o presencial).',
+      'Horas o fechas claras y pago claro (por hora, por sesión o por curso); sin pago visible, bajar la puntuación.',
+      'Cliente comprobable: empresa, escuela o comunidad con sitio propio, personas con nombre o pagos verificados.',
+      'Publicado en los últimos 30 días y todavía abierto.',
+      'Descartar los que piden contenido gratis, temarios completos o una "clase muestra" sin pago antes de contratar.',
+    ],
+  },
 ];
 
 /** Example offer, clearly an example, until the owner writes his own. */
@@ -66,6 +92,7 @@ export const FREELANCE_DEFAULT_OFFER: FreelanceOffer = {
   tecnologias: ['Kotlin', 'Jetpack Compose', 'TypeScript', 'React', 'Node.js', 'Python'],
   tarifa: 'Ejemplo: desde 25 USD/h, o por proyecto',
   disponibilidad: 'Ejemplo: 20 h por semana, remoto',
+  desde: 'Ejemplo: Latinoamérica, remoto',
   idiomas: ['Español', 'Inglés'],
   noQuiero: [
     'Trabajo gratis o "a prueba" sin pago',

@@ -13,6 +13,9 @@ export const MAX_RESULTS = 25;
 export const MAX_TEXT_CHARS = 500;
 export const MAX_FIELD_CHARS = 300;
 export const MAX_WHY_CHARS = 800;
+/** The agent's general note on a search (`nota` at the top of the results file): longer, line breaks kept. */
+export const MAX_RESULTS_NOTE_CHARS = 1_500;
+export const MAX_RESULTS_NOTE_LINES = 12;
 /** A result's own short facts (`detalles`: pay, published, client…), at most this many. */
 export const MAX_DETAILS = 6;
 export const MAX_DETAIL_LABEL_CHARS = 40;

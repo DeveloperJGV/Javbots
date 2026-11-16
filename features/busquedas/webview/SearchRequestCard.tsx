@@ -4,6 +4,7 @@ import type { SearchLauncher, SearchRequest, SearchResult } from '../../../core/
 import { Button } from '../../../webview-ui/src/components/ui/Button.js';
 import {
   DEFAULT_MARK_LABELS,
+  DOUBTFUL_LABEL,
   type MarkLabels,
   ratingText,
   resultsInOrder,
@@ -25,14 +26,17 @@ function ResultLine({
   actions?: ReactNode;
 }) {
   const discarded = result.verdict === 'descartado' || result.mark === 'descartado';
+  const doubtful = result.verdict === 'dudoso' && !discarded;
   const rating = ratingText(result);
   return (
     <li
-      className={`flex flex-col gap-2 border-2 border-border p-6 ${discarded ? 'opacity-60' : ''}`}
+      className={`flex flex-col gap-2 border-2 p-6 ${doubtful ? 'border-status-permission' : 'border-border'} ${discarded ? 'opacity-60' : ''}`}
     >
       <span className="flex flex-wrap items-baseline justify-between gap-8">
         <span className="text-base">
-          <span className="text-accent-bright">{result.score}</span>{' '}
+          <span className={doubtful ? 'text-status-permission' : 'text-accent-bright'}>
+            {result.score}
+          </span>{' '}
           {result.link ? (
             <a className="hover:underline" href={result.link} target="_blank" rel="noreferrer">
               {result.name}
@@ -44,6 +48,7 @@ function ResultLine({
           {result.verdict === 'descartado' && (
             <span className="text-status-error"> · descartado por el agente</span>
           )}
+          {doubtful && <span className="text-status-permission"> · {DOUBTFUL_LABEL}</span>}
           {result.mark === 'contactado' && (
             <span className="text-status-success"> · {markLabels.contacted}</span>
           )}
@@ -190,7 +195,10 @@ export function SearchRequestCard({
         </span>
       )}
       {request.resultsNote && (
-        <span className="text-text-muted">Nota del agente: {request.resultsNote}</span>
+        <div className="flex flex-col gap-2 border-2 border-accent-bright bg-bg-dark p-6">
+          <span className="text-accent-bright">Nota del agente</span>
+          <span className="whitespace-pre-wrap break-words text-text">{request.resultsNote}</span>
+        </div>
       )}
       {results.length > 0 && (
         <ul className="flex flex-col gap-4">

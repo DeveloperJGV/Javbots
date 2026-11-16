@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import type { SearchResult, SearchRoomStatus } from '../../../../core/src/messages.js';
 import type { FurnitureInstance, SpriteData } from '../../../../webview-ui/src/office/types.js';
-import { DEFAULT_MARK_LABELS } from '../../../busquedas/webview/searchText.js';
+import {
+  DEFAULT_MARK_LABELS,
+  DOUBTFUL_LABEL,
+  resultsInOrder,
+} from '../../../busquedas/webview/searchText.js';
 import {
   FREELANCE_MARK_LABELS,
   MAP_PIN_COLOR,
@@ -84,9 +88,28 @@ describe('Freelance en la página', () => {
           r({ name: 'c', verdict: 'descartado' }),
           r({ name: 'd', mark: 'descartado' }),
           r({ name: 'e' }),
+          r({ name: 'f', verdict: 'dudoso' }),
         ]),
       ),
     ).toBe(2);
+  });
+
+  it('ordena recomendado → dudoso → descartado, y lo que tú descartaste al final', () => {
+    const out = resultsInOrder([
+      r({ name: 'tuyo', mark: 'descartado', score: 99 }),
+      r({ name: 'descartado', verdict: 'descartado', score: 95 }),
+      r({ name: 'dudoso-alto', verdict: 'dudoso', score: 80 }),
+      r({ name: 'recomendado', score: 61 }),
+      r({ name: 'dudoso-bajo', verdict: 'dudoso', score: 30 }),
+    ]);
+    expect(out.map((x) => x.name)).toEqual([
+      'recomendado',
+      'dudoso-alto',
+      'dudoso-bajo',
+      'descartado',
+      'tuyo',
+    ]);
+    expect(DOUBTFUL_LABEL).toMatch(/dudoso/);
   });
 
   it('el mapa prende un punto por pendiente y apaga los dibujados de más', () => {

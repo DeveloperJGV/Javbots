@@ -1,6 +1,6 @@
 import type { SearchCriteriaSet } from '../../../core/src/messages.js';
 import type { RequestPaths, StoredRequest } from '../../busquedas/server/searchRoom.js';
-import { FREELANCE_KINDS } from './constants.js';
+import { FREELANCE_KINDS, FREELANCE_MIN_RECOMMENDED } from './constants.js';
 import type { FreelanceOffer } from './defaults.js';
 
 /** The result file's shape, as an example for the agent. */
@@ -15,7 +15,7 @@ const EXAMPLE = {
       fuente: 'Dónde lo encontraste',
       porque: 'Por qué se recomienda o se descarta, según la oferta y los criterios.',
       puntuacion: 85,
-      veredicto: 'recomendado | descartado',
+      veredicto: 'recomendado | dudoso | descartado',
       nota: 'Opcional: algo de este anuncio (por ejemplo, que no se pudo verificar sin iniciar sesión).',
       detalles: [
         { etiqueta: 'Pago', valor: '800 USD, precio fijo' },
@@ -46,6 +46,11 @@ export function offerMarkdown(offer: FreelanceOffer, isExample: boolean): string
     `- **Tecnologías:** ${offer.tecnologias.join(', ') || '(no lo dijo)'}`,
     `- **Tarifa:** ${offer.tarifa || '(no lo dijo)'}`,
     `- **Disponibilidad:** ${offer.disponibilidad || '(no lo dijo)'}`,
+    `- **Desde dónde trabaja:** ${offer.desde || '(no lo dijo)'}${
+      offer.desde
+        ? ' (descarta los anuncios que no acepten ese país o esa zona horaria, o que pidan vivir en otro lado)'
+        : ''
+    }`,
     `- **Idiomas:** ${offer.idiomas.join(', ') || '(no lo dijo)'}`,
     '- **No acepta (descarta sin discusión):**',
     bullets(offer.noQuiero),
@@ -87,13 +92,23 @@ export function freelanceBrief(
     '',
     rules,
     '',
+    '## Cómo buscar',
+    '',
+    'Con la oferta y el pedido arma **varias** consultas, no una sola tecnología: la tecnología fuerte, el servicio, y',
+    'también automatización con IA o agentes, consultoría o capacitación y web si la oferta los incluye. Haz cada una',
+    'en inglés y en español. Sigue la sección "Dónde buscar" de la skill (abajo), que incluye las ligas armadas de',
+    'Upwork y Workana para que el dueño las abra.',
+    '',
     '## Entrega',
     '',
     `Escribe (o reescribe completo) este archivo, en JSON y UTF-8: \`${paths.resultsFile}\``,
     '',
     `- \`tipo\`: uno de ${FREELANCE_KINDS.map((k) => `\`${k}\``).join(', ')}.`,
     '- `puntuacion`: de 0 a 100, según la oferta y los criterios (el primero pesa más).',
-    '- `veredicto`: `recomendado` o `descartado`. Incluye también los descartados que ayuden, con su porqué.',
+    `- \`veredicto\`: \`recomendado\`, \`dudoso\` o \`descartado\`. \`recomendado\` es solo de ${FREELANCE_MIN_RECOMMENDED}`,
+    '  para arriba (si pones menos, el panel lo muestra como dudoso); `dudoso` es para lo que puede servir pero el',
+    '  dueño debe revisar (pago no visible, cliente sin verificar, zona no clara). Incluye también los descartados que',
+    '  ayuden, con su porqué.',
     '- `detalles`: opcional, a lo más 6 renglones cortos `{ "etiqueta", "valor" }` (Pago, Publicado, Cliente,',
     '  Modalidad…), solo con lo que viste en la página.',
     '- Sin datos inventados: si algo no lo encontraste, deja el campo fuera.',

@@ -3,8 +3,8 @@
 El cuarto de **Freelance** del piso Personal (estilo cuartel hacker: pantallas verdes, mapa de clientes, servidor) ya
 busca trabajo. Un clic en el **escritorio con tres pantallas** abre el panel **Freelance**, verde sobre negro:
 
-1. **Mi oferta.** Lo que ofreces: título, servicios, tecnologías, tarifa, disponibilidad, idiomas y lo que no aceptas.
-   Se edita ahí mismo (**Editar**; las listas, una cosa por línea). De fábrica trae una **oferta de ejemplo** y el
+1. **Mi oferta.** Lo que ofreces: título, servicios, tecnologías, tarifa, disponibilidad, **desde dónde trabajas**
+   (país, zona horaria, remoto), idiomas y lo que no aceptas. Se edita ahí mismo (**Editar**; las listas, una cosa por línea). De fábrica trae una **oferta de ejemplo** y el
    panel lo dice en amarillo hasta que la cambies; puedes buscar de todos modos.
 2. **Pedido.** Escribes qué buscas ("proyectos de apps Android, remoto, de 500 USD para arriba, publicados esta
    semana") y escoges un juego de criterios. Guardarlo no lanza nada todavía.
@@ -13,8 +13,11 @@ busca trabajo. Un clic en el **escritorio con tres pantallas** abre el panel **F
    pregunta algo al arrancar, contesta en esa pestaña y presiona **Mandar encargo**.
 4. **Copiar encargo.** Sin herdr, copia una sola línea para pegarla en cualquier sesión de Claude Code.
 5. **Resultados.** El agente escribe un archivo; el panel lo lee solo en unos segundos y los muestra ordenados
-   (recomendados por puntuación, luego descartados), cada uno con tipo (**cliente directo**, **plataforma** u
-   **otro**), sus **detalles** (pago, publicado, cliente, modalidad…), liga, fuente, por qué y la nota del agente.
+   (recomendados, luego **dudosos** en amarillo, luego descartados; dentro, por puntuación), cada uno con tipo
+   (**cliente directo**, **plataforma** u **otro**), sus **detalles** (pago, publicado, cliente, modalidad…), liga,
+   fuente, por qué y su nota. Arriba de los resultados va, en un recuadro, la **nota del agente** sobre la búsqueda.
+   **Recomendado es solo de 60 para arriba:** si el agente marca como recomendado algo con menos, el panel lo
+   muestra como dudoso ("dudoso, revísalo tú").
 6. **Postulé / Descartado** en cada resultado. Tú te postulas: el agente nunca lo hace.
 
 **Detalle con vida:** el **mapa de clientes** de la pared prende un punto amarillo por cada trabajo recomendado que
@@ -40,6 +43,7 @@ demás) y también se puede editar a mano:
     "tecnologias": ["Kotlin", "Jetpack Compose"],
     "tarifa": "desde 25 USD/h o por proyecto",
     "disponibilidad": "20 h por semana, remoto",
+    "desde": "Latinoamérica (UTC-6), remoto",
     "idiomas": ["Español", "Inglés"],
     "noQuiero": ["Trabajo gratis a prueba"]
   },
@@ -51,8 +55,13 @@ demás) y también se puede editar a mano:
 - `modelo`: el modelo de Claude Code con el que arranca el agente (`sonnet`, `opus`…). Sin la clave, `sonnet`; con
   `""`, el que tenga la máquina de fábrica. Se le pasa a herdr como `herdr agent start … -- --model <modelo>`; un
   nombre raro (con espacios o símbolos) se ignora.
-- `criterios`: tres juegos de fábrica (**Proyectos por encargo**, **Trabajo por horas o de largo plazo**, **Clientes
-  directos**); se editan en el panel, un criterio por línea, el de arriba pesa más.
+- `oferta.desde`: desde dónde trabajas (texto libre). El encargo le pide al agente descartar los anuncios que no
+  acepten ese país o esa zona. Un archivo sin la clave sigue sirviendo (el panel muestra "(vacío)" y el encargo
+  "(no lo dijo)").
+- `criterios`: cinco juegos de fábrica (**Proyectos por encargo**, **Trabajo por horas o de largo plazo**, **Clientes
+  directos**, **Automatización con IA y agentes**, **Consultoría y capacitación**); se editan en el panel, un
+  criterio por línea, el de arriba pesa más. Los de fábrica solo salen mientras el archivo no tenga `criterios`: si
+  ya guardaste los tuyos, los dos nuevos no aparecen solos (borra la clave `criterios` o cópialos de `server/defaults.ts`).
 
 ## Archivos
 
@@ -61,7 +70,7 @@ Todo en `~/.pixel-agents/freelance/` (la carpeta donde trabaja el agente):
 | Archivo                | Qué es                                                                         |
 | ---------------------- | ------------------------------------------------------------------------------ |
 | `estado.json`          | Los pedidos y lo que marcaste en cada resultado                                |
-| `pedidos/<id>.md`      | El encargo: pedido, oferta, criterios en orden, entrega y la skill completa    |
+| `pedidos/<id>.md`      | El encargo: pedido, oferta, criterios, cómo buscar, entrega y la skill         |
 | `resultados/<id>.json` | Lo que escribe el agente (formato en el encargo y en la skill, con `detalles`) |
 
 El servidor revisa `resultados/` cada 2 segundos. Lo que llega se limpia antes de mostrarse: solo ligas `http(s)`,
@@ -85,8 +94,9 @@ textos recortados, puntuación de 0 a 100, a lo más 25 resultados y 6 detalles 
 
 El arte del cuarto ya existía (`FREELANCE_*` en `webview-ui/public/assets/furniture/`); esta función no cambia
 ningún plano. La parte de "pedido → agente → resultados" vive en [features/busquedas](../busquedas/README.md), a la
-que se le agregaron `detalles`, la nota por resultado, el rótulo de la marca y el modelo al lanzar.
+que se le agregaron `detalles`, la nota por resultado, el rótulo de la marca, el modelo al lanzar, el veredicto
+`dudoso` y el mínimo para recomendar (`minRecommended`, aquí 60).
 
 Toca al resto del proyecto en: mensajes en `core/asyncapi.yaml` (`freelanceStatus`, `saveFreelanceOffer`,
-`SearchResult.details` y `note`), el registro en `server/src/cli.ts`, el clic en el escritorio (`officeState.ts`,
+`FreelanceOfferSpec.basedIn`, `SearchResult.details` y `note`, el veredicto `dudoso`), el registro en `server/src/cli.ts`, el clic en el escritorio (`officeState.ts`,
 `office/hint/`), el mapa (`officeState.ts`) y el panel en `App.tsx`.

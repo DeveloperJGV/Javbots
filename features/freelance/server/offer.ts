@@ -14,13 +14,10 @@ import { FREELANCE_DEFAULT_OFFER, type FreelanceOffer } from './defaults.js';
 type Raw = Record<string, unknown>;
 const obj = (v: unknown): Raw =>
   typeof v === 'object' && v !== null && !Array.isArray(v) ? (v as Raw) : {};
+/** Control, zero-width and bidi-override characters: they can reorder or hide what the brief shows. */
+const UNSAFE_CHARS_RE = /[\u0000-\u001f\u007f\u200b-\u200f\u2028-\u202e\u2066-\u2069\ufeff]+/g;
 const line = (v: unknown, max: number): string =>
-  typeof v === 'string'
-    ? v
-        .replace(/[\u0000-\u001f\u007f]+/g, ' ')
-        .trim()
-        .slice(0, max)
-    : '';
+  typeof v === 'string' ? v.replace(UNSAFE_CHARS_RE, ' ').trim().slice(0, max) : '';
 const list = (v: unknown): string[] =>
   (Array.isArray(v) ? v : [])
     .map((x) => line(x, MAX_OFFER_ITEM_CHARS))
@@ -36,6 +33,7 @@ export function offerFromFile(raw: unknown): FreelanceOffer | null {
     tecnologias: list(r.tecnologias),
     tarifa: line(r.tarifa, MAX_OFFER_TEXT),
     disponibilidad: line(r.disponibilidad, MAX_OFFER_TEXT),
+    desde: line(r.desde, MAX_OFFER_TEXT),
     idiomas: list(r.idiomas),
     noQuiero: list(r.noQuiero),
   };
@@ -51,6 +49,7 @@ export function offerFromWire(spec: unknown): FreelanceOffer | null {
     tecnologias: s.technologies,
     tarifa: s.rate,
     disponibilidad: s.availability,
+    desde: s.basedIn,
     idiomas: s.languages,
     noQuiero: s.notWanted,
   });
@@ -62,16 +61,19 @@ export const offerToWire = (o: FreelanceOffer): FreelanceOfferSpec => ({
   technologies: [...o.tecnologias],
   rate: o.tarifa,
   availability: o.disponibilidad,
+  basedIn: o.desde,
   languages: [...o.idiomas],
   notWanted: [...o.noQuiero],
 });
 
+/** An offer saved before "desde" existed has none: it still counts as the example when the rest is the example. */
 const sameOffer = (a: FreelanceOffer, b: FreelanceOffer): boolean =>
-  JSON.stringify(offerToWire(a)) === JSON.stringify(offerToWire(b));
+  JSON.stringify(offerToWire({ ...a, desde: a.desde || b.desde })) ===
+  JSON.stringify(offerToWire(b));
 
 /**
  * The room's own part of ~/.pixel-agents/freelance.json, next to "criterios" (features/busquedas/server/criteria.ts):
- *   { "oferta": { "titulo": "…", "servicios": ["…"], … }, "modelo": "sonnet", "criterios": [ … ] }
+ *   { "oferta": { "titulo": "…", "servicios": ["…"], "desde": "…", … }, "modelo": "sonnet", "criterios": [ … ] }
  * Read on every call (the owner may edit it by hand); writes keep every other key.
  */
 export function createFreelanceConfig(

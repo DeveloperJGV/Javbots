@@ -64,10 +64,82 @@ describe('readResults', () => {
     expect(results.map((r) => r.id).sort()).toEqual(['servicio-nandu', 'servicio-nandu-2']);
   });
 
+  it('reconoce "dudoso" en cualquier mayúscula y lo ordena entre recomendados y descartados', () => {
+    const { results } = readResults(
+      {
+        resultados: [
+          { nombre: 'Descartado', puntuacion: 99, veredicto: 'descartado' },
+          { nombre: 'Dudoso bajo', puntuacion: 40, veredicto: 'Dudoso' },
+          { nombre: 'Dudoso alto', puntuacion: 75, veredicto: 'DUDOSO' },
+          { nombre: 'Recomendado', puntuacion: 61, veredicto: 'recomendado' },
+        ],
+      },
+      KINDS,
+    );
+    expect(results.map((r) => [r.name, r.verdict])).toEqual([
+      ['Recomendado', 'recomendado'],
+      ['Dudoso alto', 'dudoso'],
+      ['Dudoso bajo', 'dudoso'],
+      ['Descartado', 'descartado'],
+    ]);
+  });
+
+  it('con minRecommended, un recomendado de menos pasa a dudoso; sin él (Directorio) no cambia', () => {
+    const file = {
+      resultados: [
+        { nombre: 'Justo', puntuacion: 60, veredicto: 'recomendado' },
+        { nombre: 'Casi', puntuacion: 59, veredicto: 'recomendado' },
+        { nombre: 'Sin veredicto', puntuacion: 10 },
+        { nombre: 'Malo', puntuacion: 5, veredicto: 'descartado' },
+      ],
+    };
+    const verdicts = (min?: number) =>
+      Object.fromEntries(readResults(file, KINDS, min).results.map((r) => [r.name, r.verdict]));
+    expect(verdicts(60)).toEqual({
+      Justo: 'recomendado',
+      Casi: 'dudoso',
+      'Sin veredicto': 'dudoso',
+      Malo: 'descartado',
+    });
+    expect(verdicts()).toEqual({
+      Justo: 'recomendado',
+      Casi: 'recomendado',
+      'Sin veredicto': 'recomendado',
+      Malo: 'descartado',
+    });
+  });
+
+  it('la nota general guarda los saltos de renglón (pocos) y se recorta', () => {
+    const { note } = readResults(
+      { nota: 'Primero\r\nSegundo\u0007 dato\n\n\n\nTercero', resultados: [] },
+      KINDS,
+    );
+    expect(note).toBe('Primero\nSegundo  dato\n\nTercero');
+    const long = readResults({ nota: 'x'.repeat(5000) }, KINDS).note ?? '';
+    expect(long.length).toBe(1500);
+    const lines = readResults({ nota: Array(40).fill('r').join('\n') }, KINDS).note ?? '';
+    expect(lines.split('\n')).toHaveLength(12);
+  });
+
   it('solo deja ligas http(s)', () => {
     expect(safeLink('https://ejemplo.mx/x')).toBe('https://ejemplo.mx/x');
     expect(safeLink('file:///C:/x')).toBeUndefined();
     expect(safeLink('no es liga')).toBeUndefined();
+    expect(safeLink('https://usuario:clave@ejemplo.mx/x')).toBeUndefined();
+    expect(safeLink('https://ejemplo.mx@otro.example/x')).toBeUndefined();
+  });
+
+  it('quita caracteres invisibles y de dirección, y U+2028 cuenta como renglón', () => {
+    const got = readResults(
+      {
+        nota: 'uno\u2028dos',
+        resultados: [{ nombre: 'Tra\u202ebajo\u200b', porque: 'a\u2066b', puntuacion: 70 }],
+      },
+      KINDS,
+    );
+    expect(got.note).toBe('uno\ndos');
+    expect(got.results[0]!.name).toBe('Tra bajo');
+    expect(got.results[0]!.why).toBe('a b');
   });
 });
 
