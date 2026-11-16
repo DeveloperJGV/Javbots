@@ -5,6 +5,13 @@ Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
 
 ## 16 de noviembre de 2026
 
+- **Portadas en la colección de juegos.** «Portadas → Buscar las que faltan» trae la portada de cada juego de
+  libretro-thumbnails y, con tu llave gratuita, de IGDB. En la repisa salen en pixel art con el marco de su consola y
+  en la ficha completas. Si hay duda eliges tú entre varias, o subes una imagen; una portada tuya nunca se cambia
+  sola. Las imágenes se guardan solo en tu computadora.
+- **Cada juego como lo tienes: con caja o suelto.** Un interruptor de un clic en la ficha, y «Todos con caja / Todos
+  sueltos» por repisa. Los sueltos se dibujan como el cartucho de su consola (NES, SNES, N64, Game Boy, GBA, Genesis,
+  DS, 3DS, Switch…) con la portada en la etiqueta.
 - **Ofertas por grupos y con «dónde buscó».** Las vigilancias salen agrupadas (Bocinas, Receptor, Red…), cada grupo
   plegable, en el orden que quieras y con lo mejor del grupo arriba; el panel sugiere el grupo y tú lo aceptas con un
   clic. Cada vigilancia dice en qué tiendas buscó y qué contestó cada una (lo tiene, no lo tiene con ese nombre, no
