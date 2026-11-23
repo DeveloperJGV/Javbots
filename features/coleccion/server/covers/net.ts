@@ -32,15 +32,30 @@ export interface SafeResponse {
 
 export type SafeFetch = (url: string, req: SafeRequest) => Promise<SafeResponse>;
 
-/** Only https, only the fixed hosts, on the default port, with no user in the address. */
-export function allowedUrl(url: string): URL | null {
+/**
+ * Where a safe fetch may go. The collection's covers use the default (its fixed hosts, no redirects); another
+ * feature (features/libros) passes its own hosts and how many redirects it follows, each one checked again.
+ */
+export interface NetPolicy {
+  hosts: ReadonlySet<string>;
+  /** Also allowed: a host matching this, whole (e.g. a source's numbered image servers). */
+  hostPattern?: RegExp;
+  /** Redirects followed on a GET, each to an allowed address too (0: a redirect is an error). */
+  maxRedirects?: number;
+}
+
+const COVER_POLICY: NetPolicy = { hosts: COVER_HOSTS };
+
+/** Only https, only the policy's hosts, on the default port, with no user in the address. */
+export function allowedUrl(url: string, policy: NetPolicy = COVER_POLICY): URL | null {
   let u: URL;
   try {
     u = new URL(url);
   } catch {
     return null;
   }
-  if (u.protocol !== 'https:' || !COVER_HOSTS.has(u.hostname)) return null;
+  const hostOk = policy.hosts.has(u.hostname) || !!policy.hostPattern?.test(u.hostname);
+  if (u.protocol !== 'https:' || !hostOk) return null;
   if (u.username || u.password || (u.port !== '' && u.port !== '443')) return null;
   return u;
 }
@@ -77,11 +92,16 @@ async function readCapped(res: Response, maxBytes: number): Promise<Uint8Array> 
 /**
  * The one way the covers feature reaches the network: https to the fixed hosts only, no redirects (one is an
  * error), a time limit over the whole request and a byte cap counted while reading. Never says the address.
+ * Another policy may follow a few redirects on a GET, each to an allowed address (one that is not is an error).
  */
-export function createSafeFetch(fetchImpl: typeof fetch = globalThis.fetch): SafeFetch {
+export function createSafeFetch(
+  fetchImpl: typeof fetch = globalThis.fetch,
+  policy: NetPolicy = COVER_POLICY,
+): SafeFetch {
+  const maxRedirects = policy.maxRedirects ?? 0;
   return async (url, req) => {
-    const u = allowedUrl(url);
-    if (!u) throw new NetError('no-permitido');
+    const first = allowedUrl(url, policy);
+    if (!first) throw new NetError('no-permitido');
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<never>((_, reject) => {
@@ -91,21 +111,34 @@ export function createSafeFetch(fetchImpl: typeof fetch = globalThis.fetch): Saf
       }, req.timeoutMs);
     });
     const work = (async (): Promise<SafeResponse> => {
+      let u = first;
       let res: Response;
-      try {
-        res = await fetchImpl(u.toString(), {
-          method: req.method ?? 'GET',
-          headers: { 'User-Agent': COVER_USER_AGENT, ...req.headers },
-          body: req.body,
-          redirect: 'manual',
-          signal: controller.signal,
-        });
-      } catch {
-        throw new NetError('sin-respuesta');
-      }
-      if ((res.status >= 300 && res.status < 400) || res.type === 'opaqueredirect') {
+      for (let hop = 0; ; hop++) {
+        try {
+          res = await fetchImpl(u.toString(), {
+            method: req.method ?? 'GET',
+            headers: { 'User-Agent': COVER_USER_AGENT, ...req.headers },
+            body: req.body,
+            redirect: 'manual',
+            signal: controller.signal,
+          });
+        } catch {
+          throw new NetError('sin-respuesta');
+        }
+        if (!((res.status >= 300 && res.status < 400) || res.type === 'opaqueredirect')) break;
         void res.body?.cancel().catch(() => {});
-        throw new NetError('redireccion', res.status);
+        const location = res.headers.get('location');
+        const canFollow = hop < maxRedirects && (req.method ?? 'GET') === 'GET' && !!location;
+        let next: URL | null = null;
+        if (canFollow) {
+          try {
+            next = allowedUrl(new URL(location, u).toString(), policy);
+          } catch {
+            next = null;
+          }
+        }
+        if (!next) throw new NetError('redireccion', res.status);
+        u = next;
       }
       const bytes = await readCapped(res, req.maxBytes);
       return { status: res.status, contentType: res.headers.get('content-type') ?? '', bytes };

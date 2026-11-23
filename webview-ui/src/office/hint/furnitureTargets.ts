@@ -11,6 +11,7 @@ import { freelanceStore } from '../../../../features/freelance/webview/freelance
 import { githubStore } from '../../../../features/github/webview/githubStore.js';
 import { JARDIN_PANEL_SECTION } from '../../../../features/jardin/webview/constants.js';
 import { jardinStore, plantOfFurniture } from '../../../../features/jardin/webview/jardinStore.js';
+import { librosStore } from '../../../../features/libros/webview/librosStore.js';
 import { musicStore } from '../../../../features/musica/webview/musicStore.js';
 // Playlist of the day (features/musica)
 import { playlistStore } from '../../../../features/musica/webview/playlists/playlistStore.js';
@@ -101,6 +102,9 @@ export function furnitureTargetAt(
   // Game collection shelf (features/coleccion), next to the free-time TV.
   if (os.isColeccionAt(worldX, worldY))
     return target(HINT_LABELS.coleccion, () => coleccionStore.open());
+
+  // Book library shelf (features/libros).
+  if (os.isLibrosAt(worldX, worldY)) return target(HINT_LABELS.libros, () => librosStore.open());
 
   // Map table (features/accesos): the pages that run on this computer.
   if (os.isAccesosAt(worldX, worldY))

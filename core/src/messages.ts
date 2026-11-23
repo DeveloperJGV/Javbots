@@ -67,6 +67,9 @@ export type ServerMessage =
   | DecksImportResult
   | ColeccionStatus
   | ColeccionResult
+  | LibrosStatus
+  | LibrosResult
+  | LibrosLookupResult
   | AccesosStatus;
 
 export type ClientMessage =
@@ -157,6 +160,15 @@ export type ClientMessage =
   | ColeccionIgdbKeyRemove
   | ColeccionSetCondition
   | ColeccionCoverDismiss
+  | LibrosOpen
+  | LibrosSave
+  | LibrosDelete
+  | LibrosLookup
+  | LibrosCoverFind
+  | LibrosCoverRun
+  | LibrosCoverPick
+  | LibrosCoverDismiss
+  | LibrosCoverRemove
   | AccesosOpen
   | AccesosStart;
 
@@ -1508,6 +1520,116 @@ export interface ColeccionResult {
   error?: string;
 }
 
+export interface LibrosStatus {
+  type: 'librosStatus';
+  books: LibrosBook[];
+  file: string;
+  problems: string[];
+  covers: LibrosCoverState[];
+  coverRun?: LibrosCoverProgress;
+}
+
+export interface LibrosBook {
+  id: string;
+  title: string;
+  authors: string[];
+  publisher: string;
+  genre: string;
+  year: number;
+  isbn: string;
+  language: string;
+  format: string;
+  pages: number;
+  series: string;
+  seriesNumber: number;
+  reading: string;
+  owner: string;
+  lentTo: string;
+  lentAt: string;
+  notes: string;
+  wanted: boolean;
+  price: string;
+  seenAt: string;
+  addedAt: string;
+  finishedAt: string;
+  updatedAt: string;
+  coverArt?: LibrosCoverArt;
+  coverNone?: string;
+}
+
+export interface LibrosCoverArt {
+  source: LibrosCoverSource;
+  key: string;
+  at: string;
+  type: LibrosCoverType;
+}
+
+export type LibrosCoverSource = 'openlibrary' | 'subida';
+
+export type LibrosCoverType = 'png' | 'jpg' | 'webp';
+
+export interface LibrosCoverState {
+  id: string;
+  state: LibrosCoverStateKind;
+  stamp: string;
+  at: string;
+  label?: string;
+  candidates?: LibrosCoverCandidate[];
+  reason?: LibrosCoverReason;
+}
+
+export type LibrosCoverStateKind = 'buscando' | 'encontrada' | 'elige' | 'nada';
+
+export interface LibrosCoverCandidate {
+  label: string;
+  year: number;
+  byIsbn?: boolean;
+  current?: boolean;
+}
+
+export type LibrosCoverReason = 'sin-respuesta' | 'sin-coincidencia' | 'cambio';
+
+export interface LibrosCoverProgress {
+  running: boolean;
+  stopped: boolean;
+  total: number;
+  done: number;
+  found: number;
+  choose: number;
+  notFound: number;
+  failed: number;
+  startedAt?: string;
+  finishedAt?: string;
+}
+
+export interface LibrosResult {
+  type: 'librosResult';
+  requestId: string;
+  ok: boolean;
+  id?: string;
+  error?: string;
+}
+
+export interface LibrosLookupResult {
+  type: 'librosLookupResult';
+  requestId: string;
+  ok: boolean;
+  isbn: string;
+  found?: LibrosLookupFound;
+  reason?: LibrosLookupReason;
+}
+
+export interface LibrosLookupFound {
+  title: string;
+  authors: string[];
+  publisher: string;
+  year: number;
+  pages: number;
+  hasCover: boolean;
+}
+
+export type LibrosLookupReason = 'invalido' | 'desconocido' | 'sin-respuesta';
+
 export interface AccesosStatus {
   type: 'accesosStatus';
   accesos: AccesoView[];
@@ -1675,10 +1797,10 @@ export interface InstallMusicExtension {
 
 export interface MusicControl {
   type: 'musicControl';
-  action: AnonymousSchema_925;
+  action: AnonymousSchema_993;
 }
 
-export type AnonymousSchema_925 = 'previous' | 'togglePlay' | 'next';
+export type AnonymousSchema_993 = 'previous' | 'togglePlay' | 'next';
 
 export interface DisconnectSpotify {
   type: 'disconnectSpotify';
@@ -2077,6 +2199,61 @@ export interface ColeccionCoverDismiss {
   requestId: string;
   id: string;
   stamp: string;
+}
+
+export interface LibrosOpen {
+  type: 'librosOpen';
+}
+
+export interface LibrosSave {
+  type: 'librosSave';
+  requestId: string;
+  book: LibrosBook;
+}
+
+export interface LibrosDelete {
+  type: 'librosDelete';
+  requestId: string;
+  id: string;
+}
+
+export interface LibrosLookup {
+  type: 'librosLookup';
+  requestId: string;
+  isbn: string;
+}
+
+export interface LibrosCoverFind {
+  type: 'librosCoverFind';
+  id: string;
+}
+
+export interface LibrosCoverRun {
+  type: 'librosCoverRun';
+  action: LibrosCoverRunAction;
+}
+
+export type LibrosCoverRunAction = 'start' | 'stop';
+
+export interface LibrosCoverPick {
+  type: 'librosCoverPick';
+  requestId: string;
+  id: string;
+  n: number;
+  stamp: string;
+}
+
+export interface LibrosCoverDismiss {
+  type: 'librosCoverDismiss';
+  requestId: string;
+  id: string;
+  stamp: string;
+}
+
+export interface LibrosCoverRemove {
+  type: 'librosCoverRemove';
+  requestId: string;
+  id: string;
 }
 
 export interface AccesosOpen {

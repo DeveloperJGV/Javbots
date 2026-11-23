@@ -3,6 +3,22 @@
 Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
 (Pixel Agents) está en [CHANGELOG.md](CHANGELOG.md).
 
+## 23 de noviembre de 2026
+
+- **Librero.** Un mueble nuevo abre tu colección de libros, hermana de la de juegos: repisas por género (o por autor,
+  editorial o saga) con cada libro de lomo, dibujado por código (pasta dura con sus franjas, pasta blanda, digital),
+  y las sagas juntas con su placa. Al abrir uno sale de la repisa y se abre: ex libris, a quién se lo prestaste y
+  desde cuándo, cómo va, su saga con los números que faltan, y notas.
+- **Agregar rápido, con o sin ISBN.** Solo el título es obligatorio. Con el ISBN, «Buscar datos» le pregunta a Open
+  Library el título, autor, editorial, año y páginas, y te lo enseña antes de pasarlo a la ficha; «Pasar y guardar»
+  hace las dos cosas (sirve con un lector de código de barras). Enter guarda y deja lo que se repite; si es una saga,
+  deja también autor y editorial y sube el número.
+- **Portadas de Open Library**, sin llave: por el ISBN se pone la de esa edición; sin ISBN se buscan por título y
+  autor y tú eliges. Nunca se pone una dudosa sola, y puedes subir la tuya.
+- **«Se busca», buscador y «¿Qué leo ahora?».** Lo que te falta queda como hueco con su precio; el buscador ilumina
+  un autor, una saga o una editorial en todas las repisas; y «¿Qué leo ahora?» propone seguir uno empezado, el que
+  sigue de una saga o uno que lleva tiempo esperando, por largo y género (los prestados no cuentan).
+
 ## 16 de noviembre de 2026
 
 - **Portadas en la colección de juegos.** «Portadas → Buscar las que faltan» trae la portada de cada juego de

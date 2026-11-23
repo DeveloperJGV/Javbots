@@ -25,16 +25,13 @@ cambiamos el idioma, el arte, los cuartos y le agregamos cosas nuevas. La docume
 
 ## Novedades
 
+- **23 de noviembre de 2026**: un **librero** para tus libros, hermano de la colección de juegos: repisas por género
+  (o autor, editorial, saga), cada libro de lomo y abierto con su ficha; con el ISBN, Open Library llena los datos y
+  pone la portada. También «se busca», un buscador y **«¿Qué leo ahora?»**.
 - **16 de noviembre de 2026**: las **Ofertas** salen por grupos (Bocinas, Receptor, Red…), plegables y en tu orden,
   y cada vigilancia dice en qué tiendas buscó y qué contestó cada una; también pueden leer Amazon y otras tiendas
   con el navegador, si lo prendes en Ajustes. La **colección de juegos** ya tiene portadas
   (en pixel art en la repisa, completas en la ficha) y cada juego se ve como lo tienes: con caja o como cartucho suelto.
-- **15 de noviembre de 2026**: el cuarto de **Freelance** ya busca trabajo: escribes tu oferta y lo que buscas, y un
-  agente de Claude Code lee anuncios públicos y te deja los trabajos calificados con pago, fecha y cliente. Busca
-  también automatización con IA, consultoría y capacitación, y te deja ligas listas de Upwork, Workana y
-  Freelancer.com. La colección de juegos ya tiene repisa para 42 consolas, del Atari 2600 al Switch 2, con las
-  portátiles y la PC. Y una **mesa de mapas** abre tus páginas locales (las prende si hace falta) en una pestaña
-  nueva.
 
 Todo lo nuevo, por fecha, en [NOVEDADES.md](NOVEDADES.md).
 

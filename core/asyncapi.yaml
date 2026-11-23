@@ -163,6 +163,10 @@ components:
         # Game collection (feature: features/coleccion)
         - $ref: '#/components/schemas/ColeccionStatus'
         - $ref: '#/components/schemas/ColeccionResult'
+        # Book library (feature: features/libros)
+        - $ref: '#/components/schemas/LibrosStatus'
+        - $ref: '#/components/schemas/LibrosResult'
+        - $ref: '#/components/schemas/LibrosLookupResult'
         # Pages on this computer opened from a piece of furniture (feature: features/accesos)
         - $ref: '#/components/schemas/AccesosStatus'
       discriminator: type
@@ -266,6 +270,16 @@ components:
         - $ref: '#/components/schemas/ColeccionIgdbKeyRemove'
         - $ref: '#/components/schemas/ColeccionSetCondition'
         - $ref: '#/components/schemas/ColeccionCoverDismiss'
+        # Book library (feature: features/libros)
+        - $ref: '#/components/schemas/LibrosOpen'
+        - $ref: '#/components/schemas/LibrosSave'
+        - $ref: '#/components/schemas/LibrosDelete'
+        - $ref: '#/components/schemas/LibrosLookup'
+        - $ref: '#/components/schemas/LibrosCoverFind'
+        - $ref: '#/components/schemas/LibrosCoverRun'
+        - $ref: '#/components/schemas/LibrosCoverPick'
+        - $ref: '#/components/schemas/LibrosCoverDismiss'
+        - $ref: '#/components/schemas/LibrosCoverRemove'
         # Pages on this computer opened from a piece of furniture (feature: features/accesos)
         - $ref: '#/components/schemas/AccesosOpen'
         - $ref: '#/components/schemas/AccesosStart'
@@ -4381,6 +4395,422 @@ components:
           items:
             type: string
         condition:
+          type: string
+
+    # ── Book library (feature: features/libros) ──────────────
+
+    LibrosStatus:
+      description: >-
+        Every book of the library and every "se busca" gap, the file they live in and what could not be read, plus
+        the last cover search of each book and «Buscar las que faltan». Sent on webviewReady, on librosOpen and after
+        every change. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, books, file, problems, covers]
+      properties:
+        type:
+          const: librosStatus
+        books:
+          type: array
+          items:
+            $ref: '#/components/schemas/LibrosBook'
+        file:
+          type: string
+        problems:
+          type: array
+          items:
+            type: string
+        covers:
+          type: array
+          description: The last cover search of each book since the server started (kept in memory).
+          items:
+            $ref: '#/components/schemas/LibrosCoverState'
+        coverRun:
+          $ref: '#/components/schemas/LibrosCoverProgress'
+
+    LibrosResult:
+      description: >-
+        The answer to librosSave, librosDelete, librosCoverPick, librosCoverDismiss or librosCoverRemove (id = the
+        book saved, deleted or changed).
+      type: object
+      additionalProperties: false
+      required: [type, requestId, ok]
+      properties:
+        type:
+          const: librosResult
+        requestId:
+          type: string
+        ok:
+          type: boolean
+        id:
+          type: string
+        error:
+          type: string
+
+    LibrosBook:
+      description: >-
+        One book, or a gap on its shelf (wanted = true, with the price seen). Empty strings and 0 mean "not said";
+        id is empty for a book never saved. format is pasta-dura, pasta-blanda or digital; reading sin-leer, leyendo,
+        leido or a-medias; isbn is digits only (and a final X). lentAt and finishedAt are set by the save (the day
+        it was lent, the day its reading became leido).
+      type: object
+      additionalProperties: false
+      required:
+        [id, title, authors, publisher, genre, year, isbn, language, format, pages, series, seriesNumber, reading,
+         owner, lentTo, lentAt, notes, wanted, price, seenAt, addedAt, finishedAt, updatedAt]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        authors:
+          type: array
+          items:
+            type: string
+        publisher:
+          type: string
+        genre:
+          type: string
+        year:
+          type: integer
+        isbn:
+          type: string
+        language:
+          type: string
+        format:
+          type: string
+        pages:
+          type: integer
+        series:
+          type: string
+        seriesNumber:
+          type: integer
+        reading:
+          type: string
+        owner:
+          type: string
+        lentTo:
+          type: string
+        lentAt:
+          type: string
+          description: YYYY-MM-DD, or empty.
+        notes:
+          type: string
+        wanted:
+          type: boolean
+        price:
+          type: string
+        seenAt:
+          type: string
+        addedAt:
+          type: string
+          description: YYYY-MM-DD.
+        finishedAt:
+          type: string
+          description: YYYY-MM-DD, or empty.
+        updatedAt:
+          type: string
+          description: ISO time of the last save (empty when never saved).
+        coverArt:
+          $ref: '#/components/schemas/LibrosCoverArt'
+        coverNone:
+          type: string
+          description: >-
+            ISO time the person answered «Ninguna» to its cover choice (set only by the server): Buscar las que faltan
+            leaves it alone until it is searched by hand, its title, first author or ISBN changes, or it gets a cover.
+
+    LibrosCoverArt:
+      description: >-
+        The cover image a book has, set only by the server (what a client sends here is ignored). The image is served
+        at GET /api/libros/portada/<book id> with the office token; add &v=<at> so a new image is not cached as the
+        old one. source openlibrary (key = isbn:<isbn> or id:<Open Library cover id>) or subida (uploaded; key
+        empty); at = ISO time it was set; type png, jpg or webp.
+      type: object
+      additionalProperties: false
+      required: [source, key, at, type]
+      properties:
+        source:
+          $ref: '#/components/schemas/LibrosCoverSource'
+        key:
+          type: string
+        at:
+          type: string
+        type:
+          $ref: '#/components/schemas/LibrosCoverType'
+
+    LibrosCoverSource:
+      type: string
+      enum: [openlibrary, subida]
+
+    LibrosCoverType:
+      type: string
+      enum: [png, jpg, webp]
+
+    LibrosCoverState:
+      description: >-
+        How the last cover search of a book went. state buscando (in course), encontrada (its ISBN has a cover in
+        Open Library: already set), elige (candidates, at most 4, for the person to choose; thumbnails at
+        GET /api/libros/candidata/<book id>/<n>; choose with librosCoverPick and this stamp) or nada (reason
+        sin-respuesta = Open Library did not answer or the image could not be fetched, try again; sin-coincidencia
+        = nothing like it with a cover; cambio = its title, first author or ISBN changed, so a cover Open Library
+        found was taken away). A search by title and author never sets a cover by itself, and a search over a book
+        that already has one always ends in elige (the current one marked). Labels come from outside: text only.
+      type: object
+      additionalProperties: false
+      required: [id, state, stamp, at]
+      properties:
+        id:
+          type: string
+        state:
+          $ref: '#/components/schemas/LibrosCoverStateKind'
+        stamp:
+          type: string
+        at:
+          type: string
+          description: ISO time the search ended (or started, while buscando).
+        label:
+          type: string
+        candidates:
+          type: array
+          items:
+            $ref: '#/components/schemas/LibrosCoverCandidate'
+        reason:
+          $ref: '#/components/schemas/LibrosCoverReason'
+
+    LibrosCoverStateKind:
+      type: string
+      enum: [buscando, encontrada, elige, nada]
+
+    LibrosCoverReason:
+      type: string
+      enum: [sin-respuesta, sin-coincidencia, cambio]
+
+    LibrosCoverCandidate:
+      description: >-
+        One candidate cover (n = its position in the list): its title and authors as Open Library has them, the year
+        of its first edition (0 = not said), byIsbn = it is the cover of the book's own ISBN, current = the cover the
+        book has now.
+      type: object
+      additionalProperties: false
+      required: [label, year]
+      properties:
+        label:
+          type: string
+        year:
+          type: integer
+        byIsbn:
+          type: boolean
+        current:
+          type: boolean
+
+    LibrosCoverProgress:
+      description: >-
+        Buscar las que faltan: how the run goes (running) or how it ended (finishedAt set; stopped = the person
+        stopped it). total = books it is going to search; done = searched so far, split in found, choose, notFound
+        and failed (failed = Open Library did not answer: the next run tries it again).
+      type: object
+      additionalProperties: false
+      required: [running, stopped, total, done, found, choose, notFound, failed]
+      properties:
+        running:
+          type: boolean
+        stopped:
+          type: boolean
+        total:
+          type: integer
+        done:
+          type: integer
+        found:
+          type: integer
+        choose:
+          type: integer
+        notFound:
+          type: integer
+        failed:
+          type: integer
+        startedAt:
+          type: string
+        finishedAt:
+          type: string
+
+    LibrosLookupResult:
+      description: >-
+        The answer to librosLookup: what Open Library knows of that ISBN (found), or why not (reason invalido = not
+        a valid ISBN; desconocido = Open Library does not know it; sin-respuesta = it did not answer, try again).
+        The page shows it and fills the form only when the person says so; nothing is saved.
+      type: object
+      additionalProperties: false
+      required: [type, requestId, ok, isbn]
+      properties:
+        type:
+          const: librosLookupResult
+        requestId:
+          type: string
+        ok:
+          type: boolean
+        isbn:
+          type: string
+        found:
+          $ref: '#/components/schemas/LibrosLookupFound'
+        reason:
+          $ref: '#/components/schemas/LibrosLookupReason'
+
+    LibrosLookupReason:
+      type: string
+      enum: [invalido, desconocido, sin-respuesta]
+
+    LibrosLookupFound:
+      description: >-
+        One edition as Open Library has it (outside text: show it as text). Empty strings and 0 = it did not say.
+        hasCover = Open Library has its cover (a cover search by its ISBN will find it).
+      type: object
+      additionalProperties: false
+      required: [title, authors, publisher, year, pages, hasCover]
+      properties:
+        title:
+          type: string
+        authors:
+          type: array
+          items:
+            type: string
+        publisher:
+          type: string
+        year:
+          type: integer
+        pages:
+          type: integer
+        hasCover:
+          type: boolean
+
+    LibrosOpen:
+      description: The library panel opened; answered with librosStatus. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: librosOpen
+
+    LibrosSave:
+      description: Write a book (id "" = a new one); answered with librosResult. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, requestId, book]
+      properties:
+        type:
+          const: librosSave
+        requestId:
+          type: string
+        book:
+          $ref: '#/components/schemas/LibrosBook'
+
+    LibrosDelete:
+      description: >-
+        Take a book out of the library (it stays in the file's trash list, its cover image is deleted); answered with
+        librosResult. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, requestId, id]
+      properties:
+        type:
+          const: librosDelete
+        requestId:
+          type: string
+        id:
+          type: string
+
+    LibrosLookup:
+      description: >-
+        Ask Open Library what it knows of an ISBN (to fill the form); answered with librosLookupResult. Privileged
+        only.
+      type: object
+      additionalProperties: false
+      required: [type, requestId, isbn]
+      properties:
+        type:
+          const: librosLookup
+        requestId:
+          type: string
+        isbn:
+          type: string
+
+    LibrosCoverFind:
+      description: >-
+        Look for one book's cover now (by its ISBN, then by title and author); the result arrives in
+        librosStatus.covers. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, id]
+      properties:
+        type:
+          const: librosCoverFind
+        id:
+          type: string
+
+    LibrosCoverRun:
+      description: >-
+        Start or stop Buscar las que faltan (one request every few seconds at most). Progress in
+        librosStatus.coverRun. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, action]
+      properties:
+        type:
+          const: librosCoverRun
+        action:
+          $ref: '#/components/schemas/LibrosCoverRunAction'
+
+    LibrosCoverRunAction:
+      type: string
+      enum: [start, stop]
+
+    LibrosCoverPick:
+      description: >-
+        Choose candidate n of the book's last elige (stamp = that search's, so an old click cannot set another
+        image). Answered with librosResult. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, requestId, id, n, stamp]
+      properties:
+        type:
+          const: librosCoverPick
+        requestId:
+          type: string
+        id:
+          type: string
+        n:
+          type: integer
+        stamp:
+          type: string
+
+    LibrosCoverDismiss:
+      description: >-
+        Close the book's elige: «Ninguna» on a book without a cover (kept as coverNone), «Dejar la que tiene» on one
+        with a cover. Answered with librosResult. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, requestId, id, stamp]
+      properties:
+        type:
+          const: librosCoverDismiss
+        requestId:
+          type: string
+        id:
+          type: string
+        stamp:
+          type: string
+
+    LibrosCoverRemove:
+      description: Take a book's cover away (the image is deleted). Answered with librosResult. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, requestId, id]
+      properties:
+        type:
+          const: librosCoverRemove
+        requestId:
+          type: string
+        id:
           type: string
 
     # ── Pages on this computer (feature: features/accesos) ──────────

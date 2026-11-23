@@ -31,6 +31,7 @@ import {
 import { githubStore } from '../../../../features/github/webview/githubStore.js';
 import { applyJardinFurniture } from '../../../../features/jardin/webview/jardinFurniture.js';
 import { isJardinFurniture, jardinStore } from '../../../../features/jardin/webview/jardinStore.js';
+import { isLibrosFurniture } from '../../../../features/libros/webview/librosStore.js';
 import {
   applyMusicFurniture,
   isMusicPlayer,
@@ -1534,6 +1535,13 @@ export class OfficeState {
   isColeccionAt(worldX: number, worldY: number): boolean {
     return this.furniture.some(
       (f) => isColeccionFurniture(f.type) && hitsPaintedPixel(f, worldX, worldY),
+    );
+  }
+
+  /** Whether a world point lands on the book library shelf (features/libros). */
+  isLibrosAt(worldX: number, worldY: number): boolean {
+    return this.furniture.some(
+      (f) => isLibrosFurniture(f.type) && hitsPaintedPixel(f, worldX, worldY),
     );
   }
 

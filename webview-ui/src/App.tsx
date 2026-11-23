@@ -24,6 +24,8 @@ import { useGithub } from '../../features/github/webview/useGithub.js';
 import { useHerdrTabs } from '../../features/herdr/webview/useHerdrTabs.js';
 import { JardinPanel } from '../../features/jardin/webview/JardinPanel.js';
 import { useJardin } from '../../features/jardin/webview/useJardin.js';
+import { LibrosPanel } from '../../features/libros/webview/LibrosPanel.js';
+import { useLibros } from '../../features/libros/webview/useLibros.js';
 import { JukeboxPicker } from '../../features/musica/webview/JukeboxPicker.js';
 import { LyricBubble } from '../../features/musica/webview/LyricBubble.js';
 import { MusicColumn } from '../../features/musica/webview/MusicColumn.js';
@@ -124,6 +126,8 @@ function App() {
   useDecks(transport);
   // Optional feature (features/coleccion): the game collection, from its furniture (or the page's #coleccion hash)
   useColeccion(transport);
+  // Optional feature (features/libros): the book library, from its furniture (or the page's #libros hash)
+  useLibros(transport);
   // Optional feature (features/accesos): pages on this computer, from the map table (or #accesos)
   useAccesos(transport);
   usePerfil(transport);
@@ -745,6 +749,8 @@ function App() {
         <DecksPanel transport={transport} />
         {/* Optional feature (features/coleccion): the game shelves, from their furniture (or #coleccion) */}
         <ColeccionPanel transport={transport} />
+        {/* Optional feature (features/libros): the book shelves, from their furniture (or #libros) */}
+        <LibrosPanel transport={transport} />
         {/* Optional feature (features/accesos): pages on this computer, from the map table (or #accesos) */}
         <AccesosPanel transport={transport} />
         <PerfilPanel />

@@ -30,6 +30,7 @@ import { createGoogleFeature } from '../../features/google/server/googleFeature.
 import { createHerdrFeature } from '../../features/herdr/server/herdrFeature.js';
 import { JARDIN_FLOOR_LAYOUT_FILE } from '../../features/jardin/server/constants.js';
 import { createJardinFeature } from '../../features/jardin/server/jardinFeature.js';
+import { createLibrosFeature } from '../../features/libros/server/librosFeature.js';
 import { createMusicFeature } from '../../features/musica/server/musicFeature.js';
 import { createOfertasFeature } from '../../features/ofertas/server/ofertasFeature.js';
 import { createPerfilFeature } from '../../features/perfil/server/perfilFeature.js';
@@ -370,6 +371,9 @@ async function main(): Promise<void> {
       createDecksFeature({ officeToken: () => currentConfig?.token ?? null }),
       // Optional feature: the game collection, shelves by console filled by hand (features/coleccion).
       createColeccionFeature({ officeToken: () => currentConfig?.token ?? null }),
+      // Optional feature: the book library, shelves by genre filled by hand, data and covers from Open Library
+      // (features/libros).
+      createLibrosFeature({ officeToken: () => currentConfig?.token ?? null }),
       // Optional feature: pages that run on this computer, opened (and started) from a piece of furniture
       // (features/accesos).
       createAccesosFeature(),

@@ -81,9 +81,15 @@ export function checkImage(bytes: Uint8Array): CoverType {
 
 const COVER_NAME = /^([a-z0-9]{4,32})\.(png|jpg|webp)$/;
 
-/** Cover images under <pixelDir>/coleccion/portadas/, named only by game id. */
-export function createCoverFiles(pixelDir: string): CoverFiles {
-  const dir = path.join(pixelDir, ...COVERS_DIR);
+/**
+ * Cover images under <pixelDir>/coleccion/portadas/ (or another folder of the office's, for another feature's
+ * covers: features/libros), named only by id.
+ */
+export function createCoverFiles(
+  pixelDir: string,
+  dirParts: readonly string[] = COVERS_DIR,
+): CoverFiles {
+  const dir = path.join(pixelDir, ...dirParts);
   const candidatesDir = path.join(dir, CANDIDATES_DIR);
 
   let staging = 0;
