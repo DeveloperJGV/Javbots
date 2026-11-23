@@ -38,14 +38,20 @@ export function uploadErrorText(status: number): string {
   return 'No se pudo subir la imagen.';
 }
 
-/** How the last search of a book went, in one line (none when there was none, or it offers a choice). */
+/**
+ * How the last search went, in one line (none when there was none, or it offers a choice). «Found by its ISBN» only
+ * when the cover it has now came from an ISBN (one picked from a choice says nothing: its source is shown).
+ */
 export function searchLine(
   search: LibrosCoverState | undefined,
+  coverKey = '',
 ): { text: string; bad: boolean } | null {
   if (!search) return null;
   if (search.state === 'buscando') return { text: 'Buscando en Open Library…', bad: false };
   if (search.state === 'encontrada')
-    return { text: 'Encontrada por su ISBN en Open Library.', bad: false };
+    return coverKey.startsWith('isbn:')
+      ? { text: 'Encontrada por su ISBN en Open Library.', bad: false }
+      : null;
   if (search.state === 'nada')
     return { text: COVER_REASON_TEXT[search.reason ?? ''] ?? 'No se encontró.', bad: true };
   return null;

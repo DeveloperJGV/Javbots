@@ -9,6 +9,8 @@ import { bodegaStore } from '../../features/bodega/webview/bodegaStore.js';
 import { useSearchRoom } from '../../features/busquedas/webview/searchRoomStore.js';
 import { ColeccionPanel } from '../../features/coleccion/webview/ColeccionPanel.js';
 import { useColeccion } from '../../features/coleccion/webview/useColeccion.js';
+import { ComicsPanel } from '../../features/comics/webview/ComicsPanel.js';
+import { useComics } from '../../features/comics/webview/useComics.js';
 import { ConcertsPanel } from '../../features/conciertos/webview/ConcertsPanel.js';
 import { useConcerts } from '../../features/conciertos/webview/useConcerts.js';
 import { ConnectionsPanel } from '../../features/conexiones/webview/ConnectionsPanel.js';
@@ -128,6 +130,8 @@ function App() {
   useColeccion(transport);
   // Optional feature (features/libros): the book library, from its furniture (or the page's #libros hash)
   useLibros(transport);
+  // Optional feature (features/comics): comics and manga, from their furniture (or the page's #comics hash)
+  useComics(transport);
   // Optional feature (features/accesos): pages on this computer, from the map table (or #accesos)
   useAccesos(transport);
   usePerfil(transport);
@@ -751,6 +755,8 @@ function App() {
         <ColeccionPanel transport={transport} />
         {/* Optional feature (features/libros): the book shelves, from their furniture (or #libros) */}
         <LibrosPanel transport={transport} />
+        {/* Optional feature (features/comics): comics and manga, from their furniture (or #comics) */}
+        <ComicsPanel transport={transport} />
         {/* Optional feature (features/accesos): pages on this computer, from the map table (or #accesos) */}
         <AccesosPanel transport={transport} />
         <PerfilPanel />

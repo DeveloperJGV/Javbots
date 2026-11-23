@@ -15,6 +15,7 @@ import { createAgendaFeature } from '../../features/agenda/server/agendaFeature.
 import { AGENDA_FLOOR_LAYOUT_FILE } from '../../features/agenda/server/constants.js';
 import { createHerdrLauncher } from '../../features/busquedas/server/herdrLauncher.js';
 import { createColeccionFeature } from '../../features/coleccion/server/coleccionFeature.js';
+import { createComicsFeature } from '../../features/comics/server/comicsFeature.js';
 import { createConcertsFeature } from '../../features/conciertos/server/concertsFeature.js';
 import { createConnectionsFeature } from '../../features/conexiones/server/connectionsFeature.js';
 import { createDecksFeature } from '../../features/decks/server/decksFeature.js';
@@ -374,6 +375,9 @@ async function main(): Promise<void> {
       // Optional feature: the book library, shelves by genre filled by hand, data and covers from Open Library
       // (features/libros).
       createLibrosFeature({ officeToken: () => currentConfig?.token ?? null }),
+      // Optional feature: comics and manga by series and volumes, data and covers from AniList and Open Library
+      // (features/comics).
+      createComicsFeature({ officeToken: () => currentConfig?.token ?? null }),
       // Optional feature: pages that run on this computer, opened (and started) from a piece of furniture
       // (features/accesos).
       createAccesosFeature(),

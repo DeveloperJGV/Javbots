@@ -62,7 +62,7 @@ function CoverPart({
   const token = officeToken();
   const busy = !!state.op;
   const choice = search?.state === 'elige' && search.candidates?.length ? search : undefined;
-  const line = searchLine(search);
+  const line = searchLine(search, book.coverArt?.key);
   const cover = book.coverArt;
 
   const find = () => send({ type: 'librosCoverFind', id: book.id });

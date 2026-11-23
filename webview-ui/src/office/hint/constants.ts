@@ -15,6 +15,7 @@ export const HINT_LABELS = {
   decks: 'Decks',
   coleccion: 'Colección de juegos',
   libros: 'Librero',
+  comics: 'Cómics y manga',
   bodega: 'Bodega',
   concerts: 'Boletos de conciertos',
   perfil: 'Perfil',

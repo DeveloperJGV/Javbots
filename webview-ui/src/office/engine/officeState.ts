@@ -9,6 +9,7 @@ import { agendaStore, isAgendaFurniture } from '../../../../features/agenda/webv
 import { BODEGA_EMPTY_TYPE, BODEGA_TYPE } from '../../../../features/bodega/webview/constants.js';
 import { baseType as bodegaBaseType } from '../../../../features/bodega/webview/storedItems.js';
 import { isColeccionFurniture } from '../../../../features/coleccion/webview/coleccionStore.js';
+import { isComicsFurniture } from '../../../../features/comics/webview/comicsStore.js';
 import { isConcertTickets } from '../../../../features/conciertos/webview/concertsStore.js';
 import { connectionsStore } from '../../../../features/conexiones/webview/connectionsStore.js';
 import {
@@ -1535,6 +1536,13 @@ export class OfficeState {
   isColeccionAt(worldX: number, worldY: number): boolean {
     return this.furniture.some(
       (f) => isColeccionFurniture(f.type) && hitsPaintedPixel(f, worldX, worldY),
+    );
+  }
+
+  /** Whether a world point lands on the comics and manga shelf (features/comics). */
+  isComicsAt(worldX: number, worldY: number): boolean {
+    return this.furniture.some(
+      (f) => isComicsFurniture(f.type) && hitsPaintedPixel(f, worldX, worldY),
     );
   }
 

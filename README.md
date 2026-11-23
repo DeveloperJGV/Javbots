@@ -27,7 +27,8 @@ cambiamos el idioma, el arte, los cuartos y le agregamos cosas nuevas. La docume
 
 - **23 de noviembre de 2026**: un **librero** para tus libros, hermano de la colección de juegos: repisas por género
   (o autor, editorial, saga), cada libro de lomo y abierto con su ficha; con el ISBN, Open Library llena los datos y
-  pone la portada. También «se busca», un buscador y **«¿Qué leo ahora?»**.
+  pone la portada. También «se busca», un buscador y **«¿Qué leo ahora?»**. Y un estante de **cómics y manga** por
+  series y tomos, con los que faltan como huecos en la repisa.
 - **16 de noviembre de 2026**: las **Ofertas** salen por grupos (Bocinas, Receptor, Red…), plegables y en tu orden,
   y cada vigilancia dice en qué tiendas buscó y qué contestó cada una; también pueden leer Amazon y otras tiendas
   con el navegador, si lo prendes en Ajustes. La **colección de juegos** ya tiene portadas

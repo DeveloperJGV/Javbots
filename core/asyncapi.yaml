@@ -167,6 +167,10 @@ components:
         - $ref: '#/components/schemas/LibrosStatus'
         - $ref: '#/components/schemas/LibrosResult'
         - $ref: '#/components/schemas/LibrosLookupResult'
+        # Comics and manga (feature: features/comics)
+        - $ref: '#/components/schemas/ComicsStatus'
+        - $ref: '#/components/schemas/ComicsResult'
+        - $ref: '#/components/schemas/ComicsLookupResult'
         # Pages on this computer opened from a piece of furniture (feature: features/accesos)
         - $ref: '#/components/schemas/AccesosStatus'
       discriminator: type
@@ -280,6 +284,16 @@ components:
         - $ref: '#/components/schemas/LibrosCoverPick'
         - $ref: '#/components/schemas/LibrosCoverDismiss'
         - $ref: '#/components/schemas/LibrosCoverRemove'
+        # Comics and manga (feature: features/comics)
+        - $ref: '#/components/schemas/ComicsOpen'
+        - $ref: '#/components/schemas/ComicsSave'
+        - $ref: '#/components/schemas/ComicsDelete'
+        - $ref: '#/components/schemas/ComicsLookup'
+        - $ref: '#/components/schemas/ComicsCoverFind'
+        - $ref: '#/components/schemas/ComicsCoverRun'
+        - $ref: '#/components/schemas/ComicsCoverPick'
+        - $ref: '#/components/schemas/ComicsCoverDismiss'
+        - $ref: '#/components/schemas/ComicsCoverRemove'
         # Pages on this computer opened from a piece of furniture (feature: features/accesos)
         - $ref: '#/components/schemas/AccesosOpen'
         - $ref: '#/components/schemas/AccesosStart'
@@ -4808,6 +4822,338 @@ components:
       properties:
         type:
           const: librosCoverRemove
+        requestId:
+          type: string
+        id:
+          type: string
+
+    # ── Comics and manga (feature: features/comics) ──────────────
+
+    ComicsStatus:
+      description: >-
+        Every series of the comics collection (with which volumes are here), the file they live in and what could
+        not be read, plus the last cover search of each series and «Buscar las que faltan». Sent on webviewReady, on
+        comicsOpen and after every change. Privileged connections only. covers and coverRun have the same shape as
+        the library's (LibrosCoverState, LibrosCoverProgress).
+      type: object
+      additionalProperties: false
+      required: [type, series, file, problems, covers]
+      properties:
+        type:
+          const: comicsStatus
+        series:
+          type: array
+          items:
+            $ref: '#/components/schemas/ComicsSeries'
+        file:
+          type: string
+        problems:
+          type: array
+          items:
+            type: string
+        covers:
+          type: array
+          items:
+            $ref: '#/components/schemas/LibrosCoverState'
+        coverRun:
+          $ref: '#/components/schemas/LibrosCoverProgress'
+
+    ComicsResult:
+      description: >-
+        The answer to comicsSave, comicsDelete, comicsCoverPick, comicsCoverDismiss or comicsCoverRemove (id = the
+        series saved, deleted or changed).
+      type: object
+      additionalProperties: false
+      required: [type, requestId, ok]
+      properties:
+        type:
+          const: comicsResult
+        requestId:
+          type: string
+        ok:
+          type: boolean
+        id:
+          type: string
+        error:
+          type: string
+
+    ComicsSeries:
+      description: >-
+        One series (a manga, a comic run, a graphic novel) and which of its volumes are here. Empty strings and 0
+        mean "not said"; id is empty for a series never saved. kind is manga, comic or novela-grafica; format tomo,
+        grapa, integral or lujo. totalVolumes = how many the series has; finished = it already ended; readUpTo =
+        the last volume read. The volumes missing between 1 and the last one are its «se busca».
+      type: object
+      additionalProperties: false
+      required:
+        [id, title, writers, artists, publisher, localPublisher, kind, genre, year, language, format, totalVolumes,
+         finished, readUpTo, owner, notes, volumes, addedAt, updatedAt]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        writers:
+          type: array
+          items:
+            type: string
+        artists:
+          type: array
+          items:
+            type: string
+        publisher:
+          type: string
+        localPublisher:
+          type: string
+        kind:
+          type: string
+        genre:
+          type: string
+        year:
+          type: integer
+        language:
+          type: string
+        format:
+          type: string
+        totalVolumes:
+          type: integer
+        finished:
+          type: boolean
+        readUpTo:
+          type: integer
+        owner:
+          type: string
+        notes:
+          type: string
+        volumes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ComicsVolume'
+        addedAt:
+          type: string
+        updatedAt:
+          type: string
+        coverArt:
+          $ref: '#/components/schemas/ComicsCoverArt'
+        coverNone:
+          type: string
+
+    ComicsVolume:
+      description: >-
+        One volume or issue written down: on the shelf (owned, with the day it came), or missing with the price seen.
+        isbn is digits only.
+      type: object
+      additionalProperties: false
+      required: [number, owned, isbn, addedAt, price]
+      properties:
+        number:
+          type: integer
+        owned:
+          type: boolean
+        isbn:
+          type: string
+        addedAt:
+          type: string
+        price:
+          type: string
+
+    ComicsCoverArt:
+      description: >-
+        A series' cover, set only by the server, served at GET /api/comics/portada/<series id> with the office token
+        (&v=<at>). source anilist (key al:<media id>), openlibrary (key isbn:<isbn> or id:<cover id>) or subida.
+      type: object
+      additionalProperties: false
+      required: [source, key, at, type]
+      properties:
+        source:
+          $ref: '#/components/schemas/ComicsCoverSource'
+        key:
+          type: string
+        at:
+          type: string
+        type:
+          $ref: '#/components/schemas/LibrosCoverType'
+
+    ComicsCoverSource:
+      type: string
+      enum: [anilist, openlibrary, subida]
+
+    ComicsLookupResult:
+      description: >-
+        The answer to comicsLookup: what AniList (manga) or Open Library (comics) has with that title, at most 4,
+        best first (found), or why not (reason nada = nothing with that title; sin-respuesta = the source did not
+        answer). Shown to the person; nothing is saved.
+      type: object
+      additionalProperties: false
+      required: [type, requestId, ok]
+      properties:
+        type:
+          const: comicsLookupResult
+        requestId:
+          type: string
+        ok:
+          type: boolean
+        found:
+          type: array
+          items:
+            $ref: '#/components/schemas/ComicsLookupFound'
+        reason:
+          $ref: '#/components/schemas/ComicsLookupReason'
+
+    ComicsLookupReason:
+      type: string
+      enum: [nada, sin-respuesta]
+
+    ComicsLookupFound:
+      description: >-
+        One series as a source has it (outside text: show it as text). Empty strings and 0 = it did not say.
+      type: object
+      additionalProperties: false
+      required: [source, title, altTitle, writers, artists, volumes, finished, year, genres]
+      properties:
+        source:
+          $ref: '#/components/schemas/ComicsCoverSource'
+        title:
+          type: string
+        altTitle:
+          type: string
+        writers:
+          type: array
+          items:
+            type: string
+        artists:
+          type: array
+          items:
+            type: string
+        volumes:
+          type: integer
+        finished:
+          type: boolean
+        year:
+          type: integer
+        genres:
+          type: array
+          items:
+            type: string
+
+    ComicsOpen:
+      description: The comics panel opened; answered with comicsStatus. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: comicsOpen
+
+    ComicsSave:
+      description: Write a series (id "" = a new one); answered with comicsResult. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, requestId, series]
+      properties:
+        type:
+          const: comicsSave
+        requestId:
+          type: string
+        series:
+          $ref: '#/components/schemas/ComicsSeries'
+
+    ComicsDelete:
+      description: >-
+        Take a series out (it stays in the file's trash list, its cover image is deleted); answered with
+        comicsResult. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, requestId, id]
+      properties:
+        type:
+          const: comicsDelete
+        requestId:
+          type: string
+        id:
+          type: string
+
+    ComicsLookup:
+      description: >-
+        Ask what AniList (kind manga or not said) or Open Library (comics, graphic novels) knows of a title, to fill
+        the form; answered with comicsLookupResult. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, requestId, title, kind]
+      properties:
+        type:
+          const: comicsLookup
+        requestId:
+          type: string
+        title:
+          type: string
+        kind:
+          type: string
+
+    ComicsCoverFind:
+      description: >-
+        Look for one series' cover now (by a volume's ISBN in Open Library, which sets it; else AniList and Open
+        Library by title, which only offer). Result in comicsStatus.covers. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, id]
+      properties:
+        type:
+          const: comicsCoverFind
+        id:
+          type: string
+
+    ComicsCoverRun:
+      description: Start or stop Buscar las que faltan for the comics. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, action]
+      properties:
+        type:
+          const: comicsCoverRun
+        action:
+          $ref: '#/components/schemas/LibrosCoverRunAction'
+
+    ComicsCoverPick:
+      description: Choose candidate n of the series' last elige (stamp = that search's). Answered with comicsResult.
+      type: object
+      additionalProperties: false
+      required: [type, requestId, id, n, stamp]
+      properties:
+        type:
+          const: comicsCoverPick
+        requestId:
+          type: string
+        id:
+          type: string
+        n:
+          type: integer
+        stamp:
+          type: string
+
+    ComicsCoverDismiss:
+      description: «Ninguna» or «Dejar la que tiene» for the series' elige. Answered with comicsResult.
+      type: object
+      additionalProperties: false
+      required: [type, requestId, id, stamp]
+      properties:
+        type:
+          const: comicsCoverDismiss
+        requestId:
+          type: string
+        id:
+          type: string
+        stamp:
+          type: string
+
+    ComicsCoverRemove:
+      description: Take a series' cover away (the image is deleted). Answered with comicsResult. Privileged only.
+      type: object
+      additionalProperties: false
+      required: [type, requestId, id]
+      properties:
+        type:
+          const: comicsCoverRemove
         requestId:
           type: string
         id:

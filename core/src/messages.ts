@@ -70,6 +70,9 @@ export type ServerMessage =
   | LibrosStatus
   | LibrosResult
   | LibrosLookupResult
+  | ComicsStatus
+  | ComicsResult
+  | ComicsLookupResult
   | AccesosStatus;
 
 export type ClientMessage =
@@ -169,6 +172,15 @@ export type ClientMessage =
   | LibrosCoverPick
   | LibrosCoverDismiss
   | LibrosCoverRemove
+  | ComicsOpen
+  | ComicsSave
+  | ComicsDelete
+  | ComicsLookup
+  | ComicsCoverFind
+  | ComicsCoverRun
+  | ComicsCoverPick
+  | ComicsCoverDismiss
+  | ComicsCoverRemove
   | AccesosOpen
   | AccesosStart;
 
@@ -1630,6 +1642,86 @@ export interface LibrosLookupFound {
 
 export type LibrosLookupReason = 'invalido' | 'desconocido' | 'sin-respuesta';
 
+export interface ComicsStatus {
+  type: 'comicsStatus';
+  series: ComicsSeries[];
+  file: string;
+  problems: string[];
+  covers: LibrosCoverState[];
+  coverRun?: LibrosCoverProgress;
+}
+
+export interface ComicsSeries {
+  id: string;
+  title: string;
+  writers: string[];
+  artists: string[];
+  publisher: string;
+  localPublisher: string;
+  kind: string;
+  genre: string;
+  year: number;
+  language: string;
+  format: string;
+  totalVolumes: number;
+  finished: boolean;
+  readUpTo: number;
+  owner: string;
+  notes: string;
+  volumes: ComicsVolume[];
+  addedAt: string;
+  updatedAt: string;
+  coverArt?: ComicsCoverArt;
+  coverNone?: string;
+}
+
+export interface ComicsVolume {
+  number: number;
+  owned: boolean;
+  isbn: string;
+  addedAt: string;
+  price: string;
+}
+
+export interface ComicsCoverArt {
+  source: ComicsCoverSource;
+  key: string;
+  at: string;
+  type: LibrosCoverType;
+}
+
+export type ComicsCoverSource = 'anilist' | 'openlibrary' | 'subida';
+
+export interface ComicsResult {
+  type: 'comicsResult';
+  requestId: string;
+  ok: boolean;
+  id?: string;
+  error?: string;
+}
+
+export interface ComicsLookupResult {
+  type: 'comicsLookupResult';
+  requestId: string;
+  ok: boolean;
+  found?: ComicsLookupFound[];
+  reason?: ComicsLookupReason;
+}
+
+export interface ComicsLookupFound {
+  source: ComicsCoverSource;
+  title: string;
+  altTitle: string;
+  writers: string[];
+  artists: string[];
+  volumes: number;
+  finished: boolean;
+  year: number;
+  genres: string[];
+}
+
+export type ComicsLookupReason = 'nada' | 'sin-respuesta';
+
 export interface AccesosStatus {
   type: 'accesosStatus';
   accesos: AccesoView[];
@@ -1797,10 +1889,10 @@ export interface InstallMusicExtension {
 
 export interface MusicControl {
   type: 'musicControl';
-  action: AnonymousSchema_993;
+  action: AnonymousSchema_1048;
 }
 
-export type AnonymousSchema_993 = 'previous' | 'togglePlay' | 'next';
+export type AnonymousSchema_1048 = 'previous' | 'togglePlay' | 'next';
 
 export interface DisconnectSpotify {
   type: 'disconnectSpotify';
@@ -2252,6 +2344,60 @@ export interface LibrosCoverDismiss {
 
 export interface LibrosCoverRemove {
   type: 'librosCoverRemove';
+  requestId: string;
+  id: string;
+}
+
+export interface ComicsOpen {
+  type: 'comicsOpen';
+}
+
+export interface ComicsSave {
+  type: 'comicsSave';
+  requestId: string;
+  series: ComicsSeries;
+}
+
+export interface ComicsDelete {
+  type: 'comicsDelete';
+  requestId: string;
+  id: string;
+}
+
+export interface ComicsLookup {
+  type: 'comicsLookup';
+  requestId: string;
+  title: string;
+  kind: string;
+}
+
+export interface ComicsCoverFind {
+  type: 'comicsCoverFind';
+  id: string;
+}
+
+export interface ComicsCoverRun {
+  type: 'comicsCoverRun';
+  action: LibrosCoverRunAction;
+}
+
+export interface ComicsCoverPick {
+  type: 'comicsCoverPick';
+  requestId: string;
+  id: string;
+  n: number;
+  stamp: string;
+}
+
+export interface ComicsCoverDismiss {
+  type: 'comicsCoverDismiss';
+  requestId: string;
+  id: string;
+  stamp: string;
+}
+
+export interface ComicsCoverRemove {
+  type: 'comicsCoverRemove';
   requestId: string;
   id: string;
 }

@@ -13,7 +13,7 @@ export interface LastSearch {
  * answer is tried again. The page counts with this same rule.
  */
 export function runSearches(
-  book: Pick<Book, 'wanted' | 'coverArt' | 'coverNone'>,
+  book: Pick<Book, 'wanted' | 'coverNone'> & { coverArt?: unknown },
   last: LastSearch | undefined,
 ): boolean {
   if (book.wanted || book.coverArt || book.coverNone) return false;

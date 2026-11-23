@@ -3,6 +3,7 @@ import { accesosHint } from '../../../../features/accesos/webview/accesosText.js
 import { agendaStore } from '../../../../features/agenda/webview/agendaStore.js';
 import { bodegaStore } from '../../../../features/bodega/webview/bodegaStore.js';
 import { coleccionStore } from '../../../../features/coleccion/webview/coleccionStore.js';
+import { comicsStore } from '../../../../features/comics/webview/comicsStore.js';
 import { concertsStore } from '../../../../features/conciertos/webview/concertsStore.js';
 import { connectionsStore } from '../../../../features/conexiones/webview/connectionsStore.js';
 import { decksStore } from '../../../../features/decks/webview/decksStore.js';
@@ -102,6 +103,9 @@ export function furnitureTargetAt(
   // Game collection shelf (features/coleccion), next to the free-time TV.
   if (os.isColeccionAt(worldX, worldY))
     return target(HINT_LABELS.coleccion, () => coleccionStore.open());
+
+  // Comics and manga shelf (features/comics).
+  if (os.isComicsAt(worldX, worldY)) return target(HINT_LABELS.comics, () => comicsStore.open());
 
   // Book library shelf (features/libros).
   if (os.isLibrosAt(worldX, worldY)) return target(HINT_LABELS.libros, () => librosStore.open());

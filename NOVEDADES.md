@@ -18,6 +18,10 @@ Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
 - **«Se busca», buscador y «¿Qué leo ahora?».** Lo que te falta queda como hueco con su precio; el buscador ilumina
   un autor, una saga o una editorial en todas las repisas; y «¿Qué leo ahora?» propone seguir uno empezado, el que
   sigue de una saga o uno que lleva tiempo esperando, por largo y género (los prestados no cuentan).
+- **Cómics y manga.** Otro estante, hermano del librero, donde la serie es la unidad: anotas «tengo del 1 al 12» de
+  27 y los que faltan salen como huecos en la repisa, tu «se busca». Cada serie se abre como tarjeta con todos sus
+  números para palomear los que llegan y hasta dónde vas leyendo. «Buscar datos» llena autores, tomos y año de un
+  manga desde AniList (y de un cómic desde Open Library), y las portadas se eligen o se suben.
 
 ## 16 de noviembre de 2026
 
