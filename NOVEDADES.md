@@ -3,6 +3,16 @@
 Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
 (Pixel Agents) está en [CHANGELOG.md](CHANGELOG.md).
 
+## 23 de noviembre de 2026
+
+- **Rueda de volumen.** Si usas el programa aparte "Rueda de volumen" (Windows: las teclas de volumen y la rueda
+  del ratón siguen a la música de Spotify aunque suene en otro aparato), la oficina lo enseña y lo maneja. En el menú
+  del reproductor sale un amplificador en pixel art cuya perilla gira con el volumen, con su display digital y un
+  cable que va a la bocina o a la computadora según a dónde va la rueda, y por qué. Se prende, se apaga, se pausa y
+  se configura (paso, aviso en pantalla, arrancar con Windows, nombre de la computadora) desde ahí o desde
+  Ajustes → Música → Opciones de la rueda. Donde no está, no aparece.
+- **Arreglado:** Ajustes ya no se sale de la pantalla en ventanas bajitas; ahora se desplaza.
+
 ## 16 de noviembre de 2026
 
 - **Portadas en la colección de juegos.** «Portadas → Buscar las que faltan» trae la portada de cada juego de

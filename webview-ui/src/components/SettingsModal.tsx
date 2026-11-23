@@ -80,7 +80,12 @@ export function SettingsModal({
   const owner = useSyncExternalStore(ownerStore.subscribe, ownerStore.get);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Ajustes">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Ajustes"
+      className="max-h-[96vh] overflow-y-auto"
+    >
       {/* Open Sessions Folder opens an OS file manager — impossible in the browser. */}
       {!isBrowserRuntime && (
         <MenuItem

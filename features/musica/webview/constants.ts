@@ -89,3 +89,35 @@ export const PLAYLIST_PRESS_COLORS = {
   on: '#f472b6',
   onShine: '#fbcfe8',
 } as const;
+
+/** The volume wheel options panel opens over Settings and the player menu. */
+export const RUEDA_MODAL_Z = 60;
+
+/** Colors of the volume wheel scene (features/musica, rueda). */
+export const RUEDA_SCENE_COLORS = {
+  amp: '#3a3550',
+  ampTop: '#4f4870',
+  ampEdge: '#22202f',
+  knob: '#5d5878',
+  knobDark: '#46415e',
+  knobLight: '#7a7598',
+  mark: '#f2f0ec',
+  ledOff: '#2c2a3c',
+  led: '#ffb547',
+  ledHot: '#ffe0a3',
+  screen: '#141320',
+  digit: '#ffb547',
+  digitOff: '#3a2f22',
+  cableSpotify: '#ffb547',
+  cableWindows: '#3794ff',
+  cableOff: '#3a3a4e',
+  cabinet: '#3a3550',
+  cone: '#22202f',
+  coneRing: '#5d5878',
+  laptop: '#5d5878',
+  screenOn: '#3794ff',
+  screenDim: '#24304a',
+  note: '#ffd27a',
+  dim: 'rgba(16,16,28,0.55)',
+  screenText: '#9cc8ff',
+};

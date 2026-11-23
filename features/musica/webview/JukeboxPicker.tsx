@@ -7,6 +7,7 @@ import { getCatalogEntry } from '../../../webview-ui/src/office/layout/furniture
 import { getCachedSprite } from '../../../webview-ui/src/office/sprites/spriteCache.js';
 import { PLAYER_STYLES, PLAYER_THUMB_PX } from './constants.js';
 import { musicStore } from './musicStore.js';
+import { RuedaOptions, RuedaPanel } from './rueda/RuedaPanel.js';
 
 /**
  * The music player menu (features/musica): a click on the player shows its looks (turntable or one of the jukeboxes);
@@ -24,7 +25,8 @@ export function JukeboxPicker({
     musicStore.subscribe,
     musicStore.get,
   );
-  if (!uid) return null;
+  // The volume wheel options (features/musica/rueda) open from here and from Settings: this is always mounted
+  if (!uid) return <RuedaOptions />;
   const current = getType(uid)?.split(':')[0];
   const styles = PLAYER_STYLES.filter((s) => getCatalogEntry(s.type));
   return (
@@ -64,6 +66,8 @@ export function JukeboxPicker({
             {columnHidden ? 'Mostrar la columna de música' : 'Ocultar la columna de música'}
           </Button>
         </div>
+        <RuedaPanel />
+        <RuedaOptions />
       </div>
     </Modal>
   );

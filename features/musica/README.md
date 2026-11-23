@@ -171,6 +171,40 @@ La extensión avisa también cuando adelantas o regresas la canción (antes solo
 cada 15 s), así la letra en otras pantallas no se queda atrás. También cuenta el volumen y el tempo, y obedece los
 botones de volumen. Para tenerlo, vuelve a instalar la extensión desde Ajustes.
 
+## Rueda de volumen (opcional, solo Windows)
+
+"Rueda de volumen" es un programa aparte, para Windows, que hace que las teclas de volumen (las del teclado o la
+rueda de un ratón con control multimedia) sigan a la música: si Spotify suena en otro aparato (una bocina, otra
+computadora), le suben y le bajan a ese aparato por la API de Spotify; si suena en esta computadora o no suena nada,
+mueven el volumen de Windows como siempre. El programa no viene en este repositorio; la oficina solo lo enseña y lo
+maneja. Donde no está (o fuera de Windows), no aparece nada.
+
+**Dónde se ve:**
+
+- En el **menú del reproductor** (un clic en el reproductor): una escenita en pixel art con un amplificador, su
+  perilla y su anillo de luces, un display digital con el volumen y un cable que va a la bocina o a la computadora,
+  según a dónde va la rueda. La perilla gira cuando cambia el volumen y la bocina suelta notitas mientras suena.
+  Abajo: a dónde va la rueda y por qué, la última vuelta que dio, y los botones **Apagar / Prender**, **Pausar** e
+  **Iniciar sesión de Spotify** (si al programa le falta).
+- En **Ajustes → Música**: una línea con el estado y **Opciones de la rueda**, que abre su panel: la misma escena,
+  prender y apagar, pausar, aviso en pantalla al girar, arrancar con Windows, el paso por vuelta (1, 2, 3, 5 o 10) y
+  el nombre de esta computadora en Spotify. Si el programa nunca se ha corrido aquí, dice cómo prenderlo la primera
+  vez (a mano, una vez).
+
+**Cómo habla con el programa:** por archivos en su carpeta de datos, `%APPDATA%\rueda-volumen\` (otra con `JAVBOTS_RUEDA_DIR`). Solo quien abrió la oficina con su token lo ve y lo maneja.
+
+| Archivo         | Quién lo escribe | Para qué                                                                                                                                   |
+| --------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `estado.json`   | el programa      | Prendido, pausado, sesión, a dónde va la tecla y por qué, el aparato y su volumen, la última tecla                                         |
+| `ajustes.json`  | los dos          | Pausa, paso, aviso, nombre de la computadora. La oficina valida tipos y rangos y lo reescribe de forma atómica, sin tocar las demás llaves |
+| `lanzador.json` | el programa      | El intérprete de Python y el `rueda.pyw` con que se prende                                                                                 |
+
+La oficina lee los archivos cada segundo mientras hay una página abierta y avisa a la página solo si algo cambió.
+Para prender, apagar, iniciar sesión o cambiar el arranque con Windows corre **solo** lo que dice `lanzador.json`
+(un `pythonw.exe`/`python.exe` con ruta completa que exista y un `rueda.pyw` con ruta completa que exista), con
+argumentos fijos (`--salir`, `--iniciar-sesion`, `--arranque si|no`); nada que venga de la página llega a la línea de
+comandos. Si el programa se cerró de golpe, la oficina lo ve apagado (revisa que su proceso exista).
+
 ## Carpetas
 
 | Carpeta                                   | Qué hay                                                                                                                                                                             |
@@ -182,6 +216,7 @@ botones de volumen. Para tenerlo, vuelve a instalar la extensión desde Ajustes.
 | `arte/`                                   | Originales de PixelLab, `armar.py` (muebles) y `poner-en-plano.cjs` (los pone en un `layout.json`)                                                                                  |
 | `test/`                                   | Pruebas del servidor y de la página (corren con `npm test`)                                                                                                                         |
 | `server/playlists/`, `webview/playlists/` | Playlist del día: reglas (`generator.ts`), el texto (`describe.ts`) y su búsqueda (`describeSearch.ts`), llamadas a Spotify, `playlists.json` y el panel                            |
+| `server/rueda/`, `webview/rueda/`         | Rueda de volumen: lectura y escritura de sus archivos, el lanzador (`ruedaFeature.ts`, `ruedaFiles.ts`), la escena de la perilla (`ruedaScene.ts`), textos y paneles                |
 | `test/dobles/`                            | Spotify de mentira para pruebas (`fakeSpotify.ts`) y para una oficina aislada (`servidor.ts`, con `JAVBOTS_SPOTIFY_API_URL` y `JAVBOTS_SPOTIFY_ACCOUNTS_URL` apuntando a 127.0.0.1) |
 
 Puntos donde toca al resto del proyecto (todos chicos y marcados con `features/musica`): mensajes en

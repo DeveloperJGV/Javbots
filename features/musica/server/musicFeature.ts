@@ -25,6 +25,7 @@ import { CoverCache } from './cover.js';
 import { cleanLines, fetchLrclib, type Lyrics, songKey } from './lyrics.js';
 import { type MusicConfig, readMusicConfig, writeMusicConfig } from './musicConfig.js';
 import { createPlaylists, type Playlists } from './playlists/playlistFeature.js';
+import { createRueda, type Rueda, type RuedaOptions } from './rueda/ruedaFeature.js';
 import { type ControlOutcome, startScreenServer } from './screenServer.js';
 import {
   installExtension,
@@ -57,6 +58,8 @@ export interface MusicFeatureOptions {
   /** Waits before a Spotify retry (tests); and the playlists' randomness. */
   spotifySleep?: (ms: number) => Promise<void>;
   rng?: () => number;
+  /** The volume wheel program (features/musica/rueda); injectable for tests. */
+  rueda?: RuedaOptions;
 }
 
 /** Who reported the current track. */
@@ -133,6 +136,8 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
   pollSpotify(): Promise<void>;
   /** "Playlist del día" (exposed for tests). */
   playlists: Playlists;
+  /** The volume wheel program (exposed for tests). */
+  rueda: Rueda;
 } {
   const run = opts.run ?? runSpicetify;
   const covers = opts.covers ?? new CoverCache();
@@ -209,6 +214,8 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
     rng: opts.rng,
     onChange: () => broadcastPlaylists(),
   });
+  /** The volume wheel program (features/musica/rueda): only the owner sees it or drives it. */
+  const rueda = createRueda(opts.rueda);
   function broadcastPlaylists(): void {
     const msg = playlists.status() as unknown as Record<string, unknown>;
     for (const c of clients) if (c.privileged) c.send(msg);
@@ -755,7 +762,11 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
 
     connect(client) {
       clients.add(client);
-      return () => clients.delete(client);
+      const leaveRueda = rueda.connect(client);
+      return () => {
+        clients.delete(client);
+        leaveRueda();
+      };
     },
 
     handleClientMessage(msg, client) {
@@ -767,6 +778,7 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
           client.send(lyricsMessage());
           if (client.privileged)
             client.send(playlists.status() as unknown as Record<string, unknown>);
+          rueda.greet(client);
           return false;
         case 'setMusicEnabled':
           if (typeof msg.enabled !== 'boolean') return true;
@@ -795,6 +807,9 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
         }
         case 'playlistCommand':
           return playlists.handle(msg as Record<string, unknown>, client);
+        case 'ruedaCommand':
+          void rueda.handle(msg, client);
+          return true;
         case 'installMusicExtension': {
           if (!client.privileged) return true;
           const serverUrl = opts.serverUrl();
@@ -827,6 +842,7 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
       }
       pendingControls.clear();
       screen?.close();
+      rueda.dispose();
       clients.clear();
     },
 
@@ -838,5 +854,6 @@ export function createMusicFeature(opts: MusicFeatureOptions): ServerFeature & {
     runControl,
     pollSpotify,
     playlists,
+    rueda,
   };
 }
