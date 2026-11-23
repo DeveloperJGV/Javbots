@@ -46,6 +46,7 @@ export type ServerMessage =
   | MusicStatus
   | MusicLyrics
   | PlaylistStatus
+  | RuedaStatus
   | UsageStatus
   | HerdrTabLabels
   | GithubStatus
@@ -107,6 +108,7 @@ export type ClientMessage =
   | MusicControl
   | DisconnectSpotify
   | PlaylistCommand
+  | RuedaCommand
   | RefreshConcerts
   | SearchConcerts
   | AddConcert
@@ -653,6 +655,47 @@ export interface PlaylistProposal {
   add: PlaylistSong[];
   totalMs: number;
   note?: string;
+}
+
+export interface RuedaStatus {
+  type: 'ruedaStatus';
+  installed: boolean;
+  running: boolean;
+  session?: boolean;
+  signingIn?: boolean;
+  mode?: RuedaTarget;
+  reason?: string;
+  device?: RuedaDevice;
+  lastKey?: RuedaLastKey;
+  settings: RuedaSettings;
+  busy?: boolean;
+  message?: string;
+  updatedAt?: string;
+}
+
+export type RuedaTarget = 'spotify' | 'windows';
+
+export interface RuedaDevice {
+  name: string;
+  kind?: string;
+  volume?: number;
+  playing: boolean;
+  thisComputer: boolean;
+  volumeControl: boolean;
+}
+
+export interface RuedaLastKey {
+  to: RuedaTarget;
+  reason: string;
+  at?: string;
+}
+
+export interface RuedaSettings {
+  paused: boolean;
+  step: number;
+  toast: boolean;
+  startWithWindows: boolean;
+  computerName: string;
 }
 
 export interface UsageStatus {
@@ -1889,10 +1932,10 @@ export interface InstallMusicExtension {
 
 export interface MusicControl {
   type: 'musicControl';
-  action: AnonymousSchema_1048;
+  action: AnonymousSchema_1070;
 }
 
-export type AnonymousSchema_1048 = 'previous' | 'togglePlay' | 'next';
+export type AnonymousSchema_1070 = 'previous' | 'togglePlay' | 'next';
 
 export interface DisconnectSpotify {
   type: 'disconnectSpotify';
@@ -1939,6 +1982,22 @@ export type PlaylistAction =
   | 'forget';
 
 export type PlaylistImproveMode = 'more' | 'bin' | 'reroll' | 'discover' | 'text';
+
+export interface RuedaCommand {
+  type: 'ruedaCommand';
+  action: RuedaAction;
+  on?: boolean;
+  settings?: RuedaSettingsPatch;
+}
+
+export type RuedaAction = 'start' | 'stop' | 'signIn' | 'startup' | 'set';
+
+export interface RuedaSettingsPatch {
+  paused?: boolean;
+  step?: number;
+  toast?: boolean;
+  computerName?: string;
+}
 
 export interface RefreshConcerts {
   type: 'refreshConcerts';

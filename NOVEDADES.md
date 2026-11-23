@@ -22,6 +22,13 @@ Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
   27 y los que faltan salen como huecos en la repisa, tu «se busca». Cada serie se abre como tarjeta con todos sus
   números para palomear los que llegan y hasta dónde vas leyendo. «Buscar datos» llena autores, tomos y año de un
   manga desde AniList (y de un cómic desde Open Library), y las portadas se eligen o se suben.
+- **Rueda de volumen.** Si usas el programa aparte "Rueda de volumen" (Windows: las teclas de volumen y la rueda
+  del ratón siguen a la música de Spotify aunque suene en otro aparato), la oficina lo enseña y lo maneja. En el menú
+  del reproductor sale un amplificador en pixel art cuya perilla gira con el volumen, con su display digital y un
+  cable que va a la bocina o a la computadora según a dónde va la rueda, y por qué. Se prende, se apaga, se pausa y
+  se configura (paso, aviso en pantalla, arrancar con Windows, nombre de la computadora) desde ahí o desde
+  Ajustes → Música → Opciones de la rueda. Donde no está, no aparece.
+- **Arreglado:** Ajustes ya no se sale de la pantalla en ventanas bajitas; ahora se desplaza.
 
 ## 16 de noviembre de 2026
 

@@ -128,6 +128,8 @@ components:
         - $ref: '#/components/schemas/MusicStatus'
         - $ref: '#/components/schemas/MusicLyrics'
         - $ref: '#/components/schemas/PlaylistStatus'
+        # Volume wheel program (feature: features/musica, rueda)
+        - $ref: '#/components/schemas/RuedaStatus'
         # Claude usage (feature: features/usage)
         - $ref: '#/components/schemas/UsageStatus'
         # herdr tab names (feature: features/herdr)
@@ -209,6 +211,8 @@ components:
         - $ref: '#/components/schemas/MusicControl'
         - $ref: '#/components/schemas/DisconnectSpotify'
         - $ref: '#/components/schemas/PlaylistCommand'
+        # Volume wheel program (feature: features/musica, rueda)
+        - $ref: '#/components/schemas/RuedaCommand'
         # Upcoming concerts (feature: features/conciertos)
         - $ref: '#/components/schemas/RefreshConcerts'
         - $ref: '#/components/schemas/SearchConcerts'
@@ -5988,6 +5992,155 @@ components:
       properties:
         type:
           const: requestDiagnostics
+
+    # ── Volume wheel program (feature: features/musica, rueda) ─────
+
+    RuedaStatus:
+      description: >-
+        "Rueda de volumen", a separate Windows program that sends the volume keys to the Spotify device that is
+        playing. The office reads its state file and can start it, stop it and change its settings. Only sent on
+        Windows, to privileged connections. `installed` is false until the program has run once on this computer.
+      type: object
+      additionalProperties: false
+      required: [type, installed, running, settings]
+      properties:
+        type:
+          const: ruedaStatus
+        installed:
+          type: boolean
+          description: The program left its launcher file (it has run at least once here).
+        running:
+          type: boolean
+        session:
+          type: boolean
+          description: The program has its own Spotify session.
+        signingIn:
+          type: boolean
+          description: The program's Spotify sign-in page is open.
+        mode:
+          $ref: '#/components/schemas/RuedaTarget'
+          description: Where a volume key would go right now.
+        reason:
+          type: string
+          description: Why (the program's own code, e.g. spotify, paused, nothing_playing, this_computer).
+        device:
+          $ref: '#/components/schemas/RuedaDevice'
+        lastKey:
+          $ref: '#/components/schemas/RuedaLastKey'
+        settings:
+          $ref: '#/components/schemas/RuedaSettings'
+        busy:
+          type: boolean
+          description: An action from the office is running.
+        message:
+          type: string
+          description: Result of the last action from the office, in words.
+        updatedAt:
+          type: string
+          description: When the program last wrote its state (ISO).
+
+    RuedaDevice:
+      description: The Spotify device that is active for the account.
+      type: object
+      additionalProperties: false
+      required: [name, playing, thisComputer, volumeControl]
+      properties:
+        name:
+          type: string
+        kind:
+          type: string
+          description: Spotify's device type (Speaker, Computer, Smartphone…).
+        volume:
+          type: integer
+          minimum: 0
+          maximum: 100
+        playing:
+          type: boolean
+        thisComputer:
+          type: boolean
+        volumeControl:
+          type: boolean
+          description: Spotify lets its volume be changed.
+
+    RuedaLastKey:
+      description: The last volume key the program saw.
+      type: object
+      additionalProperties: false
+      required: [to, reason]
+      properties:
+        to:
+          $ref: '#/components/schemas/RuedaTarget'
+        reason:
+          type: string
+        at:
+          type: string
+
+    RuedaSettings:
+      description: The program's settings, as stored in its settings file.
+      type: object
+      additionalProperties: false
+      required: [paused, step, toast, startWithWindows, computerName]
+      properties:
+        paused:
+          type: boolean
+          description: The keys only move the Windows volume.
+        step:
+          type: integer
+          minimum: 1
+          maximum: 25
+          description: Volume points per key on the Spotify device.
+        toast:
+          type: boolean
+          description: Show the small on-screen notice.
+        startWithWindows:
+          type: boolean
+        computerName:
+          type: string
+          description: This computer's name as Spotify Connect shows it.
+
+    RuedaCommand:
+      description: >-
+        A control of the volume wheel program. `start` / `stop` run it or close it; `signIn` asks the running program
+        to open its Spotify sign-in; `startup` adds or removes it from Windows startup (`on`); `set` changes
+        settings (only the fields given). The server only ever runs the launcher the program wrote itself, with fixed
+        arguments. Privileged connections only.
+      type: object
+      additionalProperties: false
+      required: [type, action]
+      properties:
+        type:
+          const: ruedaCommand
+        action:
+          $ref: '#/components/schemas/RuedaAction'
+        on:
+          type: boolean
+        settings:
+          $ref: '#/components/schemas/RuedaSettingsPatch'
+
+    RuedaSettingsPatch:
+      description: Settings to change; missing fields stay as they are.
+      type: object
+      additionalProperties: false
+      properties:
+        paused:
+          type: boolean
+        step:
+          type: integer
+          minimum: 1
+          maximum: 25
+        toast:
+          type: boolean
+        computerName:
+          type: string
+
+    RuedaTarget:
+      type: string
+      description: Where a volume key goes, the Spotify device or Windows.
+      enum: [spotify, windows]
+
+    RuedaAction:
+      type: string
+      enum: [start, stop, signIn, startup, set]
 
     # ── Supporting schemas ─────────────────────────────────────────
 

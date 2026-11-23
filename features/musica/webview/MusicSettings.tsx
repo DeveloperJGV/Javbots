@@ -4,6 +4,7 @@ import type { MessageTransport } from '../../../core/src/transport.js';
 import { Button } from '../../../webview-ui/src/components/ui/Button.js';
 import { Checkbox } from '../../../webview-ui/src/components/ui/Checkbox.js';
 import { type MusicState, musicStore } from './musicStore.js';
+import { RuedaSettings } from './rueda/RuedaPanel.js';
 
 /** Settings → Música: show/hide, and install the Spicetify extension into Spotify. */
 export function MusicSettings({
@@ -113,6 +114,7 @@ export function MusicSettings({
             </>
           )}
         </div>
+        <RuedaSettings />
       </div>
     </div>
   );
