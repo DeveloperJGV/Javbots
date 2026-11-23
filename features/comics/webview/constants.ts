@@ -11,6 +11,8 @@ export const SUGGEST_LIMIT = 8;
 export const SAVED_NOTE_MS = 2600;
 /** More volumes than this in one series: the card's grid of numbers scrolls. */
 export const GRID_MANY = 120;
+/** Most numbers the card paints; past it, «Tengo» in the form handles the rest. */
+export const GRID_MAX = 400;
 
 /** Volume spine sizes (px) by format; a manga volume is smaller than a Western one. */
 export const VOLUME_SPINE = {

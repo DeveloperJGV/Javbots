@@ -137,10 +137,15 @@ export function seriesSpan(s: Pick<Series, 'volumes' | 'totalVolumes'>): number 
 }
 
 /** The volumes missing between 1 and the span (the series' «se busca»). */
+/** Kept per list of volumes (a change makes a new list) and its count: the shelves ask for it on every paint. */
+const missingCache = new WeakMap<readonly Volume[], { total: number; out: number[] }>();
 export function missingNumbers(s: Pick<Series, 'volumes' | 'totalVolumes'>): number[] {
+  const kept = missingCache.get(s.volumes);
+  if (kept && kept.total === s.totalVolumes) return kept.out;
   const owned = new Set(ownedNumbers(s as Series));
   const out: number[] = [];
   for (let n = 1; n <= seriesSpan(s); n++) if (!owned.has(n)) out.push(n);
+  missingCache.set(s.volumes, { total: s.totalVolumes, out });
   return out;
 }
 

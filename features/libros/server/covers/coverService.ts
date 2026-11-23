@@ -8,7 +8,8 @@ import type { CoverFiles, StagedCover } from '../../../coleccion/server/covers/c
 import { runSearches } from '../../core/cover.js';
 import { isbn13 } from '../../core/isbn.js';
 import { pickCandidates } from '../../core/lookup.js';
-import type { BookCoverArt } from '../../core/types.js';
+import { fold } from '../../core/shelves.js';
+import type { Book, BookCoverArt } from '../../core/types.js';
 import type { LibraryStore } from '../libraryStore.js';
 import { CANDIDATES_MAX } from './constants.js';
 import type { OpenLibrary } from './openLibrary.js';
@@ -32,6 +33,8 @@ interface Candidate {
 interface Search {
   state: LibrosCoverState;
   candidates: Candidate[];
+  /** The cover the book had when the choice was offered («at», or ""): picking checks it did not change. */
+  coverAt?: string;
 }
 
 export interface CoverService {
@@ -75,15 +78,27 @@ export function createCoverService(opts: {
   const busy = new Set<string>();
   let run: LibrosCoverProgress | undefined;
   let stopAsked = false;
+  /** Thumbnails downloading, by book, number and search: two requests share one download. */
+  const thumbs = new Map<string, Promise<{ bytes: Uint8Array; type: string } | null>>();
 
   const iso = () => new Date(now()).toISOString();
+  /** Tells the pages; one that cannot be told never stops a search or a run halfway. */
+  const notify = () => {
+    try {
+      opts.onChange();
+    } catch {
+      // The next change tells them again
+    }
+  };
+  /** What a search is made from: when it changes, a search in course no longer fits. */
+  const identity = (b: Book) => `${fold(b.title)}|${fold(b.authors[0] ?? '')}|${b.isbn}`;
   const setState = (
     id: string,
     state: Omit<LibrosCoverState, 'id' | 'at'>,
     candidates: Candidate[] = [],
   ) => {
     searches.set(id, { state: { id, at: iso(), ...state }, candidates });
-    opts.onChange();
+    notify();
   };
   const nothing = (id: string, reason: LibrosCoverReason) =>
     setState(id, { state: 'nada', stamp: newStamp(now()), reason });
@@ -95,6 +110,7 @@ export function createCoverService(opts: {
     source: BookCoverArt['source'],
     key: string,
   ): BookCoverArt {
+    const before = store.get(id)?.coverArt;
     const staged: StagedCover = files.stage(id, bytes);
     const art: BookCoverArt = { source, key, at: iso(), type: staged.type };
     try {
@@ -103,7 +119,18 @@ export function createCoverService(opts: {
       files.discard(staged);
       throw err;
     }
-    files.commit(staged);
+    try {
+      files.commit(staged);
+    } catch {
+      // The file says the new one but its image is not there: back to the one it had
+      files.discard(staged);
+      try {
+        store.setCover(id, before ?? null);
+      } catch {
+        // Nothing more can be done; the next search or upload writes it again
+      }
+      throw new CoverError('No se pudo guardar la imagen; la portada de antes sigue igual.');
+    }
     files.clearCandidates(id);
     return art;
   }
@@ -113,10 +140,26 @@ export function createCoverService(opts: {
     const book = store.get(id);
     if (!book || book.wanted || busy.has(id)) return;
     busy.add(id);
+    // Set once the search starts; until then nothing of it can be stale
+    let alive = (): boolean => false;
     try {
       if (manual && book.coverNone) store.setCoverNone(id, null);
-      setState(id, { state: 'buscando', stamp: newStamp(now()) });
+      const stamp = newStamp(now());
+      setState(id, { state: 'buscando', stamp });
       files.clearCandidates(id);
+      const who = identity(book);
+      // After every wait: still this search, and still the same book (not deleted, renamed or given another ISBN)
+      alive = () => {
+        const nowBook = store.get(id);
+        return searches.get(id)?.state.stamp === stamp && !!nowBook && identity(nowBook) === who;
+      };
+      // A search that no longer fits leaves nothing behind
+      const drop = () => {
+        if (searches.get(id)?.state.stamp === stamp) {
+          searches.delete(id);
+          notify();
+        }
+      };
       const candidates: Candidate[] = [];
       let failed = false;
 
@@ -125,8 +168,10 @@ export function createCoverService(opts: {
       if (isbn) {
         try {
           const bytes = await ol.isbnCover(isbn, 'L');
+          if (!alive()) return drop();
           if (bytes) {
-            if (!book.coverArt) {
+            // The cover it has now (one uploaded while this waited is the person's: never replaced)
+            if (!store.get(id)?.coverArt) {
               setCover(id, bytes, 'openlibrary', `isbn:${isbn}`);
               setState(id, { state: 'encontrada', stamp: newStamp(now()), label: book.title });
               return;
@@ -147,6 +192,7 @@ export function createCoverService(opts: {
       // 2. By title and first author: only ever offered, never set by itself
       try {
         const docs = await ol.search(book.title, book.authors[0] ?? '');
+        if (!alive()) return drop();
         for (const d of pickCandidates(book, docs, CANDIDATES_MAX)) {
           if (candidates.length >= CANDIDATES_MAX) break;
           candidates.push({
@@ -157,6 +203,7 @@ export function createCoverService(opts: {
           });
         }
       } catch {
+        if (!alive()) return drop();
         failed = true;
       }
 
@@ -164,7 +211,8 @@ export function createCoverService(opts: {
         nothing(id, failed ? 'sin-respuesta' : 'sin-coincidencia');
         return;
       }
-      const current = store.get(id)?.coverArt?.key;
+      const art = store.get(id)?.coverArt;
+      const current = art?.key;
       const wire: LibrosCoverCandidate[] = candidates.map((c) => ({
         label: c.label,
         year: c.year,
@@ -172,9 +220,11 @@ export function createCoverService(opts: {
         ...(current && c.key === current ? { current: true } : {}),
       }));
       setState(id, { state: 'elige', stamp: newStamp(now()), candidates: wire }, candidates);
+      const offered = searches.get(id);
+      if (offered) offered.coverAt = art?.at ?? '';
     } catch {
       // The library could not be written: say it did not work, try again later
-      nothing(id, 'sin-respuesta');
+      if (alive()) nothing(id, 'sin-respuesta');
     } finally {
       busy.delete(id);
     }
@@ -199,7 +249,7 @@ export function createCoverService(opts: {
       failed: 0,
       startedAt: iso(),
     };
-    opts.onChange();
+    notify();
     for (const id of ids) {
       if (stopAsked) break;
       await find(id, false);
@@ -209,10 +259,10 @@ export function createCoverService(opts: {
       else if (s?.state === 'elige') run.choose++;
       else if (s?.reason === 'sin-respuesta') run.failed++;
       else run.notFound++;
-      opts.onChange();
+      notify();
     }
     run = { ...run, running: false, stopped: stopAsked, finishedAt: iso() };
-    opts.onChange();
+    notify();
   }
 
   function choice(id: string, stamp: string): Search {
@@ -251,8 +301,10 @@ export function createCoverService(opts: {
           ? err
           : new CoverError('Open Library no contestó; intenta otra vez.');
       }
-      // Another click or a new search may have come while it downloaded
-      choice(id, stamp);
+      // Another click, a new search, a change or an upload may have come while it downloaded: theirs wins
+      const still = choice(id, stamp);
+      if ((store.get(id)?.coverArt?.at ?? '') !== (still.coverAt ?? ''))
+        throw new CoverError('La portada cambió mientras bajaba; busca otra vez.');
       setCover(id, bytes, 'openlibrary', c.key);
       searches.set(id, {
         state: { id, at: iso(), state: 'encontrada', stamp: newStamp(now()), label: c.label },
@@ -284,15 +336,29 @@ export function createCoverService(opts: {
       return art;
     },
 
-    async candidateImage(id, n) {
+    candidateImage(id, n) {
       const s = searches.get(id);
       const c = s?.state.state === 'elige' ? s.candidates[n] : undefined;
-      if (!c) return null;
-      const cached = files.readCandidate(id, n);
-      if (cached) return { bytes: cached.bytes, type: cached.type };
-      const bytes = await fetchCandidate(c, 'M');
-      const type = files.saveCandidate(id, n, bytes);
-      return { bytes, type };
+      if (!s || !c) return Promise.resolve(null);
+      const stamp = s.state.stamp;
+      const key = `${id}|${n}|${stamp}`;
+      const pending = thumbs.get(key);
+      if (pending) return pending;
+      const job = (async () => {
+        const cached = files.readCandidate(id, n);
+        if (cached) return { bytes: cached.bytes, type: cached.type };
+        const bytes = await fetchCandidate(c, 'M');
+        // Searched again while it downloaded: this thumbnail is not one of the new choice's
+        if (searches.get(id)?.state.stamp !== stamp) return null;
+        const type = files.saveCandidate(id, n, bytes);
+        return { bytes, type };
+      })();
+      thumbs.set(key, job);
+      const drop = () => {
+        if (thumbs.get(key) === job) thumbs.delete(key);
+      };
+      job.then(drop, drop);
+      return job;
     },
 
     bookChanged(id, lostCover) {

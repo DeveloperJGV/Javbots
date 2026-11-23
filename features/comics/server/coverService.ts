@@ -10,6 +10,7 @@ import { isbn13 } from '../../libros/core/isbn.js';
 import { pickCandidates } from '../../libros/core/lookup.js';
 import type { OpenLibrary } from '../../libros/server/covers/openLibrary.js';
 import { aniScore } from '../core/lookup.js';
+import { fold } from '../core/shelves.js';
 import type { ComicCoverArt, Series } from '../core/types.js';
 import type { AniList } from './aniList.js';
 import type { ComicsStore } from './comicsStore.js';
@@ -36,6 +37,8 @@ interface Candidate {
 interface Search {
   state: LibrosCoverState;
   candidates: Candidate[];
+  /** The cover the series had when the choice was offered («at», or ""): picking checks it did not change. */
+  coverAt?: string;
 }
 
 export interface ComicCoverService {
@@ -83,15 +86,28 @@ export function createComicCoverService(opts: {
   const busy = new Set<string>();
   let run: LibrosCoverProgress | undefined;
   let stopAsked = false;
+  /** Thumbnails downloading, by book, number and search: two requests share one download. */
+  const thumbs = new Map<string, Promise<{ bytes: Uint8Array; type: string } | null>>();
 
   const iso = () => new Date(now()).toISOString();
+  /** Tells the pages; one that cannot be told never stops a search or a run halfway. */
+  const notify = () => {
+    try {
+      opts.onChange();
+    } catch {
+      // The next change tells them again
+    }
+  };
+  /** What a search is made from: when it changes, a search in course no longer fits. */
+  const identity = (x: Series) =>
+    `${fold(x.title)}|${fold(x.writers[0] ?? '')}|${seriesIsbn(x) ?? ''}|${x.kind}`;
   const setState = (
     id: string,
     state: Omit<LibrosCoverState, 'id' | 'at'>,
     candidates: Candidate[] = [],
   ) => {
     searches.set(id, { state: { id, at: iso(), ...state }, candidates });
-    opts.onChange();
+    notify();
   };
   const nothing = (id: string, reason: LibrosCoverReason) =>
     setState(id, { state: 'nada', stamp: newStamp(now()), reason });
@@ -102,6 +118,7 @@ export function createComicCoverService(opts: {
     source: ComicCoverArt['source'],
     key: string,
   ): ComicCoverArt {
+    const before = store.get(id)?.coverArt;
     const staged: StagedCover = files.stage(id, bytes);
     const art: ComicCoverArt = { source, key, at: iso(), type: staged.type };
     try {
@@ -110,7 +127,18 @@ export function createComicCoverService(opts: {
       files.discard(staged);
       throw err;
     }
-    files.commit(staged);
+    try {
+      files.commit(staged);
+    } catch {
+      // The file says the new one but its image is not there: back to the one it had
+      files.discard(staged);
+      try {
+        store.setCover(id, before ?? null);
+      } catch {
+        // Nothing more can be done; the next search or upload writes it again
+      }
+      throw new CoverError('No se pudo guardar la imagen; la portada de antes sigue igual.');
+    }
     files.clearCandidates(id);
     return art;
   }
@@ -120,10 +148,27 @@ export function createComicCoverService(opts: {
     const s = store.get(id);
     if (!s || busy.has(id)) return;
     busy.add(id);
+    // Set once the search starts; until then nothing of it can be stale
+    let alive = (): boolean => false;
     try {
       if (manual && s.coverNone) store.setCoverNone(id, null);
-      setState(id, { state: 'buscando', stamp: newStamp(now()) });
+      const stamp = newStamp(now());
+      setState(id, { state: 'buscando', stamp });
       files.clearCandidates(id);
+      const who = identity(s);
+      // After every wait: still this search, and still the same series (not deleted or renamed)
+      alive = () => {
+        const nowSeries = store.get(id);
+        return (
+          searches.get(id)?.state.stamp === stamp && !!nowSeries && identity(nowSeries) === who
+        );
+      };
+      const drop = () => {
+        if (searches.get(id)?.state.stamp === stamp) {
+          searches.delete(id);
+          notify();
+        }
+      };
       const candidates: Candidate[] = [];
       let failed = false;
       const add = (c: Candidate) => {
@@ -135,8 +180,10 @@ export function createComicCoverService(opts: {
       if (isbn) {
         try {
           const bytes = await ol.isbnCover(isbn, 'L');
+          if (!alive()) return drop();
           if (bytes) {
-            if (!s.coverArt) {
+            // The cover it has now (one uploaded while this waited is the person's: never replaced)
+            if (!store.get(id)?.coverArt) {
               setCover(id, bytes, 'openlibrary', `isbn:${isbn}`);
               setState(id, { state: 'encontrada', stamp: newStamp(now()), label: s.title });
               return;
@@ -150,12 +197,15 @@ export function createComicCoverService(opts: {
             });
           }
         } catch {
+          if (!alive()) return drop();
           failed = true;
         }
       }
       if (s.kind !== 'comic' && s.kind !== 'novela-grafica') {
         try {
-          const docs = (await ani.search(s.title))
+          const found = await ani.search(s.title);
+          if (!alive()) return drop();
+          const docs = found
             .filter((d) => d.coverUrl && aniScore(s.title, d) > 0)
             .sort((a, b) => aniScore(s.title, b) - aniScore(s.title, a));
           for (const d of docs)
@@ -169,12 +219,14 @@ export function createComicCoverService(opts: {
               byIsbn: false,
             });
         } catch {
+          if (!alive()) return drop();
           failed = true;
         }
       }
       if (s.kind !== 'manga' && candidates.length < CANDIDATES_MAX) {
         try {
           const docs = await ol.search(s.title, s.writers[0] ?? '');
+          if (!alive()) return drop();
           for (const d of pickCandidates(
             { title: s.title, authors: s.writers },
             docs,
@@ -190,6 +242,7 @@ export function createComicCoverService(opts: {
               byIsbn: false,
             });
         } catch {
+          if (!alive()) return drop();
           failed = true;
         }
       }
@@ -197,7 +250,8 @@ export function createComicCoverService(opts: {
         nothing(id, failed ? 'sin-respuesta' : 'sin-coincidencia');
         return;
       }
-      const current = store.get(id)?.coverArt?.key;
+      const art = store.get(id)?.coverArt;
+      const current = art?.key;
       const wire: LibrosCoverCandidate[] = candidates.map((c) => ({
         label: c.label,
         year: c.year,
@@ -205,8 +259,10 @@ export function createComicCoverService(opts: {
         ...(current && c.key === current ? { current: true } : {}),
       }));
       setState(id, { state: 'elige', stamp: newStamp(now()), candidates: wire }, candidates);
+      const offered = searches.get(id);
+      if (offered) offered.coverAt = art?.at ?? '';
     } catch {
-      nothing(id, 'sin-respuesta');
+      if (alive()) nothing(id, 'sin-respuesta');
     } finally {
       busy.delete(id);
     }
@@ -231,7 +287,7 @@ export function createComicCoverService(opts: {
       failed: 0,
       startedAt: iso(),
     };
-    opts.onChange();
+    notify();
     for (const id of ids) {
       if (stopAsked) break;
       await find(id, false);
@@ -241,10 +297,10 @@ export function createComicCoverService(opts: {
       else if (st?.state === 'elige') run.choose++;
       else if (st?.reason === 'sin-respuesta') run.failed++;
       else run.notFound++;
-      opts.onChange();
+      notify();
     }
     run = { ...run, running: false, stopped: stopAsked, finishedAt: iso() };
-    opts.onChange();
+    notify();
   }
 
   function choice(id: string, stamp: string): Search {
@@ -284,7 +340,10 @@ export function createComicCoverService(opts: {
           ? err
           : new CoverError('La fuente no contestó; intenta otra vez.');
       }
-      choice(id, stamp);
+      // A new search, a change or an upload may have come while it downloaded: theirs wins
+      const still = choice(id, stamp);
+      if ((store.get(id)?.coverArt?.at ?? '') !== (still.coverAt ?? ''))
+        throw new CoverError('La portada cambió mientras bajaba; busca otra vez.');
       setCover(id, bytes, c.key.startsWith('al:') ? 'anilist' : 'openlibrary', c.key);
       searches.set(id, {
         state: { id, at: iso(), state: 'encontrada', stamp: newStamp(now()), label: c.label },
@@ -316,15 +375,29 @@ export function createComicCoverService(opts: {
       return art;
     },
 
-    async candidateImage(id, n) {
+    candidateImage(id, n) {
       const s = searches.get(id);
       const c = s?.state.state === 'elige' ? s.candidates[n] : undefined;
-      if (!c) return null;
-      const cached = files.readCandidate(id, n);
-      if (cached) return { bytes: cached.bytes, type: cached.type };
-      const bytes = await fetchCandidate(c, 'M');
-      const type = files.saveCandidate(id, n, bytes);
-      return { bytes, type };
+      if (!s || !c) return Promise.resolve(null);
+      const stamp = s.state.stamp;
+      const key = `${id}|${n}|${stamp}`;
+      const pending = thumbs.get(key);
+      if (pending) return pending;
+      const job = (async () => {
+        const cached = files.readCandidate(id, n);
+        if (cached) return { bytes: cached.bytes, type: cached.type };
+        const bytes = await fetchCandidate(c, 'M');
+        // Searched again while it downloaded: this thumbnail is not one of the new choice's
+        if (searches.get(id)?.state.stamp !== stamp) return null;
+        const type = files.saveCandidate(id, n, bytes);
+        return { bytes, type };
+      })();
+      thumbs.set(key, job);
+      const drop = () => {
+        if (thumbs.get(key) === job) thumbs.delete(key);
+      };
+      job.then(drop, drop);
+      return job;
     },
 
     seriesChanged(id, lostCover) {

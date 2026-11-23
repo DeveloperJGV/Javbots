@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { COMICS_FILE_VERSION, SERIES_MAX, TRASH_MAX } from '../core/constants.js';
+import { COMICS_FILE_VERSION, SERIES_MAX, TRASH_MAX, VOLUMES_MAX } from '../core/constants.js';
 import {
   isoDay,
   isSeriesId,
@@ -61,6 +61,8 @@ export function createComicsStore(opts: ComicsStoreOptions): ComicsStore {
   let damaged = false;
   /** The file is bigger than the cap: nothing is written over it. */
   let tooBig = false;
+  /** Read in part: past the cap, or ids given anew (the cover cleanup at start must not trust it). */
+  let partial = false;
 
   function fileSignature(): string {
     try {
@@ -79,6 +81,7 @@ export function createComicsStore(opts: ComicsStoreOptions): ComicsStore {
     problems = [];
     damaged = false;
     tooBig = false;
+    partial = false;
     if (signature === 'none') return;
     let size = 0;
     try {
@@ -104,6 +107,10 @@ export function createComicsStore(opts: ComicsStoreOptions): ComicsStore {
       return;
     }
     const result = readComics(raw, isoDay(now()));
+    const listed = (raw as { series?: unknown } | null)?.series;
+    partial =
+      (Array.isArray(listed) && listed.length !== result.series.length) ||
+      result.problems.some((p) => p.includes('no tenía un id propio'));
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) damaged = true;
     const version = (raw as { version?: unknown } | null)?.version;
     if (typeof version === 'number' && version > COMICS_FILE_VERSION)
@@ -171,6 +178,9 @@ export function createComicsStore(opts: ComicsStoreOptions): ComicsStore {
   function save(input: unknown): Series {
     beforeChange();
     const today = isoDay(now());
+    const sent = (input as { volumes?: unknown } | null)?.volumes;
+    if (Array.isArray(sent) && sent.length > VOLUMES_MAX)
+      throw new Error(`tiene ${sent.length} tomos anotados; el tope es ${VOLUMES_MAX}`);
     const read = normalizeSeries(input, today);
     if (!read) throw new Error('no es una serie');
     const askedId = (input as { id?: unknown }).id;
@@ -267,7 +277,7 @@ export function createComicsStore(opts: ComicsStoreOptions): ComicsStore {
     setCoverNone,
     readWhole: () => {
       check();
-      return signature !== 'none' && !damaged && !tooBig;
+      return signature !== 'none' && !damaged && !tooBig && !partial;
     },
   };
 }

@@ -207,3 +207,22 @@ describe('comics webview', () => {
     expect(bad).toContain('Escríbelos como 1-12, 15');
   });
 });
+
+describe('comics webview: long series', () => {
+  it('7. the card paints at most GRID_MAX numbers and says how many more', () => {
+    const s = series('Larguísima', [1, 2], { totalVolumes: 5000 });
+    const html = render(
+      createElement(SeriesCard, {
+        s,
+        state: state([s]),
+        send: () => {},
+        onSave: () => {},
+        onDelete: () => {},
+      }),
+    );
+    expect(count(html, /<button type="button" class="[^"]*" aria-pressed/g)).toBeLessThanOrEqual(
+      400,
+    );
+    expect(html).toContain('Se ven los primeros 400 de 5000');
+  });
+});

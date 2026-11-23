@@ -37,7 +37,9 @@ clic en el estante o con `#comics` al final de la dirección. Solo la página co
 
 `~/.pixel-agents/comics.json`, con las garantías del librero (es una copia de su `libraryStore.ts` para series):
 escritura atómica, papelera (100), campos desconocidos conservados, tope de 8 MB, archivo dañado apartado como
-`comics.danado-<fecha>.json`. Como mucho 5000 series y 2000 tomos anotados por serie.
+`comics.danado-<fecha>.json`. Como mucho 5000 series y 2000 tomos anotados por serie: guardar más **no se recorta en
+silencio**, se rechaza y lo dice. La tarjeta pinta hasta 400 números (los demás, con «Tengo» al editar), y lo que
+falta de cada serie se calcula una vez por cambio, no en cada dibujo.
 
 ```json
 {
@@ -107,7 +109,11 @@ escritura atómica, papelera (100), campos desconocidos conservados, tope de 8 M
 Seguridad: el mismo camino a la red de la colección (`features/coleccion/server/covers/net.ts`), con los hosts de
 Open Library, `archive.org` y sus servidores, `graphql.anilist.co` y `s4.anilist.co`; una dirección de imagen que
 AniList mande se usa solo si es de `s4.anilist.co` (patrón fijo en `core/lookup.ts`). Las imágenes se revisan por
-cabecera, viven en `~/.pixel-agents/comics/portadas/<id>.<tipo>` y se sirven con la llave de la oficina:
+cabecera, viven en `~/.pixel-agents/comics/portadas/<id>.<tipo>` y se sirven con la llave de la oficina. Igual que
+en el librero, después de cada espera de la red se revisa que siga siendo la misma búsqueda y la misma serie (título,
+primer guionista, ISBN de sus tomos, tipo); una portada subida mientras tanto nunca se reemplaza; una miniatura de una
+búsqueda vieja no se guarda; si la imagen no se puede poner, queda la de antes; un aviso que falle no corta nada; y un
+archivo leído solo en parte no borra portadas al arrancar.
 
 | Método | Ruta                             | Qué                                             |
 | ------ | -------------------------------- | ----------------------------------------------- |

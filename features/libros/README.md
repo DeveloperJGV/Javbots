@@ -160,7 +160,16 @@ default-src 'none'; sandbox`, `Cross-Origin-Resource-Policy: same-origin`, `X-Co
 | GET    | `/api/libros/candidata/<id>/<n>` | Miniatura `n` (0 a 3) de la última «elige una».             |
 | POST   | `/api/libros/portada/<id>`       | Subir una imagen: el cuerpo es la imagen.                   |
 
-- Una portada nueva se escribe aparte, luego se guarda `libros.json` y **solo entonces** reemplaza a la anterior.
+- Una portada nueva se escribe aparte, luego se guarda `libros.json` y **solo entonces** reemplaza a la anterior. Si
+  la imagen no se puede poner en su lugar, `libros.json` vuelve a la portada de antes.
+- **Después de cada espera de la red se vuelve a revisar**, como en la colección: que siga siendo la misma búsqueda
+  y el mismo libro (ni borrado ni con otro título, primer autor o ISBN). Si no, el resultado se tira: nada del libro
+  anterior queda puesto ni ofrecido. La portada del ISBN solo se pone si el libro **sigue** sin portada (una subida
+  mientras esperaba gana), y elegir una opción falla si la portada cambió mientras bajaba. Una miniatura que bajó para
+  una búsqueda vieja no se guarda, y dos pedidos de la misma comparten la descarga. Un aviso a la página que falle no
+  corta una búsqueda ni «Buscar las que faltan».
+- Si el archivo se leyó solo en parte (más libros que el tope, o ids repetidos que se cambiaron), al arrancar **no** se
+  borran portadas «huérfanas»: podrían ser de libros que no se vieron.
 - Las imágenes viven en `~/.pixel-agents/libros/portadas/<id>.<png|jpg|webp>` (las miniaturas de «elige una» en
   `.candidatas/`). Al arrancar se vacía `.candidatas/` y se borran las de libros que ya no están, solo si
   `libros.json` existe y se leyó entero.

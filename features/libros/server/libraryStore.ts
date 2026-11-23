@@ -61,6 +61,8 @@ export function createLibraryStore(opts: LibraryStoreOptions): LibraryStore {
   let damaged = false;
   /** The file is bigger than the cap: nothing is written over it. */
   let tooBig = false;
+  /** Read in part: past the cap, or ids given anew (the cover cleanup at start must not trust it). */
+  let partial = false;
 
   function fileSignature(): string {
     try {
@@ -79,6 +81,7 @@ export function createLibraryStore(opts: LibraryStoreOptions): LibraryStore {
     problems = [];
     damaged = false;
     tooBig = false;
+    partial = false;
     if (signature === 'none') return;
     let size = 0;
     try {
@@ -104,6 +107,10 @@ export function createLibraryStore(opts: LibraryStoreOptions): LibraryStore {
       return;
     }
     const result = readLibrary(raw, isoDay(now()));
+    const listed = (raw as { books?: unknown } | null)?.books;
+    partial =
+      (Array.isArray(listed) && listed.length !== result.books.length) ||
+      result.problems.some((p) => p.includes('no tenía un id propio'));
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) damaged = true;
     const version = (raw as { version?: unknown } | null)?.version;
     if (typeof version === 'number' && version > LIBRARY_FILE_VERSION)
@@ -266,7 +273,7 @@ export function createLibraryStore(opts: LibraryStoreOptions): LibraryStore {
     setCoverNone,
     readWhole: () => {
       check();
-      return signature !== 'none' && !damaged && !tooBig;
+      return signature !== 'none' && !damaged && !tooBig && !partial;
     },
   };
 }

@@ -15,6 +15,7 @@ import {
   COMIC_COVER_PATH,
   COMIC_COVER_SOURCE_TEXT,
   COMIC_FORMAT_LABEL,
+  GRID_MAX,
   KIND_LABEL,
 } from './constants.js';
 import { countText, peopleText, volumeLook } from './look.js';
@@ -220,7 +221,8 @@ export function SeriesCard({
   const look = volumeLook(s);
   const owned = new Set(ownedNumbers(s));
   const span = Math.max(seriesSpan(s), ...owned, 1);
-  const numbers = Array.from({ length: span }, (_, i) => i + 1);
+  const shown = Math.min(span, GRID_MAX);
+  const numbers = Array.from({ length: shown }, (_, i) => i + 1);
   const missing = missingNumbers(s);
   const busy = !!state.pending;
   const publisher = [s.publisher, s.localPublisher && `aquí: ${s.localPublisher}`]
@@ -321,6 +323,11 @@ export function SeriesCard({
               +
             </button>
           </div>
+          {span > shown && (
+            <div className="small">
+              Se ven los primeros {shown} de {span}; los demás se anotan con «Tengo» al editar.
+            </div>
+          )}
           {s.notes && (
             <>
               <h4>Notas</h4>
