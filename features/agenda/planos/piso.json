@@ -5106,18 +5106,6 @@
       "row": 2
     },
     {
-      "uid": "freelance-cables",
-      "type": "FREELANCE_CABLES",
-      "col": 21,
-      "row": 3
-    },
-    {
-      "uid": "freelance-cajas",
-      "type": "FREELANCE_BOXES",
-      "col": 23,
-      "row": 2
-    },
-    {
       "uid": "freelance-refri",
       "type": "FREELANCE_FRIDGE",
       "col": 34,

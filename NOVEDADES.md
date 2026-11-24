@@ -7,7 +7,7 @@ Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
 
 - **El librero y el estante de cómics ya tienen lugar.** En el piso Personal, en el cuarto Cerebro: el librero junto a
   la puerta de arriba y los cómics al fondo. Un plano que ya guardaste no cambia: ahí se ponen con el editor.
-- **Freelance, más ordenado.** Se fueron el bote y los cables sueltos del piso.
+- **Freelance, más ordenado.** Se fueron el bote, las cajas y los cables sueltos.
 
 ## 23 de noviembre de 2026
 
