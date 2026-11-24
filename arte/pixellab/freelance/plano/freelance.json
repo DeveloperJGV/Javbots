@@ -1335,12 +1335,6 @@
       "row": 2
     },
     {
-      "uid": "freelance-bote",
-      "type": "FREELANCE_BIN",
-      "col": 7,
-      "row": 3
-    },
-    {
       "uid": "freelance-rack",
       "type": "FREELANCE_RACK",
       "col": 1,
@@ -1357,18 +1351,6 @@
       "type": "FREELANCE_BOXES",
       "col": 5,
       "row": 2
-    },
-    {
-      "uid": "freelance-cables-suelo-1",
-      "type": "FREELANCE_FLOOR_CABLES",
-      "col": 5,
-      "row": 5
-    },
-    {
-      "uid": "freelance-cables-suelo-2",
-      "type": "FREELANCE_FLOOR_CABLES",
-      "col": 10,
-      "row": 7
     },
     {
       "uid": "freelance-refri",

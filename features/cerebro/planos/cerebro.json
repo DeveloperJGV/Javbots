@@ -1405,6 +1405,18 @@
       "type": "OFERTAS_KIOSK",
       "col": 15,
       "row": 2
+    },
+    {
+      "uid": "libros-estante",
+      "type": "LIBROS_SHELF",
+      "col": 9,
+      "row": 2
+    },
+    {
+      "uid": "comics-estante",
+      "type": "COMICS_SHELF",
+      "col": 12,
+      "row": 7
     }
   ],
   "areas": [

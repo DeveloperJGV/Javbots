@@ -5100,12 +5100,6 @@
       "row": 2
     },
     {
-      "uid": "freelance-bote",
-      "type": "FREELANCE_BIN",
-      "col": 25,
-      "row": 3
-    },
-    {
       "uid": "freelance-rack",
       "type": "FREELANCE_RACK",
       "col": 19,
@@ -5122,18 +5116,6 @@
       "type": "FREELANCE_BOXES",
       "col": 23,
       "row": 2
-    },
-    {
-      "uid": "freelance-cables-suelo-1",
-      "type": "FREELANCE_FLOOR_CABLES",
-      "col": 23,
-      "row": 5
-    },
-    {
-      "uid": "freelance-cables-suelo-2",
-      "type": "FREELANCE_FLOOR_CABLES",
-      "col": 28,
-      "row": 7
     },
     {
       "uid": "freelance-refri",
@@ -5434,6 +5416,18 @@
       "type": "OFERTAS_KIOSK",
       "col": 33,
       "row": 12
+    },
+    {
+      "uid": "libros-estante",
+      "type": "LIBROS_SHELF",
+      "col": 27,
+      "row": 12
+    },
+    {
+      "uid": "comics-estante",
+      "type": "COMICS_SHELF",
+      "col": 30,
+      "row": 17
     }
   ],
   "areas": [

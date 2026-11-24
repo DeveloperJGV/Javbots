@@ -3,6 +3,12 @@
 Lo nuevo de Javbots, lo más reciente arriba. El historial del proyecto original
 (Pixel Agents) está en [CHANGELOG.md](CHANGELOG.md).
 
+## 24 de noviembre de 2026
+
+- **El librero y el estante de cómics ya tienen lugar.** En el piso Personal, en el cuarto Cerebro: el librero junto a
+  la puerta de arriba y los cómics al fondo. Un plano que ya guardaste no cambia: ahí se ponen con el editor.
+- **Freelance, más ordenado.** Se fueron el bote y los cables sueltos del piso.
+
 ## 23 de noviembre de 2026
 
 - **Librero.** Un mueble nuevo abre tu colección de libros, hermana de la de juegos: repisas por género (o por autor,

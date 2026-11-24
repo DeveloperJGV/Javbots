@@ -25,16 +25,14 @@ cambiamos el idioma, el arte, los cuartos y le agregamos cosas nuevas. La docume
 
 ## Novedades
 
+- **24 de noviembre de 2026**: el **librero** y el estante de **cómics** ya tienen su lugar en el piso Personal (cuarto
+  Cerebro), y el cuarto de Freelance quedó más ordenado.
 - **23 de noviembre de 2026**: un **librero** para tus libros, hermano de la colección de juegos: repisas por género
   (o autor, editorial, saga), cada libro de lomo y abierto con su ficha; con el ISBN, Open Library llena los datos y
   pone la portada. También «se busca», un buscador y **«¿Qué leo ahora?»**. Un estante de **cómics y manga** por
   series y tomos, con los que faltan como huecos en la repisa. Y la **Rueda de volumen** (un programa aparte para
   Windows que hace que la rueda del ratón siga a tu música de Spotify, aunque suene en otro aparato) se ve y se
   maneja desde la oficina, con un amplificador en pixel art cuya perilla gira con el volumen.
-- **16 de noviembre de 2026**: las **Ofertas** salen por grupos (Bocinas, Receptor, Red…), plegables y en tu orden,
-  y cada vigilancia dice en qué tiendas buscó y qué contestó cada una; también pueden leer Amazon y otras tiendas
-  con el navegador, si lo prendes en Ajustes. La **colección de juegos** ya tiene portadas
-  (en pixel art en la repisa, completas en la ficha) y cada juego se ve como lo tienes: con caja o como cartucho suelto.
 
 Todo lo nuevo, por fecha, en [NOVEDADES.md](NOVEDADES.md).
 
